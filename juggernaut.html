@@ -1,0 +1,680 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Juggernaut Method Trainer</title>
+<style>
+:root {
+  --bg: #f5f6f8; --card: #ffffff; --text: #1a1d21; --muted: #5c6470;
+  --line: #dde1e6; --accent: #b03a2e; --accent-text: #ffffff;
+  --amap: #fff3e6; --saved: #1e7d46; --danger: #b03a2e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a; --card: #1e2127; --text: #e8eaed; --muted: #9aa2ad;
+    --line: #333842; --accent: #d1543f; --accent-text: #ffffff;
+    --amap: #3a2c1c; --saved: #4dbb7f; --danger: #d1543f;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.45; }
+header, #app, footer { max-width: 880px; margin: 0 auto; padding: 0 12px; }
+header { padding-top: 20px; }
+header h1 { margin: 0 0 4px; font-size: 1.5rem; }
+header .sub { margin: 0 0 12px; color: var(--muted); font-size: 0.9rem; }
+footer { color: var(--muted); font-size: 0.8rem; padding: 20px 12px 40px; }
+.tabs { display: flex; gap: 6px; margin: 8px 0 14px; flex-wrap: wrap; }
+.tab { background: var(--card); border: 1px solid var(--line); color: var(--text); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.95rem; }
+.tab.active { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+h2 { font-size: 1.05rem; margin: 10px 0 8px; }
+h3 { font-size: 1rem; margin: 0 0 8px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.wm { color: var(--muted); font-weight: 500; font-size: 0.9rem; }
+.hint { color: var(--muted); font-size: 0.85rem; margin: 6px 0; }
+.amap-hint { border-left: 3px solid var(--accent); padding-left: 10px; }
+.table { width: 100%; border-collapse: collapse; font-size: 0.92rem; margin: 8px 0; }
+.table th, .table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.table th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; }
+tr.amap td { background: var(--amap); }
+input[type="number"], select, textarea { background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font-size: 0.95rem; font-family: inherit; }
+input[type="number"] { width: 90px; }
+.sets input[type="number"].reps { width: 70px; }
+textarea { width: 100%; resize: vertical; }
+label.block { display: block; margin: 8px 0; font-size: 0.88rem; color: var(--muted); }
+button { font-family: inherit; font-size: 0.92rem; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--text); cursor: pointer; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+button.danger { color: var(--danger); border-color: var(--danger); background: transparent; }
+button.small { padding: 4px 10px; font-size: 0.8rem; margin-top: 6px; }
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.row.spread { justify-content: space-between; }
+.weekbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.weekbar select { flex: 1; min-width: 200px; }
+.pill { background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 0.85rem; color: var(--muted); }
+.saved { color: var(--saved); font-size: 0.88rem; margin: 4px 0; }
+.banner { background: var(--amap); border: 1px solid var(--accent); border-radius: 8px; padding: 8px 12px; font-size: 0.85rem; margin-bottom: 10px; }
+.scroll { overflow-x: auto; }
+.log { font-size: 0.92rem; }
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 8px; font-size: 0.9rem; opacity: 0; transition: all 0.25s ease; z-index: 10; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#1f6f4a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Juggernaut Method">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="icon" href="./icon-192.png">
+</head>
+<body>
+<header>
+  <h1>Juggernaut Method Trainer</h1>
+  <p class="sub">16-week wave cycle: 10s → 8s → 5s → 3s · Accumulation / Intensification / Realization / Deload</p>
+</header>
+<div id="app"></div>
+<footer>All percentages run off the <b>working max</b> (90% of true 1RM), per The Juggernaut Method 2.0. Progression is automatic: reps over the standard on realization day raise the working max for the next wave. Data stays in this browser — use Export to back it up.<p style="margin-top:10px"><a href="./index.html" style="color:inherit">12-week BULK block →</a></p></footer>
+<script>
+/*
+ * Juggernaut Method engine.
+ * Percentage tables and progression math from The Juggernaut Method 2.0
+ * (Chad Wesley Smith). All percentages are of the WORKING MAX (90% of true 1RM).
+ *
+ * 16-week cycle = 4 waves (10s, 8s, 5s, 3s) x 4 phases
+ * (Accumulation, Intensification, Realization, Deload).
+ *
+ * Progression: on Realization day the final set is taken for max reps.
+ * Every rep above the wave's rep standard adds `incrementPerRep` to the
+ * working max (reps below the standard subtract).
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) { module.exports = factory(); }
+  else { root.Juggernaut = factory(); }
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  var PHASES = ['accumulation', 'intensification', 'realization', 'deload'];
+
+  var DELOAD_SCHEME = [
+    { pct: 40, reps: 5, sets: 1 },
+    { pct: 50, reps: 5, sets: 1 },
+    { pct: 60, reps: 5, sets: 1 }
+  ];
+
+  // lastAmap: the final set of the block is taken for as many reps as possible,
+  //           but does NOT drive working-max progression.
+  // amap:     the Realization max-rep set that DOES drive progression.
+  var WAVES = [
+    {
+      name: '10s', standard: 10,
+      accumulation: [{ pct: 60, reps: 10, sets: 5, lastAmap: true }],
+      intensification: [
+        { pct: 55, reps: 5, sets: 1 },
+        { pct: 62.5, reps: 5, sets: 1 },
+        { pct: 67.5, reps: 10, sets: 3, lastAmap: true }
+      ],
+      realization: [
+        { pct: 50, reps: 5, sets: 1 },
+        { pct: 60, reps: 3, sets: 1 },
+        { pct: 70, reps: 1, sets: 1 },
+        { pct: 75, reps: 10, sets: 1, amap: true }
+      ]
+    },
+    {
+      name: '8s', standard: 8,
+      accumulation: [{ pct: 65, reps: 8, sets: 5, lastAmap: true }],
+      intensification: [
+        { pct: 60, reps: 3, sets: 1 },
+        { pct: 67.5, reps: 3, sets: 1 },
+        { pct: 72.5, reps: 8, sets: 3, lastAmap: true }
+      ],
+      realization: [
+        { pct: 50, reps: 5, sets: 1 },
+        { pct: 60, reps: 3, sets: 1 },
+        { pct: 70, reps: 2, sets: 1 },
+        { pct: 75, reps: 1, sets: 1 },
+        { pct: 80, reps: 8, sets: 1, amap: true }
+      ]
+    },
+    {
+      name: '5s', standard: 5,
+      accumulation: [{ pct: 70, reps: 5, sets: 6, lastAmap: true }],
+      intensification: [
+        { pct: 65, reps: 2, sets: 1 },
+        { pct: 72.5, reps: 2, sets: 1 },
+        { pct: 77.5, reps: 5, sets: 4, lastAmap: true }
+      ],
+      realization: [
+        { pct: 50, reps: 5, sets: 1 },
+        { pct: 60, reps: 3, sets: 1 },
+        { pct: 70, reps: 2, sets: 1 },
+        { pct: 75, reps: 1, sets: 1 },
+        { pct: 80, reps: 1, sets: 1 },
+        { pct: 85, reps: 5, sets: 1, amap: true }
+      ]
+    },
+    {
+      name: '3s', standard: 3,
+      accumulation: [{ pct: 75, reps: 3, sets: 7, lastAmap: true }],
+      intensification: [
+        { pct: 70, reps: 1, sets: 1 },
+        { pct: 77.5, reps: 1, sets: 1 },
+        { pct: 82.5, reps: 3, sets: 5, lastAmap: true }
+      ],
+      realization: [
+        { pct: 50, reps: 5, sets: 1 },
+        { pct: 60, reps: 3, sets: 1 },
+        { pct: 70, reps: 2, sets: 1 },
+        { pct: 75, reps: 1, sets: 1 },
+        { pct: 80, reps: 1, sets: 1 },
+        { pct: 85, reps: 1, sets: 1 },
+        { pct: 90, reps: 3, sets: 1, amap: true }
+      ]
+    }
+  ];
+
+  function roundToIncrement(weight, increment) {
+    if (!increment || increment <= 0) { return weight; }
+    return Math.round((Math.round(weight / increment) * increment) * 1000) / 1000;
+  }
+
+  // week: 1..16
+  function weekInfo(week) {
+    var idx = ((week - 1) % 16 + 16) % 16;
+    var wave = WAVES[Math.floor(idx / 4)];
+    return {
+      week: idx + 1,
+      waveIndex: Math.floor(idx / 4),
+      waveName: wave.name,
+      standard: wave.standard,
+      phase: PHASES[idx % 4]
+    };
+  }
+
+  // Expand the prescription for a given week into individual sets with
+  // computed weights.
+  function setsForWeek(week, workingMax, roundingIncrement) {
+    var info = weekInfo(week);
+    var wave = WAVES[info.waveIndex];
+    var scheme = info.phase === 'deload' ? DELOAD_SCHEME : wave[info.phase];
+    var out = [];
+    scheme.forEach(function (block) {
+      var n = block.sets || 1;
+      for (var i = 0; i < n; i++) {
+        var last = i === n - 1;
+        out.push({
+          pct: block.pct,
+          weight: roundToIncrement(workingMax * block.pct / 100, roundingIncrement),
+          targetReps: block.reps,
+          amap: !!block.amap,
+          pushSet: !!block.amap || (!!block.lastAmap && last)
+        });
+      }
+    });
+    return out;
+  }
+
+  function nextWorkingMax(workingMax, standard, achievedReps, incrementPerRep) {
+    return Math.round((workingMax + (achievedReps - standard) * incrementPerRep) * 100) / 100;
+  }
+
+  function workingMaxFrom1RM(oneRM) {
+    return Math.round(oneRM * 0.9 * 100) / 100;
+  }
+
+  // Epley estimate, for tracking trends off max-rep sets.
+  function estimate1RM(weight, reps) {
+    if (!reps || reps < 1) { return 0; }
+    return Math.round(weight * (1 + reps / 30) * 10) / 10;
+  }
+
+  return {
+    PHASES: PHASES,
+    WAVES: WAVES,
+    DELOAD_SCHEME: DELOAD_SCHEME,
+    TOTAL_WEEKS: 16,
+    weekInfo: weekInfo,
+    setsForWeek: setsForWeek,
+    roundToIncrement: roundToIncrement,
+    nextWorkingMax: nextWorkingMax,
+    workingMaxFrom1RM: workingMaxFrom1RM,
+    estimate1RM: estimate1RM
+  };
+});
+
+</script>
+<script>
+/* UI + state for the Juggernaut Method Trainer. Engine math lives in juggernaut.js. */
+(function () {
+  'use strict';
+
+  var J = window.Juggernaut;
+  var KEY = 'gym-coach-juggernaut-v1';
+
+  var LIFTS = [
+    { id: 'squat', name: 'Squat' },
+    { id: 'bench', name: 'Bench Press' },
+    { id: 'deadlift', name: 'Deadlift' },
+    { id: 'press', name: 'Overhead Press' }
+  ];
+
+  function defaultState() {
+    return {
+      version: 1,
+      settings: { unit: 'kg', rounding: 2.5 },
+      lifts: {
+        squat: { workingMax: 0, incPerRep: 2.5 },
+        bench: { workingMax: 0, incPerRep: 1.25 },
+        deadlift: { workingMax: 0, incPerRep: 2.5 },
+        press: { workingMax: 0, incPerRep: 1.25 }
+      },
+      cycle: 1,
+      currentWeek: 1,
+      logs: [],
+      ui: { tab: 'setup', planLift: 'squat' }
+    };
+  }
+
+  var memoryOnly = false;
+  var state = load();
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        var base = defaultState();
+        Object.keys(base).forEach(function (k) {
+          if (parsed[k] === undefined) { parsed[k] = base[k]; }
+        });
+        return parsed;
+      }
+    } catch (e) { memoryOnly = true; }
+    return defaultState();
+  }
+
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); }
+    catch (e) { memoryOnly = true; }
+  }
+
+  /* ---------- helpers ---------- */
+
+  function fmt(n) {
+    if (n === null || n === undefined || isNaN(n)) { return '–'; }
+    return String(Math.round(n * 100) / 100);
+  }
+
+  function num(v) {
+    if (v === '' || v === null || v === undefined) { return null; }
+    var n = Number(v);
+    return isNaN(n) ? null : n;
+  }
+
+  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+  function esc(s) {
+    return String(s || '').replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function liftName(id) {
+    for (var i = 0; i < LIFTS.length; i++) { if (LIFTS[i].id === id) { return LIFTS[i].name; } }
+    return id;
+  }
+
+  function findLog(cycle, week, lift) {
+    for (var i = 0; i < state.logs.length; i++) {
+      var l = state.logs[i];
+      if (l.cycle === cycle && l.week === week && l.lift === lift) { return l; }
+    }
+    return null;
+  }
+
+  function anyMaxSet() {
+    return LIFTS.some(function (l) { return state.lifts[l.id].workingMax > 0; });
+  }
+
+  function toast(msg) {
+    var el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(function () { el.classList.add('show'); }, 10);
+    setTimeout(function () { el.classList.remove('show'); }, 2200);
+    setTimeout(function () { el.remove(); }, 2700);
+  }
+
+  /* ---------- views ---------- */
+
+  function renderApp() {
+    var tabs = ['setup', 'train', 'plan', 'history'];
+    var views = { setup: renderSetup, train: renderTrain, plan: renderPlan, history: renderHistory };
+    document.getElementById('app').innerHTML =
+      (memoryOnly ? '<div class="banner">Browser storage is unavailable — data lives only in this tab. Use Export (Setup tab) to keep it.</div>' : '') +
+      '<nav class="tabs">' + tabs.map(function (t) {
+        return '<button type="button" id="tab-' + t + '" class="tab' + (state.ui.tab === t ? ' active' : '') + '" data-action="tab" data-tab="' + t + '">' + cap(t) + '</button>';
+      }).join('') + '</nav>' +
+      '<main>' + views[state.ui.tab]() + '</main>';
+  }
+
+  function renderSetup() {
+    var s = state.settings;
+    return '<section class="card">' +
+      '<h2>Settings</h2>' +
+      '<div class="row">' +
+      '<label>Units <select id="unit">' +
+      '<option value="kg"' + (s.unit === 'kg' ? ' selected' : '') + '>kg</option>' +
+      '<option value="lb"' + (s.unit === 'lb' ? ' selected' : '') + '>lb</option>' +
+      '</select></label>' +
+      '<label>Round set weights to <input type="number" id="rounding" step="0.25" min="0.25" value="' + s.rounding + '"> ' + s.unit + '</label>' +
+      '</div>' +
+      '<h2>Working maxes</h2>' +
+      '<p class="hint">Enter a true 1RM and the working max is set to 90% of it, or type a working max directly (a filled working max wins). All program percentages run off the working max. The increment is what each rep beyond the rep standard on realization day adds to the working max — book defaults: squat/deadlift 2.5 kg (5 lb), bench/press 1.25 kg (2.5 lb) per extra rep.</p>' +
+      '<table class="table"><thead><tr><th>Lift</th><th>1RM (' + s.unit + ')</th><th>Working max (' + s.unit + ')</th><th>Increment per extra rep</th></tr></thead><tbody>' +
+      LIFTS.map(function (l) {
+        var lift = state.lifts[l.id];
+        return '<tr><td>' + l.name + '</td>' +
+          '<td><input type="number" step="0.5" min="0" id="rm-' + l.id + '" placeholder="optional"></td>' +
+          '<td><input type="number" step="0.5" min="0" id="wm-' + l.id + '" value="' + (lift.workingMax || '') + '"></td>' +
+          '<td><input type="number" step="0.25" min="0" id="inc-' + l.id + '" value="' + lift.incPerRep + '"></td></tr>';
+      }).join('') +
+      '</tbody></table>' +
+      '<button type="button" class="primary" id="save-setup" data-action="save-setup">Save</button>' +
+      '</section>' +
+      '<section class="card">' +
+      '<h2>Data</h2>' +
+      '<div class="row">' +
+      '<button type="button" data-action="export">Export JSON</button>' +
+      '<button type="button" data-action="import">Import JSON</button>' +
+      '<input type="file" id="import-file" accept=".json,application/json" hidden>' +
+      '<button type="button" class="danger" data-action="reset">Reset all data</button>' +
+      '</div>' +
+      '<p class="hint">Everything is stored locally in this browser. Export before switching devices or clearing browser data.</p>' +
+      '</section>';
+  }
+
+  function renderTrain() {
+    if (!anyMaxSet()) {
+      return '<section class="card"><p>No working maxes set yet — enter them in the Setup tab first.</p></section>';
+    }
+    var week = state.currentWeek;
+    var info = J.weekInfo(week);
+    var options = '';
+    for (var w = 1; w <= J.TOTAL_WEEKS; w++) {
+      var wi = J.weekInfo(w);
+      options += '<option value="' + w + '"' + (w === week ? ' selected' : '') + '>Week ' + w + ' — ' + wi.waveName + ' · ' + cap(wi.phase) + '</option>';
+    }
+    return '<section>' +
+      '<div class="card weekbar">' +
+      '<button type="button" data-action="week-prev">◀</button>' +
+      '<select id="week-select">' + options + '</select>' +
+      '<button type="button" data-action="week-next">▶</button>' +
+      '<span class="pill">Cycle ' + state.cycle + '</span>' +
+      (week === J.TOTAL_WEEKS ? '<button type="button" class="primary" data-action="next-cycle">Finish cycle → start Cycle ' + (state.cycle + 1) + '</button>' : '') +
+      '</div>' +
+      '<p class="hint">Training 3 days/week: rotate the four sessions across your days (e.g. Mon squat, Wed bench + press, Fri deadlift). The program advances by week, not by calendar day.</p>' +
+      (info.phase === 'realization'
+        ? '<p class="hint amap-hint"><b>Realization week:</b> the final set of each lift is taken for as many quality reps as possible. Every rep over the standard (' + info.standard + ') adds the lift’s increment to its working max; reps under subtract.</p>'
+        : '') +
+      (info.phase === 'deload'
+        ? '<p class="hint"><b>Deload week:</b> 40/50/60% × 5. Move fast, leave the gym feeling fresh — this week is where the adaptation happens.</p>'
+        : '') +
+      LIFTS.map(function (l) { return renderLiftCard(l, week, info); }).join('') +
+      '</section>';
+  }
+
+  function renderLiftCard(l, week, info) {
+    var lift = state.lifts[l.id];
+    var u = state.settings.unit;
+    if (!(lift.workingMax > 0)) {
+      return '<div class="card lift-card" data-lift="' + l.id + '"><h3>' + l.name + '</h3><p class="hint">No working max set — add it in Setup.</p></div>';
+    }
+    var existing = findLog(state.cycle, week, l.id);
+    // Render off the WM the session was (or will be) lifted at, so a saved
+    // realization session keeps showing the weights that were actually used.
+    var basisWM = existing ? existing.preWM : lift.workingMax;
+    var sets = J.setsForWeek(week, basisWM, state.settings.rounding);
+
+    var rows = sets.map(function (s, i) {
+      var logged = existing && existing.sets && existing.sets[i];
+      var repsVal = logged && logged.reps !== null && logged.reps !== undefined ? logged.reps : (s.amap ? '' : s.targetReps);
+      var done = logged ? !!logged.done : false;
+      var target;
+      if (s.amap) { target = 'max reps (standard ' + info.standard + ')'; }
+      else if (s.pushSet) { target = s.targetReps + '+ (last set: as many as possible)'; }
+      else { target = String(s.targetReps); }
+      return '<tr' + (s.amap ? ' class="amap"' : '') + '>' +
+        '<td>' + (i + 1) + '</td>' +
+        '<td>' + fmt(s.pct) + '%</td>' +
+        '<td><b>' + fmt(s.weight) + '</b> ' + u + '</td>' +
+        '<td>' + target + '</td>' +
+        '<td><input type="number" class="reps" data-set="' + i + '" min="0" step="1" value="' + repsVal + '"' + (s.amap ? ' placeholder="reps"' : '') + '></td>' +
+        '<td><input type="checkbox" class="done" data-set="' + i + '"' + (done ? ' checked' : '') + '></td>' +
+        '</tr>';
+    }).join('');
+
+    var savedNote = '';
+    if (existing) {
+      savedNote = existing.newWM !== null && existing.newWM !== undefined
+        ? '<p class="saved">Logged ' + existing.date + ' — working max ' + fmt(existing.preWM) + ' → <b>' + fmt(existing.newWM) + '</b> ' + u + '</p>'
+        : '<p class="saved">Logged ' + existing.date + '</p>';
+    }
+
+    return '<div class="card lift-card" data-lift="' + l.id + '">' +
+      '<h3>' + l.name + ' <span class="wm">WM ' + fmt(lift.workingMax) + ' ' + u + '</span></h3>' +
+      savedNote +
+      '<table class="table sets"><thead><tr><th>#</th><th>%</th><th>Weight</th><th>Target reps</th><th>Reps done</th><th>✓</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+      '<label class="block">Accessories (one per line, e.g. "RDL 3×8 @ 100")' +
+      '<textarea class="accessories" rows="2">' + esc(existing ? existing.accessories : '') + '</textarea></label>' +
+      '<label class="block">Notes<textarea class="notes" rows="1">' + esc(existing ? existing.notes : '') + '</textarea></label>' +
+      '<button type="button" class="primary" data-action="save-session">' + (existing ? 'Update session' : 'Save session') + '</button>' +
+      '</div>';
+  }
+
+  function renderPlan() {
+    if (!anyMaxSet()) {
+      return '<section class="card"><p>No working maxes set yet — enter them in the Setup tab first.</p></section>';
+    }
+    var liftId = state.ui.planLift;
+    var lift = state.lifts[liftId];
+    var u = state.settings.unit;
+    var rows = '';
+    for (var w = 1; w <= J.TOTAL_WEEKS; w++) {
+      var info = J.weekInfo(w);
+      var sets = J.setsForWeek(w, lift.workingMax, state.settings.rounding);
+      // Compress runs of identical sets for a readable prescription line.
+      var parts = [];
+      var i = 0;
+      while (i < sets.length) {
+        var j = i;
+        while (j + 1 < sets.length && sets[j + 1].pct === sets[i].pct && sets[j + 1].targetReps === sets[i].targetReps && !sets[j + 1].amap === !sets[i].amap) { j++; }
+        var count = j - i + 1;
+        var s = sets[i];
+        var label = fmt(s.weight) + u + ' × ' + (s.amap ? 'AMAP' : s.targetReps) + (count > 1 ? ' × ' + count + ' sets' : '');
+        parts.push(label);
+        i = j + 1;
+      }
+      rows += '<tr' + (info.phase === 'realization' ? ' class="amap"' : '') + '><td>' + w + '</td><td>' + info.waveName + '</td><td>' + cap(info.phase) + '</td><td>' + parts.join(', ') + '</td></tr>';
+    }
+    return '<section class="card">' +
+      '<div class="row"><h2>16-week plan</h2><label>Lift <select id="plan-lift">' +
+      LIFTS.map(function (l) { return '<option value="' + l.id + '"' + (l.id === liftId ? ' selected' : '') + '>' + l.name + '</option>'; }).join('') +
+      '</select></label></div>' +
+      '<p class="hint">Weights computed from the current working max (' + fmt(lift.workingMax) + ' ' + u + '). Realization results will move later weeks up or down as the working max changes.</p>' +
+      '<div class="scroll"><table class="table"><thead><tr><th>Week</th><th>Wave</th><th>Phase</th><th>Prescription</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '</section>';
+  }
+
+  function renderHistory() {
+    if (!state.logs.length) {
+      return '<section class="card"><p>Nothing logged yet. Sessions you save in the Train tab show up here.</p></section>';
+    }
+    var u = state.settings.unit;
+    var logs = state.logs.slice().reverse();
+    return '<section>' + logs.map(function (log) {
+      var doneSets = (log.sets || []).filter(function (s) { return s.done; });
+      var summary = doneSets.length
+        ? doneSets.map(function (s) { return fmt(s.weight) + '×' + (s.reps === null || s.reps === undefined ? '?' : s.reps); }).join(', ')
+        : 'no sets marked done';
+      var amapLine = '';
+      if (log.amapReps !== null && log.amapReps !== undefined) {
+        var amapSet = (log.sets || []).filter(function (s) { return s.amap; })[0];
+        var est = amapSet ? J.estimate1RM(amapSet.weight, log.amapReps) : 0;
+        amapLine = '<div>Max-rep set: <b>' + (amapSet ? fmt(amapSet.weight) : '?') + ' ' + u + ' × ' + log.amapReps + '</b>' +
+          (est ? ' (est. 1RM ' + fmt(est) + ' ' + u + ')' : '') +
+          ' — working max ' + fmt(log.preWM) + ' → <b>' + fmt(log.newWM) + '</b> ' + u + '</div>';
+      }
+      return '<div class="card log">' +
+        '<div class="row spread"><b>' + liftName(log.lift) + '</b><span>' + log.date + ' · Cycle ' + log.cycle + ' · Week ' + log.week + ' · ' + log.wave + ' ' + cap(log.phase) + '</span></div>' +
+        '<div class="hint">Sets: ' + summary + '</div>' +
+        amapLine +
+        (log.accessories ? '<div class="hint">Accessories: ' + esc(log.accessories).replace(/\n/g, ' · ') + '</div>' : '') +
+        (log.notes ? '<div class="hint">Notes: ' + esc(log.notes) + '</div>' : '') +
+        '<button type="button" class="danger small" data-action="del-log" data-id="' + log.id + '">Delete</button>' +
+        '</div>';
+    }).join('') + '</section>';
+  }
+
+  /* ---------- actions ---------- */
+
+  function saveSetup() {
+    var unit = document.getElementById('unit').value;
+    var rounding = num(document.getElementById('rounding').value);
+    state.settings.unit = unit;
+    state.settings.rounding = rounding && rounding > 0 ? rounding : (unit === 'kg' ? 2.5 : 5);
+    LIFTS.forEach(function (l) {
+      var rm = num(document.getElementById('rm-' + l.id).value);
+      var wm = num(document.getElementById('wm-' + l.id).value);
+      var inc = num(document.getElementById('inc-' + l.id).value);
+      var lift = state.lifts[l.id];
+      if (wm && wm > 0) { lift.workingMax = wm; }
+      else if (rm && rm > 0) { lift.workingMax = J.workingMaxFrom1RM(rm); }
+      if (inc && inc > 0) { lift.incPerRep = inc; }
+    });
+    save();
+    renderApp();
+    toast('Saved');
+  }
+
+  function saveSession(liftId) {
+    var week = state.currentWeek;
+    var info = J.weekInfo(week);
+    var card = document.querySelector('.lift-card[data-lift="' + liftId + '"]');
+    var lift = state.lifts[liftId];
+    var existing = findLog(state.cycle, week, liftId);
+    var preWM = existing ? existing.preWM : lift.workingMax;
+    var prescription = J.setsForWeek(week, preWM, state.settings.rounding);
+
+    var sets = prescription.map(function (s, i) {
+      var repsEl = card.querySelector('input.reps[data-set="' + i + '"]');
+      var doneEl = card.querySelector('input.done[data-set="' + i + '"]');
+      return {
+        pct: s.pct, weight: s.weight, targetReps: s.targetReps, amap: s.amap,
+        reps: num(repsEl.value), done: doneEl.checked
+      };
+    });
+
+    var amapReps = null;
+    var newWM = null;
+    if (info.phase === 'realization') {
+      var amapSet = sets.filter(function (s) { return s.amap; })[0];
+      if (amapSet.reps === null) {
+        toast('Enter the reps you got on the max-rep set first');
+        return;
+      }
+      amapReps = amapSet.reps;
+      newWM = J.nextWorkingMax(preWM, info.standard, amapReps, lift.incPerRep);
+      lift.workingMax = newWM;
+    }
+
+    var log = {
+      id: existing ? existing.id : 'l' + Date.now() + Math.floor(Math.random() * 1000),
+      date: existing ? existing.date : new Date().toISOString().slice(0, 10),
+      cycle: state.cycle, week: week, wave: info.waveName, phase: info.phase,
+      lift: liftId, preWM: preWM, sets: sets, amapReps: amapReps, newWM: newWM,
+      accessories: card.querySelector('.accessories').value.trim(),
+      notes: card.querySelector('.notes').value.trim()
+    };
+    if (existing) { state.logs[state.logs.indexOf(existing)] = log; }
+    else { state.logs.push(log); }
+    save();
+    renderApp();
+    toast(newWM !== null ? liftName(liftId) + ' working max → ' + fmt(newWM) : 'Session saved');
+  }
+
+  function exportJSON() {
+    var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'juggernaut-data-' + new Date().toISOString().slice(0, 10) + '.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function importJSON(file) {
+    if (!file) { return; }
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var parsed = JSON.parse(reader.result);
+        if (!parsed || !parsed.lifts || !parsed.settings) { throw new Error('bad shape'); }
+        state = parsed;
+        var base = defaultState();
+        Object.keys(base).forEach(function (k) { if (state[k] === undefined) { state[k] = base[k]; } });
+        save();
+        renderApp();
+        toast('Imported');
+      } catch (e) {
+        toast('Import failed — not a valid export file');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest ? e.target.closest('[data-action]') : null;
+    if (!btn) { return; }
+    var a = btn.dataset.action;
+    if (a === 'tab') { state.ui.tab = btn.dataset.tab; save(); renderApp(); }
+    else if (a === 'week-prev') { state.currentWeek = Math.max(1, state.currentWeek - 1); save(); renderApp(); }
+    else if (a === 'week-next') { state.currentWeek = Math.min(J.TOTAL_WEEKS, state.currentWeek + 1); save(); renderApp(); }
+    else if (a === 'next-cycle') { state.cycle += 1; state.currentWeek = 1; save(); renderApp(); toast('Cycle ' + state.cycle + ' started'); }
+    else if (a === 'save-setup') { saveSetup(); }
+    else if (a === 'save-session') { saveSession(btn.closest('.lift-card').dataset.lift); }
+    else if (a === 'export') { exportJSON(); }
+    else if (a === 'import') { document.getElementById('import-file').click(); }
+    else if (a === 'reset') {
+      if (confirm('Delete all data (maxes, logs, settings)?')) { state = defaultState(); save(); renderApp(); }
+    }
+    else if (a === 'del-log') {
+      if (confirm('Delete this log? (Working-max changes it made are NOT reverted — adjust the working max in Setup if needed.)')) {
+        state.logs = state.logs.filter(function (l) { return l.id !== btn.dataset.id; });
+        save(); renderApp();
+      }
+    }
+  });
+
+  document.addEventListener('change', function (e) {
+    if (e.target.id === 'week-select') { state.currentWeek = Number(e.target.value); save(); renderApp(); }
+    else if (e.target.id === 'plan-lift') { state.ui.planLift = e.target.value; save(); renderApp(); }
+    else if (e.target.id === 'import-file') { importJSON(e.target.files[0]); e.target.value = ''; }
+  });
+
+  // Jump straight to Train if setup is already done.
+  if (anyMaxSet() && state.ui.tab === 'setup') { state.ui.tab = 'train'; }
+  renderApp();
+})();
+
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('./sw.js').catch(function () {});
+  });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,3771 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Juggernaut 12-Week BULK Block</title>
+<style>
+:root {
+  --bg: #f5f6f8; --card: #ffffff; --text: #1a1d21; --muted: #5c6470;
+  --line: #dde1e6; --accent: #1f6f4a; --accent-text: #ffffff;
+  --amap: #fff3e6; --amap-line: #b03a2e; --danger: #b03a2e; --tag: #b03a2e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a; --card: #1e2127; --text: #e8eaed; --muted: #9aa2ad;
+    --line: #333842; --accent: #35a06b; --accent-text: #06120c;
+    --amap: #3a2c1c; --amap-line: #d1543f; --danger: #d1543f; --tag: #d1543f;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.45; }
+header, #app, footer { max-width: 960px; margin: 0 auto; padding: 0 12px; }
+header { padding-top: 20px; }
+header h1 { margin: 0 0 4px; font-size: 1.45rem; }
+header .sub { margin: 0 0 12px; color: var(--muted); font-size: 0.88rem; }
+footer { color: var(--muted); font-size: 0.8rem; padding: 20px 12px 40px; }
+.tabs { display: flex; gap: 6px; margin: 8px 0 14px; flex-wrap: wrap; }
+.tab { background: var(--card); border: 1px solid var(--line); color: var(--text); padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 0.92rem; }
+.tab.active { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+.daytabs { display: flex; gap: 6px; margin: 0 0 12px; flex-wrap: wrap; }
+.daytab { background: var(--card); border: 1px solid var(--line); color: var(--text); padding: 7px 12px; border-radius: 8px; cursor: pointer; font-size: 0.88rem; }
+.daytab.active { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+h2 { font-size: 1.05rem; margin: 12px 0 8px; }
+h3 { font-size: 1rem; margin: 0 0 8px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+h4 { font-size: 0.92rem; margin: 16px 0 6px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.hint { color: var(--muted); font-size: 0.85rem; margin: 6px 0; }
+.hint.sm { font-size: 0.79rem; margin: 2px 0; }
+.hint.inline { font-weight: 400; text-transform: none; letter-spacing: 0; }
+.amap-hint { border-left: 3px solid var(--amap-line); padding-left: 10px; }
+.table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin: 8px 0; }
+.table th, .table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.table th { color: var(--muted); font-weight: 600; font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.03em; }
+tr.amap td { background: var(--amap); }
+.tag { color: var(--tag); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; }
+input[type="number"], input[type="text"], select, textarea { background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font-size: 0.92rem; font-family: inherit; }
+input[type="number"] { width: 78px; }
+.sets input[type="number"] { width: 66px; }
+label { font-size: 0.85rem; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+button { font-family: inherit; font-size: 0.9rem; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--text); cursor: pointer; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+button.danger { color: var(--danger); border-color: var(--danger); background: transparent; }
+button.small { padding: 4px 9px; font-size: 0.78rem; }
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+.row.wrap { gap: 10px 14px; }
+.weekbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.weekbar select { flex: 1; min-width: 210px; }
+.pill { background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 0.82rem; color: var(--muted); white-space: nowrap; }
+.pill.big { font-size: 0.95rem; font-weight: 700; color: var(--text); }
+.acc { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; }
+.acc-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.acc-head select { max-width: 200px; }
+.log-row { margin: 8px 0 0; padding-top: 8px; border-top: 1px dashed var(--line); }
+.log-row input[type="text"] { flex: 1; min-width: 140px; }
+.banner { background: var(--amap); border: 1px solid var(--amap-line); border-radius: 8px; padding: 8px 12px; font-size: 0.85rem; margin-bottom: 10px; }
+.scroll { overflow-x: auto; }
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 8px; font-size: 0.9rem; opacity: 0; transition: all 0.25s ease; z-index: 10; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#1f6f4a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Juggernaut BULK Block">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="icon" href="./icon-192.png">
+</head>
+<body>
+<header>
+  <h1>Juggernaut 12-Week BULK Block</h1>
+  <p class="sub">3 waves × 4 weeks · 3 days/week · 5 accessory slots/day · calorie surplus</p>
+</header>
+<div id="app"></div>
+<footer>Loads = training max × %TM, rounded to your plate increment. Realization AMRAPs drive the training max for the next wave via the TM Tracker. Data is stored in this browser only — export to back it up.<p style="margin-top:10px"><a href="./juggernaut.html" style="color:inherit">16-week Juggernaut Method trainer →</a></p></footer>
+<script>
+/* Generated build artifact — starting values are neutral placeholders. */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) { module.exports = factory(); }
+  else { root.BulkData = factory(); }
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+  return {
+  "LIBRARY": [
+    {
+      "group": "Horizontal_Push",
+      "name": "DB bench press",
+      "equipment": "Dumbbells + flat bench",
+      "kneeNote": ""
+    },
+    {
+      "group": "Horizontal_Push",
+      "name": "Incline DB press",
+      "equipment": "Dumbbells + adjustable bench",
+      "kneeNote": ""
+    },
+    {
+      "group": "Horizontal_Push",
+      "name": "Machine chest press",
+      "equipment": "Selectorised chest press",
+      "kneeNote": ""
+    },
+    {
+      "group": "Horizontal_Push",
+      "name": "Smith bench press",
+      "equipment": "Smith machine + bench",
+      "kneeNote": ""
+    },
+    {
+      "group": "Horizontal_Push",
+      "name": "Cable fly",
+      "equipment": "Dual adjustable cable",
+      "kneeNote": ""
+    },
+    {
+      "group": "Horizontal_Push",
+      "name": "Pec dec fly",
+      "equipment": "Pec dec machine",
+      "kneeNote": ""
+    },
+    {
+      "group": "Horizontal_Push",
+      "name": "Assisted dip",
+      "equipment": "Assisted dip/chin machine",
+      "kneeNote": ""
+    },
+    {
+      "group": "Vertical_Push",
+      "name": "Seated DB shoulder press",
+      "equipment": "Dumbbells + upright bench",
+      "kneeNote": ""
+    },
+    {
+      "group": "Vertical_Push",
+      "name": "Machine shoulder press",
+      "equipment": "Selectorised shoulder press",
+      "kneeNote": ""
+    },
+    {
+      "group": "Vertical_Push",
+      "name": "Smith overhead press",
+      "equipment": "Smith machine",
+      "kneeNote": ""
+    },
+    {
+      "group": "Vertical_Push",
+      "name": "DB lateral raise",
+      "equipment": "Dumbbells",
+      "kneeNote": ""
+    },
+    {
+      "group": "Vertical_Push",
+      "name": "Cable lateral raise",
+      "equipment": "Cable stack",
+      "kneeNote": ""
+    },
+    {
+      "group": "Horizontal_Pull",
+      "name": "Seated cable row",
+      "equipment": "Cable row station",
+      "kneeNote": ""
+    },
+    {
+      "group": "Horizontal_Pull",
+      "name": "Chest-supported DB row",
+      "equipment": "Dumbbells + incline bench",
+      "kneeNote": ""
+    },
+    {
+      "group": "Horizontal_Pull",
+      "name": "Single-arm DB row",
+      "equipment": "Dumbbell + bench",
+      "kneeNote": ""
+    },
+    {
+      "group": "Horizontal_Pull",
+      "name": "Machine row",
+      "equipment": "Selectorised row",
+      "kneeNote": ""
+    },
+    {
+      "group": "Horizontal_Pull",
+      "name": "Barbell row",
+      "equipment": "Barbell",
+      "kneeNote": ""
+    },
+    {
+      "group": "Horizontal_Pull",
+      "name": "Cable face pull",
+      "equipment": "Cable + rope",
+      "kneeNote": ""
+    },
+    {
+      "group": "Vertical_Pull",
+      "name": "Lat pulldown",
+      "equipment": "Lat pulldown station",
+      "kneeNote": ""
+    },
+    {
+      "group": "Vertical_Pull",
+      "name": "Neutral-grip pulldown",
+      "equipment": "Lat pulldown + V/neutral bar",
+      "kneeNote": ""
+    },
+    {
+      "group": "Vertical_Pull",
+      "name": "Pull-up",
+      "equipment": "Pull-up bar / rig",
+      "kneeNote": ""
+    },
+    {
+      "group": "Vertical_Pull",
+      "name": "Assisted pull-up",
+      "equipment": "Assisted dip/chin machine",
+      "kneeNote": ""
+    },
+    {
+      "group": "Vertical_Pull",
+      "name": "Straight-arm pulldown",
+      "equipment": "Cable + straight bar",
+      "kneeNote": ""
+    },
+    {
+      "group": "Quad_Knee_Friendly",
+      "name": "Leg press (controlled range)",
+      "equipment": "45° leg press",
+      "kneeNote": "Stop above pain range; control the eccentric"
+    },
+    {
+      "group": "Quad_Knee_Friendly",
+      "name": "Terminal knee extension",
+      "equipment": "Cable or band, low pulley",
+      "kneeNote": "Rehab-grade; high rep"
+    },
+    {
+      "group": "Quad_Knee_Friendly",
+      "name": "Leg extension (light)",
+      "equipment": "Leg extension machine",
+      "kneeNote": "Light load, 12–20 reps, no lockout grinding"
+    },
+    {
+      "group": "Quad_Knee_Friendly",
+      "name": "Smith squat to box",
+      "equipment": "Smith machine + box/bench",
+      "kneeNote": "Depth capped by box height"
+    },
+    {
+      "group": "Quad_Knee_Friendly",
+      "name": "Spanish squat",
+      "equipment": "Band anchored to rig",
+      "kneeNote": "Shin stays vertical; knee-sparing"
+    },
+    {
+      "group": "Hinge_Hamstring",
+      "name": "Romanian deadlift",
+      "equipment": "Barbell",
+      "kneeNote": ""
+    },
+    {
+      "group": "Hinge_Hamstring",
+      "name": "DB stiff-leg deadlift",
+      "equipment": "Dumbbells",
+      "kneeNote": ""
+    },
+    {
+      "group": "Hinge_Hamstring",
+      "name": "Deficit deadlift",
+      "equipment": "Barbell + plate or mats",
+      "kneeNote": "Heavier compound — run lower reps than the rest of this group"
+    },
+    {
+      "group": "Hinge_Hamstring",
+      "name": "Seated leg curl",
+      "equipment": "Seated leg curl machine",
+      "kneeNote": ""
+    },
+    {
+      "group": "Hinge_Hamstring",
+      "name": "Lying leg curl",
+      "equipment": "Lying leg curl machine",
+      "kneeNote": ""
+    },
+    {
+      "group": "Hinge_Hamstring",
+      "name": "45° back extension",
+      "equipment": "Back extension bench",
+      "kneeNote": ""
+    },
+    {
+      "group": "Hinge_Hamstring",
+      "name": "Cable pull-through",
+      "equipment": "Cable + rope, low pulley",
+      "kneeNote": ""
+    },
+    {
+      "group": "Glute",
+      "name": "Barbell hip thrust",
+      "equipment": "Barbell + bench + pad",
+      "kneeNote": "Knee-friendly lunge alternative"
+    },
+    {
+      "group": "Glute",
+      "name": "Hip thrust machine",
+      "equipment": "Hip thrust machine (if your site has one)",
+      "kneeNote": ""
+    },
+    {
+      "group": "Glute",
+      "name": "Cable glute kickback",
+      "equipment": "Cable + ankle strap",
+      "kneeNote": ""
+    },
+    {
+      "group": "Glute",
+      "name": "DB hip thrust",
+      "equipment": "Dumbbell + bench",
+      "kneeNote": ""
+    },
+    {
+      "group": "Glute",
+      "name": "Abduction machine",
+      "equipment": "Hip abduction machine",
+      "kneeNote": ""
+    },
+    {
+      "group": "Glute",
+      "name": "Bulgarian Split Squats",
+      "equipment": "Split Squat rack",
+      "kneeNote": ""
+    },
+    {
+      "group": "Core",
+      "name": "Front plank",
+      "equipment": "Bodyweight + mat",
+      "kneeNote": ""
+    },
+    {
+      "group": "Core",
+      "name": "Cable crunch",
+      "equipment": "Cable + rope",
+      "kneeNote": ""
+    },
+    {
+      "group": "Core",
+      "name": "Hanging knee raise",
+      "equipment": "Pull-up bar / captain's chair",
+      "kneeNote": ""
+    },
+    {
+      "group": "Core",
+      "name": "Pallof press",
+      "equipment": "Cable, mid pulley",
+      "kneeNote": ""
+    },
+    {
+      "group": "Core",
+      "name": "Barbell Russian twist",
+      "equipment": "Barbell in corner/landmine",
+      "kneeNote": ""
+    },
+    {
+      "group": "Core",
+      "name": "Ab wheel rollout",
+      "equipment": "Ab wheel",
+      "kneeNote": ""
+    },
+    {
+      "group": "Core",
+      "name": "Cable woodchop",
+      "equipment": "Dual adjustable cable",
+      "kneeNote": ""
+    },
+    {
+      "group": "Arms",
+      "name": "EZ-bar curl",
+      "equipment": "EZ bar",
+      "kneeNote": ""
+    },
+    {
+      "group": "Arms",
+      "name": "DB hammer curl",
+      "equipment": "Dumbbells",
+      "kneeNote": ""
+    },
+    {
+      "group": "Arms",
+      "name": "Cable curl",
+      "equipment": "Cable + bar",
+      "kneeNote": ""
+    },
+    {
+      "group": "Arms",
+      "name": "Triceps pushdown",
+      "equipment": "Cable + bar or rope",
+      "kneeNote": ""
+    },
+    {
+      "group": "Arms",
+      "name": "Overhead cable extension",
+      "equipment": "Cable + rope",
+      "kneeNote": ""
+    },
+    {
+      "group": "Arms",
+      "name": "DB skull crusher",
+      "equipment": "Dumbbells + bench",
+      "kneeNote": ""
+    },
+    {
+      "group": "Conditioning",
+      "name": "Rower intervals",
+      "equipment": "Concept-style rower",
+      "kneeNote": ""
+    },
+    {
+      "group": "Conditioning",
+      "name": "Bike intervals",
+      "equipment": "Upright/assault-style bike",
+      "kneeNote": ""
+    },
+    {
+      "group": "Conditioning",
+      "name": "Incline treadmill walk",
+      "equipment": "Treadmill",
+      "kneeNote": "Zero knee impact at walking pace"
+    },
+    {
+      "group": "Conditioning",
+      "name": "KB swing",
+      "equipment": "Kettlebells",
+      "kneeNote": ""
+    },
+    {
+      "group": "Conditioning",
+      "name": "Farmer carry",
+      "equipment": "Heavy dumbbells / hex bar",
+      "kneeNote": ""
+    }
+  ],
+  "GROUPS": [
+    "Horizontal_Push",
+    "Vertical_Push",
+    "Horizontal_Pull",
+    "Vertical_Pull",
+    "Quad_Knee_Friendly",
+    "Hinge_Hamstring",
+    "Glute",
+    "Core",
+    "Arms",
+    "Conditioning"
+  ],
+  "LIBRARY_NOTE": "Standard PureGym kit assumed (racks, DBs, Smith, cables, selectorised machines). Hip thrust machine and back-extension bench vary by site — check yours, swap if missing.",
+  "WAVES": {
+    "10s": {
+      "Accumulation": [
+        {
+          "pct": 0.6,
+          "reps": 10,
+          "amrap": false
+        },
+        {
+          "pct": 0.6,
+          "reps": 10,
+          "amrap": false
+        },
+        {
+          "pct": 0.6,
+          "reps": 10,
+          "amrap": false
+        },
+        {
+          "pct": 0.6,
+          "reps": 10,
+          "amrap": false
+        },
+        {
+          "pct": 0.6,
+          "reps": 10,
+          "amrap": true
+        }
+      ],
+      "Intensification": [
+        {
+          "pct": 0.55,
+          "reps": 5,
+          "amrap": false
+        },
+        {
+          "pct": 0.625,
+          "reps": 5,
+          "amrap": false
+        },
+        {
+          "pct": 0.675,
+          "reps": 10,
+          "amrap": true
+        }
+      ],
+      "Realization": [
+        {
+          "pct": 0.5,
+          "reps": 5,
+          "amrap": false
+        },
+        {
+          "pct": 0.6,
+          "reps": 3,
+          "amrap": false
+        },
+        {
+          "pct": 0.7,
+          "reps": 1,
+          "amrap": false
+        },
+        {
+          "pct": 0.75,
+          "reps": 10,
+          "amrap": true
+        }
+      ],
+      "Deload": [
+        {
+          "pct": 0.4,
+          "reps": 5,
+          "amrap": false
+        },
+        {
+          "pct": 0.5,
+          "reps": 5,
+          "amrap": false
+        },
+        {
+          "pct": 0.6,
+          "reps": 5,
+          "amrap": false
+        }
+      ]
+    },
+    "8s": {
+      "Accumulation": [
+        {
+          "pct": 0.65,
+          "reps": 8,
+          "amrap": false
+        },
+        {
+          "pct": 0.65,
+          "reps": 8,
+          "amrap": false
+        },
+        {
+          "pct": 0.65,
+          "reps": 8,
+          "amrap": false
+        },
+        {
+          "pct": 0.65,
+          "reps": 8,
+          "amrap": false
+        },
+        {
+          "pct": 0.65,
+          "reps": 8,
+          "amrap": true
+        }
+      ],
+      "Intensification": [
+        {
+          "pct": 0.6,
+          "reps": 3,
+          "amrap": false
+        },
+        {
+          "pct": 0.675,
+          "reps": 3,
+          "amrap": false
+        },
+        {
+          "pct": 0.725,
+          "reps": 8,
+          "amrap": true
+        }
+      ],
+      "Realization": [
+        {
+          "pct": 0.5,
+          "reps": 5,
+          "amrap": false
+        },
+        {
+          "pct": 0.6,
+          "reps": 3,
+          "amrap": false
+        },
+        {
+          "pct": 0.7,
+          "reps": 2,
+          "amrap": false
+        },
+        {
+          "pct": 0.75,
+          "reps": 1,
+          "amrap": false
+        },
+        {
+          "pct": 0.8,
+          "reps": 8,
+          "amrap": true
+        }
+      ],
+      "Deload": [
+        {
+          "pct": 0.4,
+          "reps": 5,
+          "amrap": false
+        },
+        {
+          "pct": 0.5,
+          "reps": 5,
+          "amrap": false
+        },
+        {
+          "pct": 0.6,
+          "reps": 5,
+          "amrap": false
+        }
+      ]
+    },
+    "5s": {
+      "Accumulation": [
+        {
+          "pct": 0.7,
+          "reps": 5,
+          "amrap": false
+        },
+        {
+          "pct": 0.7,
+          "reps": 5,
+          "amrap": false
+        },
+        {
+          "pct": 0.7,
+          "reps": 5,
+          "amrap": false
+        },
+        {
+          "pct": 0.7,
+          "reps": 5,
+          "amrap": false
+        },
+        {
+          "pct": 0.7,
+          "reps": 5,
+          "amrap": false
+        },
+        {
+          "pct": 0.7,
+          "reps": 5,
+          "amrap": true
+        }
+      ],
+      "Intensification": [
+        {
+          "pct": 0.65,
+          "reps": 2,
+          "amrap": false
+        },
+        {
+          "pct": 0.725,
+          "reps": 2,
+          "amrap": false
+        },
+        {
+          "pct": 0.775,
+          "reps": 5,
+          "amrap": true
+        }
+      ],
+      "Realization": [
+        {
+          "pct": 0.5,
+          "reps": 5,
+          "amrap": false
+        },
+        {
+          "pct": 0.6,
+          "reps": 3,
+          "amrap": false
+        },
+        {
+          "pct": 0.7,
+          "reps": 2,
+          "amrap": false
+        },
+        {
+          "pct": 0.75,
+          "reps": 1,
+          "amrap": false
+        },
+        {
+          "pct": 0.8,
+          "reps": 5,
+          "amrap": true
+        }
+      ],
+      "Deload": [
+        {
+          "pct": 0.4,
+          "reps": 5,
+          "amrap": false
+        },
+        {
+          "pct": 0.5,
+          "reps": 5,
+          "amrap": false
+        },
+        {
+          "pct": 0.6,
+          "reps": 5,
+          "amrap": false
+        }
+      ]
+    },
+    "3s": {
+      "Accumulation": [
+        {
+          "pct": 0.75,
+          "reps": 3,
+          "amrap": false
+        },
+        {
+          "pct": 0.75,
+          "reps": 3,
+          "amrap": false
+        },
+        {
+          "pct": 0.75,
+          "reps": 3,
+          "amrap": false
+        },
+        {
+          "pct": 0.75,
+          "reps": 3,
+          "amrap": false
+        },
+        {
+          "pct": 0.75,
+          "reps": 3,
+          "amrap": false
+        },
+        {
+          "pct": 0.75,
+          "reps": 3,
+          "amrap": false
+        },
+        {
+          "pct": 0.75,
+          "reps": 3,
+          "amrap": true
+        }
+      ],
+      "Intensification": [
+        {
+          "pct": 0.7,
+          "reps": 1,
+          "amrap": false
+        },
+        {
+          "pct": 0.775,
+          "reps": 1,
+          "amrap": false
+        },
+        {
+          "pct": 0.825,
+          "reps": 3,
+          "amrap": true
+        }
+      ],
+      "Realization": [
+        {
+          "pct": 0.5,
+          "reps": 5,
+          "amrap": false
+        },
+        {
+          "pct": 0.6,
+          "reps": 3,
+          "amrap": false
+        },
+        {
+          "pct": 0.7,
+          "reps": 2,
+          "amrap": false
+        },
+        {
+          "pct": 0.75,
+          "reps": 1,
+          "amrap": false
+        },
+        {
+          "pct": 0.8,
+          "reps": 1,
+          "amrap": false
+        },
+        {
+          "pct": 0.85,
+          "reps": 3,
+          "amrap": true
+        }
+      ],
+      "Deload": [
+        {
+          "pct": 0.4,
+          "reps": 5,
+          "amrap": false
+        },
+        {
+          "pct": 0.5,
+          "reps": 5,
+          "amrap": false
+        },
+        {
+          "pct": 0.6,
+          "reps": 5,
+          "amrap": false
+        }
+      ]
+    }
+  },
+  "INPUTS": {
+    "lifts": [
+      {
+        "name": "Squat",
+        "tm": 100,
+        "inc": 2.5
+      },
+      {
+        "name": "Bench Press",
+        "tm": 70,
+        "inc": 2.5
+      },
+      {
+        "name": "Deadlift",
+        "tm": 120,
+        "inc": 2.5
+      },
+      {
+        "name": "Overhead Press",
+        "tm": 45,
+        "inc": 2.5
+      },
+      {
+        "name": "Incline Bench",
+        "tm": 60,
+        "inc": 2.5
+      }
+    ],
+    "waves": [
+      "10s",
+      "8s",
+      "5s"
+    ],
+    "rounding": 2.5,
+    "bodyweight": 80,
+    "maintenance": 2500,
+    "surplus": 300
+  },
+  "BLOCK": [
+    {
+      "week": 1,
+      "phase": "Accumulation",
+      "days": [
+        {
+          "day": "Day 1",
+          "primary": "Squat",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Hinge_Hamstring",
+              "exercise": "Romanian deadlift",
+              "sets": 4,
+              "reps": 10,
+              "note": "Swapped from heavy deficit deadlift — higher reps drive more growth here than a low-rep compound",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Glute",
+              "exercise": "Barbell hip thrust",
+              "sets": 3,
+              "reps": 10,
+              "note": "Knee-friendly sub for standing lunge patterns",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Quad_Knee_Friendly",
+              "exercise": "Leg extension (light)",
+              "sets": 3,
+              "reps": 12,
+              "note": "Direct quad volume beyond the squat itself",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Vertical_Push",
+              "exercise": "Cable lateral raise",
+              "sets": 3,
+              "reps": 15,
+              "note": "Side delt — spread across days rather than stacked on Day 2",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Core",
+              "exercise": "Front plank",
+              "sets": 3,
+              "reps": 45,
+              "note": "Reps column = seconds held",
+              "rir": "—"
+            }
+          ],
+          "secondary": {
+            "lift": "Incline Bench",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        },
+        {
+          "day": "Day 2",
+          "primary": "Bench Press",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Horizontal_Pull",
+              "exercise": "Chest-supported DB row",
+              "sets": 4,
+              "reps": 10,
+              "note": null,
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Vertical_Push",
+              "exercise": "DB lateral raise",
+              "sets": 3,
+              "reps": 15,
+              "note": null,
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Horizontal_Pull",
+              "exercise": "Cable face pull",
+              "sets": 3,
+              "reps": 15,
+              "note": "Rear delt / upper-back health on your heaviest pressing day",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Arms",
+              "exercise": "Triceps pushdown",
+              "sets": 3,
+              "reps": 12,
+              "note": null,
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Arms",
+              "exercise": "DB hammer curl",
+              "sets": 3,
+              "reps": 12,
+              "note": null,
+              "rir": "RIR 2"
+            }
+          ],
+          "secondary": {
+            "lift": "Deadlift",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        },
+        {
+          "day": "Day 3",
+          "primary": "Deadlift",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Vertical_Pull",
+              "exercise": "Lat pulldown",
+              "sets": 4,
+              "reps": 10,
+              "note": null,
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Quad_Knee_Friendly",
+              "exercise": "Leg extension (light)",
+              "sets": 3,
+              "reps": 12,
+              "note": "Different quad exercise from Day 1 for variety",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Core",
+              "exercise": "Barbell Russian twist",
+              "sets": 3,
+              "reps": 12,
+              "note": "Per side",
+              "rir": "—"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Arms",
+              "exercise": "Cable curl",
+              "sets": 3,
+              "reps": 12,
+              "note": "Second direct biceps session of the week",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Arms",
+              "exercise": "DB skull crusher",
+              "sets": 3,
+              "reps": 12,
+              "note": "Second direct triceps session of the week",
+              "rir": "RIR 2"
+            }
+          ],
+          "secondary": {
+            "lift": "Bench Press",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        }
+      ]
+    },
+    {
+      "week": 2,
+      "phase": "Intensification",
+      "days": [
+        {
+          "day": "Day 1",
+          "primary": "Squat",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Hinge_Hamstring",
+              "exercise": "Romanian deadlift",
+              "sets": 4,
+              "reps": 10,
+              "note": "Swapped from heavy deficit deadlift — higher reps drive more growth here than a low-rep compound",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Glute",
+              "exercise": "Barbell hip thrust",
+              "sets": 3,
+              "reps": 10,
+              "note": "Knee-friendly sub for standing lunge patterns",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Quad_Knee_Friendly",
+              "exercise": "Leg press (controlled range)",
+              "sets": 3,
+              "reps": 12,
+              "note": "Direct quad volume beyond the squat itself",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Vertical_Push",
+              "exercise": "Cable lateral raise",
+              "sets": 3,
+              "reps": 15,
+              "note": "Side delt — spread across days rather than stacked on Day 2",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Core",
+              "exercise": "Front plank",
+              "sets": 3,
+              "reps": 45,
+              "note": "Reps column = seconds held",
+              "rir": "—"
+            }
+          ],
+          "secondary": {
+            "lift": "Incline Bench",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        },
+        {
+          "day": "Day 2",
+          "primary": "Bench Press",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Horizontal_Pull",
+              "exercise": "Chest-supported DB row",
+              "sets": 4,
+              "reps": 10,
+              "note": null,
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Vertical_Push",
+              "exercise": "DB lateral raise",
+              "sets": 3,
+              "reps": 15,
+              "note": null,
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Horizontal_Pull",
+              "exercise": "Cable face pull",
+              "sets": 3,
+              "reps": 15,
+              "note": "Rear delt / upper-back health on your heaviest pressing day",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Arms",
+              "exercise": "Triceps pushdown",
+              "sets": 3,
+              "reps": 12,
+              "note": null,
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Arms",
+              "exercise": "DB hammer curl",
+              "sets": 3,
+              "reps": 12,
+              "note": null,
+              "rir": "RIR 2"
+            }
+          ],
+          "secondary": {
+            "lift": "Overhead Press",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        },
+        {
+          "day": "Day 3",
+          "primary": "Deadlift",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Vertical_Pull",
+              "exercise": "Lat pulldown",
+              "sets": 4,
+              "reps": 10,
+              "note": null,
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Quad_Knee_Friendly",
+              "exercise": "Leg extension (light)",
+              "sets": 3,
+              "reps": 12,
+              "note": "Different quad exercise from Day 1 for variety",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Core",
+              "exercise": "Barbell Russian twist",
+              "sets": 3,
+              "reps": 12,
+              "note": "Per side",
+              "rir": "—"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Arms",
+              "exercise": "DB hammer curl",
+              "sets": 3,
+              "reps": 12,
+              "note": "Second direct biceps session of the week",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Arms",
+              "exercise": "Triceps pushdown",
+              "sets": 3,
+              "reps": 12,
+              "note": "Second direct triceps session of the week",
+              "rir": "RIR 2"
+            }
+          ],
+          "secondary": {
+            "lift": "Bench Press",
+            "sets": 5,
+            "pct": 0.7,
+            "reps": 6
+          }
+        }
+      ]
+    },
+    {
+      "week": 3,
+      "phase": "Realization",
+      "days": [
+        {
+          "day": "Day 1",
+          "primary": "Squat",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Hinge_Hamstring",
+              "exercise": "Romanian deadlift",
+              "sets": 4,
+              "reps": 10,
+              "note": "Swapped from heavy deficit deadlift — higher reps drive more growth here than a low-rep compound",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Glute",
+              "exercise": "Bulgarian Split Squats",
+              "sets": 3,
+              "reps": 10,
+              "note": "Knee-friendly sub for standing lunge patterns",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Quad_Knee_Friendly",
+              "exercise": "Leg extension (light)",
+              "sets": 3,
+              "reps": 12,
+              "note": "Direct quad volume beyond the squat itself",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Vertical_Push",
+              "exercise": "Cable lateral raise",
+              "sets": 3,
+              "reps": 15,
+              "note": "Side delt — spread across days rather than stacked on Day 2",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Core",
+              "exercise": "Front plank",
+              "sets": 3,
+              "reps": 45,
+              "note": "Reps column = seconds held",
+              "rir": "—"
+            }
+          ],
+          "secondary": {
+            "lift": "Incline Bench",
+            "sets": 5,
+            "pct": 0.75,
+            "reps": 6
+          }
+        },
+        {
+          "day": "Day 2",
+          "primary": "Deadlift",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Horizontal_Pull",
+              "exercise": "Chest-supported DB row",
+              "sets": 4,
+              "reps": 10,
+              "note": null,
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Vertical_Push",
+              "exercise": "DB lateral raise",
+              "sets": 3,
+              "reps": 15,
+              "note": null,
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Horizontal_Pull",
+              "exercise": "Cable face pull",
+              "sets": 3,
+              "reps": 15,
+              "note": "Rear delt / upper-back health on your heaviest pressing day",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Arms",
+              "exercise": "Triceps pushdown",
+              "sets": 3,
+              "reps": 12,
+              "note": null,
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Arms",
+              "exercise": "DB hammer curl",
+              "sets": 3,
+              "reps": 12,
+              "note": null,
+              "rir": "RIR 2"
+            }
+          ],
+          "secondary": {
+            "lift": "Bench Press",
+            "sets": 5,
+            "pct": 0.75,
+            "reps": 6
+          }
+        },
+        {
+          "day": "Day 3",
+          "primary": "Overhead Press",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Vertical_Pull",
+              "exercise": "Lat pulldown",
+              "sets": 4,
+              "reps": 10,
+              "note": null,
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Quad_Knee_Friendly",
+              "exercise": "Leg extension (light)",
+              "sets": 3,
+              "reps": 12,
+              "note": "Different quad exercise from Day 1 for variety",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Core",
+              "exercise": "Barbell Russian twist",
+              "sets": 3,
+              "reps": 12,
+              "note": "Per side",
+              "rir": "—"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Arms",
+              "exercise": "DB hammer curl",
+              "sets": 3,
+              "reps": 12,
+              "note": "Second direct biceps session of the week",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Arms",
+              "exercise": "DB skull crusher",
+              "sets": 3,
+              "reps": 12,
+              "note": "Second direct triceps session of the week",
+              "rir": "RIR 2"
+            }
+          ],
+          "secondary": {
+            "lift": "Squat",
+            "sets": 5,
+            "pct": 0.75,
+            "reps": 6
+          }
+        }
+      ]
+    },
+    {
+      "week": 4,
+      "phase": "Deload",
+      "days": [
+        {
+          "day": "Day 1",
+          "primary": "Squat",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Hinge_Hamstring",
+              "exercise": "Romanian deadlift",
+              "sets": 4,
+              "reps": 10,
+              "note": "Swapped from heavy deficit deadlift — higher reps drive more growth here than a low-rep compound",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Glute",
+              "exercise": "Barbell hip thrust",
+              "sets": 3,
+              "reps": 10,
+              "note": "Knee-friendly sub for standing lunge patterns",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Quad_Knee_Friendly",
+              "exercise": "Leg press (controlled range)",
+              "sets": 3,
+              "reps": 12,
+              "note": "Direct quad volume beyond the squat itself",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Vertical_Push",
+              "exercise": "Cable lateral raise",
+              "sets": 3,
+              "reps": 15,
+              "note": "Side delt — spread across days rather than stacked on Day 2",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Core",
+              "exercise": "Front plank",
+              "sets": 3,
+              "reps": 45,
+              "note": "Reps column = seconds held",
+              "rir": "—"
+            }
+          ],
+          "secondary": {
+            "lift": "Incline Bench",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        },
+        {
+          "day": "Day 2",
+          "primary": "Bench Press",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Horizontal_Pull",
+              "exercise": "Chest-supported DB row",
+              "sets": 4,
+              "reps": 10,
+              "note": null,
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Vertical_Push",
+              "exercise": "DB lateral raise",
+              "sets": 3,
+              "reps": 15,
+              "note": null,
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Horizontal_Pull",
+              "exercise": "Cable face pull",
+              "sets": 3,
+              "reps": 15,
+              "note": "Rear delt / upper-back health on your heaviest pressing day",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Arms",
+              "exercise": "Triceps pushdown",
+              "sets": 3,
+              "reps": 12,
+              "note": null,
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Arms",
+              "exercise": "DB hammer curl",
+              "sets": 3,
+              "reps": 12,
+              "note": null,
+              "rir": "RIR 2"
+            }
+          ],
+          "secondary": {
+            "lift": "Overhead Press",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        },
+        {
+          "day": "Day 3",
+          "primary": "Deadlift",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Vertical_Pull",
+              "exercise": "Lat pulldown",
+              "sets": 4,
+              "reps": 10,
+              "note": null,
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Quad_Knee_Friendly",
+              "exercise": "Leg extension (light)",
+              "sets": 3,
+              "reps": 12,
+              "note": "Different quad exercise from Day 1 for variety",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Core",
+              "exercise": "Pallof press",
+              "sets": 3,
+              "reps": 12,
+              "note": "Per side",
+              "rir": "—"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Arms",
+              "exercise": "Cable curl",
+              "sets": 3,
+              "reps": 12,
+              "note": "Second direct biceps session of the week",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Arms",
+              "exercise": "DB skull crusher",
+              "sets": 3,
+              "reps": 12,
+              "note": "Second direct triceps session of the week",
+              "rir": "RIR 2"
+            }
+          ],
+          "secondary": {
+            "lift": "Bench Press",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        }
+      ]
+    },
+    {
+      "week": 5,
+      "phase": "Accumulation",
+      "days": [
+        {
+          "day": "Day 1",
+          "primary": "Squat",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Hinge_Hamstring",
+              "exercise": "Romanian deadlift",
+              "sets": 4,
+              "reps": 10,
+              "note": "Swapped from heavy deficit deadlift — higher reps drive more growth here than a low-rep compound",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Glute",
+              "exercise": "Barbell hip thrust",
+              "sets": 3,
+              "reps": 10,
+              "note": "Knee-friendly sub for standing lunge patterns",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Quad_Knee_Friendly",
+              "exercise": "Leg press (controlled range)",
+              "sets": 3,
+              "reps": 12,
+              "note": "Direct quad volume beyond the squat itself",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Vertical_Push",
+              "exercise": "Cable lateral raise",
+              "sets": 3,
+              "reps": 15,
+              "note": "Side delt — spread across days rather than stacked on Day 2",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Core",
+              "exercise": "Front plank",
+              "sets": 3,
+              "reps": 45,
+              "note": "Reps column = seconds held",
+              "rir": "—"
+            }
+          ],
+          "secondary": {
+            "lift": "Incline Bench",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        },
+        {
+          "day": "Day 2",
+          "primary": "Bench Press",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Horizontal_Pull",
+              "exercise": "Chest-supported DB row",
+              "sets": 4,
+              "reps": 10,
+              "note": null,
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Vertical_Push",
+              "exercise": "DB lateral raise",
+              "sets": 3,
+              "reps": 15,
+              "note": null,
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Horizontal_Pull",
+              "exercise": "Cable face pull",
+              "sets": 3,
+              "reps": 15,
+              "note": "Rear delt / upper-back health on your heaviest pressing day",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Arms",
+              "exercise": "Triceps pushdown",
+              "sets": 3,
+              "reps": 12,
+              "note": null,
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Arms",
+              "exercise": "DB hammer curl",
+              "sets": 3,
+              "reps": 12,
+              "note": null,
+              "rir": "RIR 2"
+            }
+          ],
+          "secondary": {
+            "lift": "Overhead Press",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        },
+        {
+          "day": "Day 3",
+          "primary": "Deadlift",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Vertical_Pull",
+              "exercise": "Lat pulldown",
+              "sets": 4,
+              "reps": 10,
+              "note": null,
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Quad_Knee_Friendly",
+              "exercise": "Leg extension (light)",
+              "sets": 3,
+              "reps": 12,
+              "note": "Different quad exercise from Day 1 for variety",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Core",
+              "exercise": "Pallof press",
+              "sets": 3,
+              "reps": 12,
+              "note": "Per side",
+              "rir": "—"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Arms",
+              "exercise": "Cable curl",
+              "sets": 3,
+              "reps": 12,
+              "note": "Second direct biceps session of the week",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Arms",
+              "exercise": "DB skull crusher",
+              "sets": 3,
+              "reps": 12,
+              "note": "Second direct triceps session of the week",
+              "rir": "RIR 2"
+            }
+          ],
+          "secondary": {
+            "lift": "Bench Press",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        }
+      ]
+    },
+    {
+      "week": 6,
+      "phase": "Intensification",
+      "days": [
+        {
+          "day": "Day 1",
+          "primary": "Squat",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Hinge_Hamstring",
+              "exercise": "Romanian deadlift",
+              "sets": 4,
+              "reps": 10,
+              "note": "Swapped from heavy deficit deadlift — higher reps drive more growth here than a low-rep compound",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Glute",
+              "exercise": "Barbell hip thrust",
+              "sets": 3,
+              "reps": 10,
+              "note": "Knee-friendly sub for standing lunge patterns",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Quad_Knee_Friendly",
+              "exercise": "Leg press (controlled range)",
+              "sets": 3,
+              "reps": 12,
+              "note": "Direct quad volume beyond the squat itself",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Vertical_Push",
+              "exercise": "Cable lateral raise",
+              "sets": 3,
+              "reps": 15,
+              "note": "Side delt — spread across days rather than stacked on Day 2",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Core",
+              "exercise": "Front plank",
+              "sets": 3,
+              "reps": 45,
+              "note": "Reps column = seconds held",
+              "rir": "—"
+            }
+          ],
+          "secondary": {
+            "lift": "Incline Bench",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        },
+        {
+          "day": "Day 2",
+          "primary": "Bench Press",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Horizontal_Pull",
+              "exercise": "Chest-supported DB row",
+              "sets": 4,
+              "reps": 10,
+              "note": null,
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Vertical_Push",
+              "exercise": "DB lateral raise",
+              "sets": 3,
+              "reps": 15,
+              "note": null,
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Horizontal_Pull",
+              "exercise": "Cable face pull",
+              "sets": 3,
+              "reps": 15,
+              "note": "Rear delt / upper-back health on your heaviest pressing day",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Arms",
+              "exercise": "Triceps pushdown",
+              "sets": 3,
+              "reps": 12,
+              "note": null,
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Arms",
+              "exercise": "DB hammer curl",
+              "sets": 3,
+              "reps": 12,
+              "note": null,
+              "rir": "RIR 2"
+            }
+          ],
+          "secondary": {
+            "lift": "Overhead Press",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        },
+        {
+          "day": "Day 3",
+          "primary": "Deadlift",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Vertical_Pull",
+              "exercise": "Lat pulldown",
+              "sets": 4,
+              "reps": 10,
+              "note": null,
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Quad_Knee_Friendly",
+              "exercise": "Leg extension (light)",
+              "sets": 3,
+              "reps": 12,
+              "note": "Different quad exercise from Day 1 for variety",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Core",
+              "exercise": "Pallof press",
+              "sets": 3,
+              "reps": 12,
+              "note": "Per side",
+              "rir": "—"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Arms",
+              "exercise": "Cable curl",
+              "sets": 3,
+              "reps": 12,
+              "note": "Second direct biceps session of the week",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Arms",
+              "exercise": "DB skull crusher",
+              "sets": 3,
+              "reps": 12,
+              "note": "Second direct triceps session of the week",
+              "rir": "RIR 2"
+            }
+          ],
+          "secondary": {
+            "lift": "Bench Press",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        }
+      ]
+    },
+    {
+      "week": 7,
+      "phase": "Realization",
+      "days": [
+        {
+          "day": "Day 1",
+          "primary": "Squat",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Hinge_Hamstring",
+              "exercise": "Romanian deadlift",
+              "sets": 4,
+              "reps": 10,
+              "note": "Swapped from heavy deficit deadlift — higher reps drive more growth here than a low-rep compound",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Glute",
+              "exercise": "Barbell hip thrust",
+              "sets": 3,
+              "reps": 10,
+              "note": "Knee-friendly sub for standing lunge patterns",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Quad_Knee_Friendly",
+              "exercise": "Leg press (controlled range)",
+              "sets": 3,
+              "reps": 12,
+              "note": "Direct quad volume beyond the squat itself",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Vertical_Push",
+              "exercise": "Cable lateral raise",
+              "sets": 3,
+              "reps": 15,
+              "note": "Side delt — spread across days rather than stacked on Day 2",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Core",
+              "exercise": "Front plank",
+              "sets": 3,
+              "reps": 45,
+              "note": "Reps column = seconds held",
+              "rir": "—"
+            }
+          ],
+          "secondary": {
+            "lift": "Incline Bench",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        },
+        {
+          "day": "Day 2",
+          "primary": "Bench Press",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Horizontal_Pull",
+              "exercise": "Chest-supported DB row",
+              "sets": 4,
+              "reps": 10,
+              "note": null,
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Vertical_Push",
+              "exercise": "DB lateral raise",
+              "sets": 3,
+              "reps": 15,
+              "note": null,
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Horizontal_Pull",
+              "exercise": "Cable face pull",
+              "sets": 3,
+              "reps": 15,
+              "note": "Rear delt / upper-back health on your heaviest pressing day",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Arms",
+              "exercise": "Triceps pushdown",
+              "sets": 3,
+              "reps": 12,
+              "note": null,
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Arms",
+              "exercise": "DB hammer curl",
+              "sets": 3,
+              "reps": 12,
+              "note": null,
+              "rir": "RIR 2"
+            }
+          ],
+          "secondary": {
+            "lift": "Overhead Press",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        },
+        {
+          "day": "Day 3",
+          "primary": "Deadlift",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Vertical_Pull",
+              "exercise": "Lat pulldown",
+              "sets": 4,
+              "reps": 10,
+              "note": null,
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Quad_Knee_Friendly",
+              "exercise": "Leg extension (light)",
+              "sets": 3,
+              "reps": 12,
+              "note": "Different quad exercise from Day 1 for variety",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Core",
+              "exercise": "Pallof press",
+              "sets": 3,
+              "reps": 12,
+              "note": "Per side",
+              "rir": "—"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Arms",
+              "exercise": "Cable curl",
+              "sets": 3,
+              "reps": 12,
+              "note": "Second direct biceps session of the week",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Arms",
+              "exercise": "DB skull crusher",
+              "sets": 3,
+              "reps": 12,
+              "note": "Second direct triceps session of the week",
+              "rir": "RIR 2"
+            }
+          ],
+          "secondary": {
+            "lift": "Bench Press",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        }
+      ]
+    },
+    {
+      "week": 8,
+      "phase": "Deload",
+      "days": [
+        {
+          "day": "Day 1",
+          "primary": "Squat",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Hinge_Hamstring",
+              "exercise": "Romanian deadlift",
+              "sets": 4,
+              "reps": 10,
+              "note": "Swapped from heavy deficit deadlift — higher reps drive more growth here than a low-rep compound",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Glute",
+              "exercise": "Barbell hip thrust",
+              "sets": 3,
+              "reps": 10,
+              "note": "Knee-friendly sub for standing lunge patterns",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Quad_Knee_Friendly",
+              "exercise": "Leg press (controlled range)",
+              "sets": 3,
+              "reps": 12,
+              "note": "Direct quad volume beyond the squat itself",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Vertical_Push",
+              "exercise": "Cable lateral raise",
+              "sets": 3,
+              "reps": 15,
+              "note": "Side delt — spread across days rather than stacked on Day 2",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Core",
+              "exercise": "Front plank",
+              "sets": 3,
+              "reps": 45,
+              "note": "Reps column = seconds held",
+              "rir": "—"
+            }
+          ],
+          "secondary": {
+            "lift": "Incline Bench",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        },
+        {
+          "day": "Day 2",
+          "primary": "Bench Press",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Horizontal_Pull",
+              "exercise": "Chest-supported DB row",
+              "sets": 4,
+              "reps": 10,
+              "note": null,
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Vertical_Push",
+              "exercise": "DB lateral raise",
+              "sets": 3,
+              "reps": 15,
+              "note": null,
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Horizontal_Pull",
+              "exercise": "Cable face pull",
+              "sets": 3,
+              "reps": 15,
+              "note": "Rear delt / upper-back health on your heaviest pressing day",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Arms",
+              "exercise": "Triceps pushdown",
+              "sets": 3,
+              "reps": 12,
+              "note": null,
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Arms",
+              "exercise": "DB hammer curl",
+              "sets": 3,
+              "reps": 12,
+              "note": null,
+              "rir": "RIR 2"
+            }
+          ],
+          "secondary": {
+            "lift": "Overhead Press",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        },
+        {
+          "day": "Day 3",
+          "primary": "Deadlift",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Vertical_Pull",
+              "exercise": "Lat pulldown",
+              "sets": 4,
+              "reps": 10,
+              "note": null,
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Quad_Knee_Friendly",
+              "exercise": "Leg extension (light)",
+              "sets": 3,
+              "reps": 12,
+              "note": "Different quad exercise from Day 1 for variety",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Core",
+              "exercise": "Pallof press",
+              "sets": 3,
+              "reps": 12,
+              "note": "Per side",
+              "rir": "—"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Arms",
+              "exercise": "Cable curl",
+              "sets": 3,
+              "reps": 12,
+              "note": "Second direct biceps session of the week",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Arms",
+              "exercise": "DB skull crusher",
+              "sets": 3,
+              "reps": 12,
+              "note": "Second direct triceps session of the week",
+              "rir": "RIR 2"
+            }
+          ],
+          "secondary": {
+            "lift": "Bench Press",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        }
+      ]
+    },
+    {
+      "week": 9,
+      "phase": "Accumulation",
+      "days": [
+        {
+          "day": "Day 1",
+          "primary": "Squat",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Hinge_Hamstring",
+              "exercise": "Romanian deadlift",
+              "sets": 4,
+              "reps": 10,
+              "note": "Swapped from heavy deficit deadlift — higher reps drive more growth here than a low-rep compound",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Glute",
+              "exercise": "Barbell hip thrust",
+              "sets": 3,
+              "reps": 10,
+              "note": "Knee-friendly sub for standing lunge patterns",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Quad_Knee_Friendly",
+              "exercise": "Leg press (controlled range)",
+              "sets": 3,
+              "reps": 12,
+              "note": "Direct quad volume beyond the squat itself",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Vertical_Push",
+              "exercise": "Cable lateral raise",
+              "sets": 3,
+              "reps": 15,
+              "note": "Side delt — spread across days rather than stacked on Day 2",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Core",
+              "exercise": "Front plank",
+              "sets": 3,
+              "reps": 45,
+              "note": "Reps column = seconds held",
+              "rir": "—"
+            }
+          ],
+          "secondary": {
+            "lift": "Incline Bench",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        },
+        {
+          "day": "Day 2",
+          "primary": "Bench Press",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Horizontal_Pull",
+              "exercise": "Chest-supported DB row",
+              "sets": 4,
+              "reps": 10,
+              "note": null,
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Vertical_Push",
+              "exercise": "DB lateral raise",
+              "sets": 3,
+              "reps": 15,
+              "note": null,
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Horizontal_Pull",
+              "exercise": "Cable face pull",
+              "sets": 3,
+              "reps": 15,
+              "note": "Rear delt / upper-back health on your heaviest pressing day",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Arms",
+              "exercise": "Triceps pushdown",
+              "sets": 3,
+              "reps": 12,
+              "note": null,
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Arms",
+              "exercise": "DB hammer curl",
+              "sets": 3,
+              "reps": 12,
+              "note": null,
+              "rir": "RIR 2"
+            }
+          ],
+          "secondary": {
+            "lift": "Overhead Press",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        },
+        {
+          "day": "Day 3",
+          "primary": "Deadlift",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Vertical_Pull",
+              "exercise": "Lat pulldown",
+              "sets": 4,
+              "reps": 10,
+              "note": null,
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Quad_Knee_Friendly",
+              "exercise": "Leg extension (light)",
+              "sets": 3,
+              "reps": 12,
+              "note": "Different quad exercise from Day 1 for variety",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Core",
+              "exercise": "Pallof press",
+              "sets": 3,
+              "reps": 12,
+              "note": "Per side",
+              "rir": "—"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Arms",
+              "exercise": "Cable curl",
+              "sets": 3,
+              "reps": 12,
+              "note": "Second direct biceps session of the week",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Arms",
+              "exercise": "DB skull crusher",
+              "sets": 3,
+              "reps": 12,
+              "note": "Second direct triceps session of the week",
+              "rir": "RIR 2"
+            }
+          ],
+          "secondary": {
+            "lift": "Bench Press",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        }
+      ]
+    },
+    {
+      "week": 10,
+      "phase": "Intensification",
+      "days": [
+        {
+          "day": "Day 1",
+          "primary": "Squat",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Hinge_Hamstring",
+              "exercise": "Romanian deadlift",
+              "sets": 4,
+              "reps": 10,
+              "note": "Swapped from heavy deficit deadlift — higher reps drive more growth here than a low-rep compound",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Glute",
+              "exercise": "Barbell hip thrust",
+              "sets": 3,
+              "reps": 10,
+              "note": "Knee-friendly sub for standing lunge patterns",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Quad_Knee_Friendly",
+              "exercise": "Leg press (controlled range)",
+              "sets": 3,
+              "reps": 12,
+              "note": "Direct quad volume beyond the squat itself",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Vertical_Push",
+              "exercise": "Cable lateral raise",
+              "sets": 3,
+              "reps": 15,
+              "note": "Side delt — spread across days rather than stacked on Day 2",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Core",
+              "exercise": "Front plank",
+              "sets": 3,
+              "reps": 45,
+              "note": "Reps column = seconds held",
+              "rir": "—"
+            }
+          ],
+          "secondary": {
+            "lift": "Incline Bench",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        },
+        {
+          "day": "Day 2",
+          "primary": "Bench Press",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Horizontal_Pull",
+              "exercise": "Chest-supported DB row",
+              "sets": 4,
+              "reps": 10,
+              "note": null,
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Vertical_Push",
+              "exercise": "DB lateral raise",
+              "sets": 3,
+              "reps": 15,
+              "note": null,
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Horizontal_Pull",
+              "exercise": "Cable face pull",
+              "sets": 3,
+              "reps": 15,
+              "note": "Rear delt / upper-back health on your heaviest pressing day",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Arms",
+              "exercise": "Triceps pushdown",
+              "sets": 3,
+              "reps": 12,
+              "note": null,
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Arms",
+              "exercise": "DB hammer curl",
+              "sets": 3,
+              "reps": 12,
+              "note": null,
+              "rir": "RIR 2"
+            }
+          ],
+          "secondary": {
+            "lift": "Overhead Press",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        },
+        {
+          "day": "Day 3",
+          "primary": "Deadlift",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Vertical_Pull",
+              "exercise": "Lat pulldown",
+              "sets": 4,
+              "reps": 10,
+              "note": null,
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Quad_Knee_Friendly",
+              "exercise": "Leg extension (light)",
+              "sets": 3,
+              "reps": 12,
+              "note": "Different quad exercise from Day 1 for variety",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Core",
+              "exercise": "Pallof press",
+              "sets": 3,
+              "reps": 12,
+              "note": "Per side",
+              "rir": "—"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Arms",
+              "exercise": "Cable curl",
+              "sets": 3,
+              "reps": 12,
+              "note": "Second direct biceps session of the week",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Arms",
+              "exercise": "DB skull crusher",
+              "sets": 3,
+              "reps": 12,
+              "note": "Second direct triceps session of the week",
+              "rir": "RIR 2"
+            }
+          ],
+          "secondary": {
+            "lift": "Bench Press",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        }
+      ]
+    },
+    {
+      "week": 11,
+      "phase": "Realization",
+      "days": [
+        {
+          "day": "Day 1",
+          "primary": "Squat",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Hinge_Hamstring",
+              "exercise": "Romanian deadlift",
+              "sets": 4,
+              "reps": 10,
+              "note": "Swapped from heavy deficit deadlift — higher reps drive more growth here than a low-rep compound",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Glute",
+              "exercise": "Barbell hip thrust",
+              "sets": 3,
+              "reps": 10,
+              "note": "Knee-friendly sub for standing lunge patterns",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Quad_Knee_Friendly",
+              "exercise": "Leg press (controlled range)",
+              "sets": 3,
+              "reps": 12,
+              "note": "Direct quad volume beyond the squat itself",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Vertical_Push",
+              "exercise": "Cable lateral raise",
+              "sets": 3,
+              "reps": 15,
+              "note": "Side delt — spread across days rather than stacked on Day 2",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Core",
+              "exercise": "Front plank",
+              "sets": 3,
+              "reps": 45,
+              "note": "Reps column = seconds held",
+              "rir": "—"
+            }
+          ],
+          "secondary": {
+            "lift": "Incline Bench",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        },
+        {
+          "day": "Day 2",
+          "primary": "Bench Press",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Horizontal_Pull",
+              "exercise": "Chest-supported DB row",
+              "sets": 4,
+              "reps": 10,
+              "note": null,
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Vertical_Push",
+              "exercise": "DB lateral raise",
+              "sets": 3,
+              "reps": 15,
+              "note": null,
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Horizontal_Pull",
+              "exercise": "Cable face pull",
+              "sets": 3,
+              "reps": 15,
+              "note": "Rear delt / upper-back health on your heaviest pressing day",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Arms",
+              "exercise": "Triceps pushdown",
+              "sets": 3,
+              "reps": 12,
+              "note": null,
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Arms",
+              "exercise": "DB hammer curl",
+              "sets": 3,
+              "reps": 12,
+              "note": null,
+              "rir": "RIR 2"
+            }
+          ],
+          "secondary": {
+            "lift": "Overhead Press",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        },
+        {
+          "day": "Day 3",
+          "primary": "Deadlift",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Vertical_Pull",
+              "exercise": "Lat pulldown",
+              "sets": 4,
+              "reps": 10,
+              "note": null,
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Quad_Knee_Friendly",
+              "exercise": "Leg extension (light)",
+              "sets": 3,
+              "reps": 12,
+              "note": "Different quad exercise from Day 1 for variety",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Core",
+              "exercise": "Pallof press",
+              "sets": 3,
+              "reps": 12,
+              "note": "Per side",
+              "rir": "—"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Arms",
+              "exercise": "Cable curl",
+              "sets": 3,
+              "reps": 12,
+              "note": "Second direct biceps session of the week",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Arms",
+              "exercise": "DB skull crusher",
+              "sets": 3,
+              "reps": 12,
+              "note": "Second direct triceps session of the week",
+              "rir": "RIR 2"
+            }
+          ],
+          "secondary": {
+            "lift": "Bench Press",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        }
+      ]
+    },
+    {
+      "week": 12,
+      "phase": "Deload",
+      "days": [
+        {
+          "day": "Day 1",
+          "primary": "Squat",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Hinge_Hamstring",
+              "exercise": "Romanian deadlift",
+              "sets": 4,
+              "reps": 10,
+              "note": "Swapped from heavy deficit deadlift — higher reps drive more growth here than a low-rep compound",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Glute",
+              "exercise": "Barbell hip thrust",
+              "sets": 3,
+              "reps": 10,
+              "note": "Knee-friendly sub for standing lunge patterns",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Quad_Knee_Friendly",
+              "exercise": "Leg press (controlled range)",
+              "sets": 3,
+              "reps": 12,
+              "note": "Direct quad volume beyond the squat itself",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Vertical_Push",
+              "exercise": "Cable lateral raise",
+              "sets": 3,
+              "reps": 15,
+              "note": "Side delt — spread across days rather than stacked on Day 2",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Core",
+              "exercise": "Front plank",
+              "sets": 3,
+              "reps": 45,
+              "note": "Reps column = seconds held",
+              "rir": "—"
+            }
+          ],
+          "secondary": {
+            "lift": "Incline Bench",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        },
+        {
+          "day": "Day 2",
+          "primary": "Bench Press",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Horizontal_Pull",
+              "exercise": "Chest-supported DB row",
+              "sets": 4,
+              "reps": 10,
+              "note": null,
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Vertical_Push",
+              "exercise": "DB lateral raise",
+              "sets": 3,
+              "reps": 15,
+              "note": null,
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Horizontal_Pull",
+              "exercise": "Cable face pull",
+              "sets": 3,
+              "reps": 15,
+              "note": "Rear delt / upper-back health on your heaviest pressing day",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Arms",
+              "exercise": "Triceps pushdown",
+              "sets": 3,
+              "reps": 12,
+              "note": null,
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Arms",
+              "exercise": "DB hammer curl",
+              "sets": 3,
+              "reps": 12,
+              "note": null,
+              "rir": "RIR 2"
+            }
+          ],
+          "secondary": {
+            "lift": "Overhead Press",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        },
+        {
+          "day": "Day 3",
+          "primary": "Deadlift",
+          "accessories": [
+            {
+              "slot": "Accessory 1",
+              "group": "Vertical_Pull",
+              "exercise": "Lat pulldown",
+              "sets": 4,
+              "reps": 10,
+              "note": null,
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 2",
+              "group": "Quad_Knee_Friendly",
+              "exercise": "Leg extension (light)",
+              "sets": 3,
+              "reps": 12,
+              "note": "Different quad exercise from Day 1 for variety",
+              "rir": "RIR 1"
+            },
+            {
+              "slot": "Accessory 3",
+              "group": "Core",
+              "exercise": "Pallof press",
+              "sets": 3,
+              "reps": 12,
+              "note": "Per side",
+              "rir": "—"
+            },
+            {
+              "slot": "Accessory 4",
+              "group": "Arms",
+              "exercise": "Cable curl",
+              "sets": 3,
+              "reps": 12,
+              "note": "Second direct biceps session of the week",
+              "rir": "RIR 2"
+            },
+            {
+              "slot": "Accessory 5",
+              "group": "Arms",
+              "exercise": "DB skull crusher",
+              "sets": 3,
+              "reps": 12,
+              "note": "Second direct triceps session of the week",
+              "rir": "RIR 2"
+            }
+          ],
+          "secondary": {
+            "lift": "Bench Press",
+            "sets": 4,
+            "pct": 0.55,
+            "reps": 6
+          }
+        }
+      ]
+    }
+  ],
+  "README": [
+    "Juggernaut 12-Week BULK Block Planner",
+    "",
+    "What this is",
+    "A hypertrophy-optimised version of your Juggernaut planner: 3 four-week waves (10s → 8s → 5s), 3 training",
+    "days/week, 5 accessory slots/day instead of 3, and a nutrition surplus instead of a recomp deficit.",
+    "This is a genuinely different goal from the strength-first recomp version — more muscle, faster, at the cost",
+    "of some of the leanness that version was protecting. Worth running on purpose, not by accident.",
+    "",
+    "How to use it",
+    "1. Inputs: enter your training maxes, set bodyweight/maintenance calories, pick the wave for each 4-week block.",
+    "2. Block: all loads recalculate from your TMs. Primary and secondary lifts are dropdowns.",
+    "3. Accessories: pick a group in column B, exercise dropdown in column C filters to it. Target RIR in column J",
+    "   is what to log against — it's not a formula, you're the one judging proximity to failure.",
+    "4. Accessory Log: log weight × reps × RIR each week. This is where hypertrophy actually gets tracked — the",
+    "   Block sheet sets the target, this sheet is where you prove you're progressing against it.",
+    "5. Realization weeks: last set is an AMRAP. Log the reps in TM Tracker — it computes your next TM.",
+    "6. New block: copy the file, update TMs in Inputs, change the three wave dropdowns. Done.",
+    "",
+    "Colour legend",
+    "Blue text on yellow = edit these (TMs, wave choice, lift/exercise picks, sets/reps, log entries).",
+    "Green text = pulled from another sheet or calculated. Black = fixed. Don't overwrite either.",
+    "",
+    "What changed from the strength-first (recomp) version",
+    "Waves run 10s → 8s → 5s, not 5s → 3s. More volume tolerance built before intensity rises — no 3s wave, since",
+    "that's a strength-peaking phase and doesn't buy you anything for pure hypertrophy.",
+    "Accessories go from 3 slots/day to 5. That cap existed to protect recovery for a strength-first recomp; direct",
+    "hypertrophy work needs more volume than that, and the surplus gives you the recovery capacity to handle it.",
+    "Accessory rep ranges sit at 8–15 with a Target RIR of 1–2 (close to failure) — that's where the growth signal",
+    "lives. Main lifts stay in Juggernaut's %TM scheme; that's still driving growth through mechanical tension.",
+    "Arms and delts are spread across Day 2 and Day 3 instead of stacked only on Day 2 — biceps and triceps each get",
+    "2 direct sessions/week now, and delts get 2–3 depending on the day, instead of 1 day carrying the whole load.",
+    "Deficit deadlift (a heavy, low-rep compound) is swapped for Romanian deadlift at 4×10 — higher reps drive more",
+    "hypertrophy here than another low-rep, high-fatigue lift stacked under a squat day.",
+    "Nutrition: Inputs now carries a 300–400 kcal surplus and protein at 2.0–2.2 g/kg — see Bulk nutrition targets.",
+    "Rest-day carbs are no longer cut, since you're not managing a deficit here.",
+    "",
+    "Still true from the recomp version",
+    "Accessory defaults stay knee-friendly: hip thrusts and controlled-range leg press instead of lunge patterns.",
+    "Secondary is still a different lift entirely (Squat day → Incline Bench), not a variation of the day's main lift.",
+    "Deload weeks: main work as written, accessories cut to 1–2 easy sets or skipped."
+  ]
+};
+});
+
+</script>
+<script>
+/*
+ * Engine for the 12-week BULK block planner.
+ * Mirrors the formulas in Juggernaut_12wk_BULK_Block.xlsx:
+ *   Block!G  = MROUND(TM * %TM, rounding)
+ *   Block!B3 = week<=4 ? wave1 : week<=8 ? wave2 : wave3
+ *   TM Tracker!H = old TM + (AMRAP reps - standard reps) * per-rep increment
+ *   Inputs!B24  = bodyweight*2.0 – bodyweight*2.2 (protein g/day)
+ *   Inputs!B25  = maintenance + surplus
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) { module.exports = factory(require('./bulkblock-data.js')); }
+  else { root.Bulk = factory(root.BulkData); }
+})(typeof self !== 'undefined' ? self : this, function (DATA) {
+  'use strict';
+
+  var PHASES = ['Accumulation', 'Intensification', 'Realization', 'Deload'];
+  var TOTAL_WEEKS = 12;
+
+  // Excel MROUND: round to nearest multiple, halves away from zero.
+  function mround(value, multiple) {
+    if (!multiple || multiple <= 0) { return value; }
+    var q = Math.abs(value) / multiple;
+    var r = Math.floor(q + 0.5) * multiple * (value < 0 ? -1 : 1);
+    return Math.round(r * 1000) / 1000;
+  }
+
+  // Weeks 1-4 use waves[0], 5-8 waves[1], 9-12 waves[2].
+  function waveSlot(week) { return week <= 4 ? 0 : week <= 8 ? 1 : 2; }
+  function waveFor(week, waves) { return waves[waveSlot(week)]; }
+  function phaseFor(week) { return PHASES[(week - 1) % 4]; }
+
+  // The wave name encodes the rep standard for the Realization AMRAP: "10s" -> 10.
+  function standardReps(waveName) { return parseInt(String(waveName), 10); }
+
+  function tmFor(liftName, lifts) {
+    for (var i = 0; i < lifts.length; i++) {
+      if (lifts[i].name === liftName) { return lifts[i].tm; }
+    }
+    return null;
+  }
+
+  function incFor(liftName, lifts) {
+    for (var i = 0; i < lifts.length; i++) {
+      if (lifts[i].name === liftName) { return lifts[i].inc; }
+    }
+    return null;
+  }
+
+  // Primary main-lift sets for a week, straight off the wave table.
+  function primarySets(week, waves, liftName, lifts, rounding) {
+    var wave = waveFor(week, waves);
+    var phase = phaseFor(week);
+    var table = (DATA.WAVES[wave] || {})[phase] || [];
+    var tm = tmFor(liftName, lifts);
+    return table.map(function (row, i) {
+      return {
+        set: i + 1,
+        pct: row.pct,
+        reps: row.reps,
+        amrap: !!row.amrap,
+        load: (tm === null || tm === undefined || tm === '') ? null : mround(tm * row.pct, rounding)
+      };
+    });
+  }
+
+  function secondaryLoad(secondary, lifts, rounding) {
+    var tm = tmFor(secondary.lift, lifts);
+    if (tm === null || tm === undefined || tm === '') { return null; }
+    return mround(tm * secondary.pct, rounding);
+  }
+
+  function nextTM(oldTM, amrapReps, standard, incPerRep) {
+    if (amrapReps === null || amrapReps === undefined || amrapReps === '') { return null; }
+    return Math.round((oldTM + (amrapReps - standard) * incPerRep) * 100) / 100;
+  }
+
+  function exercisesInGroup(group) {
+    return DATA.LIBRARY.filter(function (e) { return e.group === group; });
+  }
+
+  function libraryEntry(name) {
+    for (var i = 0; i < DATA.LIBRARY.length; i++) {
+      if (DATA.LIBRARY[i].name === name) { return DATA.LIBRARY[i]; }
+    }
+    return null;
+  }
+
+  function nutrition(inputs) {
+    var bw = inputs.bodyweight;
+    return {
+      proteinLow: Math.round(bw * 2.0),
+      proteinHigh: Math.round(bw * 2.2),
+      calories: inputs.maintenance + inputs.surplus
+    };
+  }
+
+  // Weekly set counts per muscle group — the number that actually decides
+  // whether a hypertrophy block is doing anything.
+  function weeklyGroupVolume(weekEntry) {
+    var totals = {};
+    weekEntry.days.forEach(function (day) {
+      day.accessories.forEach(function (a) {
+        if (!a.group || !a.sets) { return; }
+        totals[a.group] = (totals[a.group] || 0) + a.sets;
+      });
+    });
+    return totals;
+  }
+
+  return {
+    DATA: DATA,
+    PHASES: PHASES,
+    TOTAL_WEEKS: TOTAL_WEEKS,
+    mround: mround,
+    waveSlot: waveSlot,
+    waveFor: waveFor,
+    phaseFor: phaseFor,
+    standardReps: standardReps,
+    tmFor: tmFor,
+    incFor: incFor,
+    primarySets: primarySets,
+    secondaryLoad: secondaryLoad,
+    nextTM: nextTM,
+    exercisesInGroup: exercisesInGroup,
+    libraryEntry: libraryEntry,
+    nutrition: nutrition,
+    weeklyGroupVolume: weeklyGroupVolume
+  };
+});
+
+</script>
+<script>
+/* UI + state for the 12-week BULK block planner. Math lives in bulkblock.js. */
+(function () {
+  'use strict';
+
+  var B = window.Bulk;
+  var D = B.DATA;
+  var KEY = 'gym-coach-bulk-block-v1';
+
+  function defaultState() {
+    return {
+      version: 1,
+      inputs: JSON.parse(JSON.stringify(D.INPUTS)),
+      // Deep copy of the workbook's Block sheet — every field stays editable.
+      block: JSON.parse(JSON.stringify(D.BLOCK)),
+      // logs[week][dayIdx] = { primary:[{reps,done}], secondary:{reps,done},
+      //                        accessories:[{weight,reps,rir,note}] }
+      logs: {},
+      tracker: {},           // tracker['0|Squat'] = amrap reps
+      ui: { tab: 'block', week: 1, day: 0 }
+    };
+  }
+
+  var memoryOnly = false;
+  var state = load();
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        var base = defaultState();
+        Object.keys(base).forEach(function (k) { if (parsed[k] === undefined) { parsed[k] = base[k]; } });
+        return parsed;
+      }
+    } catch (e) { memoryOnly = true; }
+    return defaultState();
+  }
+
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); }
+    catch (e) { memoryOnly = true; }
+  }
+
+  /* ---------- helpers ---------- */
+
+  function fmt(n) {
+    if (n === null || n === undefined || n === '' || isNaN(n)) { return '–'; }
+    return String(Math.round(n * 100) / 100);
+  }
+
+  function num(v) {
+    if (v === '' || v === null || v === undefined) { return null; }
+    var n = Number(v);
+    return isNaN(n) ? null : n;
+  }
+
+  function esc(s) {
+    return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function prettyGroup(g) { return String(g || '').replace(/_/g, ' '); }
+
+  function toast(msg) {
+    var el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(function () { el.classList.add('show'); }, 10);
+    setTimeout(function () { el.classList.remove('show'); }, 2400);
+    setTimeout(function () { el.remove(); }, 2900);
+  }
+
+  function logFor(week, dayIdx) {
+    if (!state.logs[week]) { state.logs[week] = {}; }
+    if (!state.logs[week][dayIdx]) {
+      state.logs[week][dayIdx] = { primary: [], secondary: {}, accessories: [] };
+    }
+    return state.logs[week][dayIdx];
+  }
+
+  function weekEntry(week) { return state.block[week - 1]; }
+
+  /* ---------- shell ---------- */
+
+  var TABS = [
+    { id: 'block', label: 'Block' },
+    { id: 'inputs', label: 'Inputs' },
+    { id: 'tracker', label: 'TM Tracker' },
+    { id: 'log', label: 'Accessory Log' },
+    { id: 'library', label: 'Library' },
+    { id: 'guide', label: 'Guide' }
+  ];
+
+  function renderApp() {
+    var views = {
+      block: renderBlock, inputs: renderInputs, tracker: renderTracker,
+      log: renderLog, library: renderLibrary, guide: renderGuide
+    };
+    document.getElementById('app').innerHTML =
+      (memoryOnly ? '<div class="banner">Browser storage unavailable — data lives only in this tab. Use Export on the Inputs tab.</div>' : '') +
+      '<nav class="tabs">' + TABS.map(function (t) {
+        return '<button type="button" id="tab-' + t.id + '" class="tab' + (state.ui.tab === t.id ? ' active' : '') +
+          '" data-action="tab" data-tab="' + t.id + '">' + t.label + '</button>';
+      }).join('') + '</nav><main>' + views[state.ui.tab]() + '</main>';
+  }
+
+  /* ---------- Block ---------- */
+
+  function renderBlock() {
+    var week = state.ui.week;
+    var entry = weekEntry(week);
+    var wave = B.waveFor(week, state.inputs.waves);
+    var phase = B.phaseFor(week);
+    var opts = '';
+    for (var w = 1; w <= B.TOTAL_WEEKS; w++) {
+      opts += '<option value="' + w + '"' + (w === week ? ' selected' : '') + '>Week ' + w +
+        ' — ' + B.waveFor(w, state.inputs.waves) + ' · ' + B.phaseFor(w) + '</option>';
+    }
+    var dayTabs = entry.days.map(function (d, i) {
+      return '<button type="button" class="daytab' + (state.ui.day === i ? ' active' : '') +
+        '" data-action="day" data-day="' + i + '">' + d.day + ' · ' + esc(d.primary) + '</button>';
+    }).join('');
+
+    var vol = B.weeklyGroupVolume(entry);
+    var volLine = Object.keys(vol).sort().map(function (g) {
+      return prettyGroup(g) + ' ' + vol[g];
+    }).join(' · ');
+
+    return '<div class="card weekbar">' +
+      '<button type="button" data-action="week-prev">◀</button>' +
+      '<select id="week-select">' + opts + '</select>' +
+      '<button type="button" data-action="week-next">▶</button>' +
+      '<span class="pill">' + wave + ' wave</span><span class="pill">' + phase + '</span>' +
+      '</div>' +
+      (phase === 'Realization'
+        ? '<p class="hint amap-hint"><b>Realization week:</b> last main set is an AMRAP. Log the reps in <b>TM Tracker</b> — every rep past the standard (' +
+          B.standardReps(wave) + ') moves the training max for the next wave.</p>'
+        : '') +
+      (phase === 'Deload'
+        ? '<p class="hint amap-hint"><b>Deload:</b> main work as written. Cut accessories to 1–2 easy sets or skip them.</p>'
+        : '') +
+      '<div class="daytabs">' + dayTabs + '</div>' +
+      renderDay(week, state.ui.day) +
+      '<div class="card"><h3>Week ' + week + ' accessory sets by group</h3>' +
+      '<p class="hint">' + (volLine || 'none') + '</p></div>';
+  }
+
+  function renderDay(week, dayIdx) {
+    var entry = weekEntry(week);
+    var day = entry.days[dayIdx];
+    var inp = state.inputs;
+    var log = logFor(week, dayIdx);
+    var liftOpts = function (sel) {
+      return inp.lifts.map(function (l) {
+        return '<option value="' + esc(l.name) + '"' + (l.name === sel ? ' selected' : '') + '>' + esc(l.name) + '</option>';
+      }).join('');
+    };
+
+    // --- primary ---
+    var sets = B.primarySets(week, inp.waves, day.primary, inp.lifts, inp.rounding);
+    var primaryRows = sets.map(function (s, i) {
+      var lg = log.primary[i] || {};
+      return '<tr' + (s.amrap ? ' class="amap"' : '') + '>' +
+        '<td>' + s.set + '</td>' +
+        '<td>' + Math.round(s.pct * 1000) / 10 + '%</td>' +
+        '<td><b>' + fmt(s.load) + '</b> kg</td>' +
+        '<td>' + (s.amrap ? s.reps + '+ <span class="tag">AMRAP</span>' : s.reps) + '</td>' +
+        '<td><input type="number" min="0" step="1" class="plog" data-i="' + i + '" value="' +
+          (lg.reps === null || lg.reps === undefined ? '' : lg.reps) + '" placeholder="' + s.reps + '"></td>' +
+        '<td><input type="checkbox" class="pdone" data-i="' + i + '"' + (lg.done ? ' checked' : '') + '></td>' +
+        '</tr>';
+    }).join('');
+
+    // --- secondary ---
+    var sec = day.secondary;
+    var secLoad = B.secondaryLoad(sec, inp.lifts, inp.rounding);
+    var secondaryBlock = '<h4>Secondary <span class="hint inline">sets × reps × %TM are yours to set</span></h4>' +
+      '<div class="row wrap">' +
+      '<label>Lift <select class="sec-lift">' + liftOpts(sec.lift) + '</select></label>' +
+      '<label>Sets <input type="number" min="1" step="1" class="sec-sets" value="' + sec.sets + '"></label>' +
+      '<label>Reps <input type="number" min="1" step="1" class="sec-reps" value="' + sec.reps + '"></label>' +
+      '<label>%TM <input type="number" min="0" max="100" step="0.5" class="sec-pct" value="' + (Math.round(sec.pct * 1000) / 10) + '"></label>' +
+      '<span class="pill big">' + fmt(secLoad) + ' kg</span>' +
+      '<label>Logged reps <input type="number" min="0" step="1" class="sec-log" value="' +
+        (log.secondary && log.secondary.reps !== null && log.secondary.reps !== undefined ? log.secondary.reps : '') + '"></label>' +
+      '</div>';
+
+    // --- accessories ---
+    var accRows = day.accessories.map(function (a, i) {
+      var lg = log.accessories[i] || {};
+      var groupOpts = D.GROUPS.map(function (g) {
+        return '<option value="' + g + '"' + (g === a.group ? ' selected' : '') + '>' + prettyGroup(g) + '</option>';
+      }).join('');
+      var exOpts = B.exercisesInGroup(a.group).map(function (e) {
+        return '<option value="' + esc(e.name) + '"' + (e.name === a.exercise ? ' selected' : '') + '>' + esc(e.name) + '</option>';
+      }).join('');
+      var entryInfo = B.libraryEntry(a.exercise);
+      var kit = entryInfo && entryInfo.equipment ? entryInfo.equipment : '';
+      var knee = entryInfo && entryInfo.kneeNote ? entryInfo.kneeNote : '';
+      return '<div class="acc" data-i="' + i + '">' +
+        '<div class="acc-head"><b>' + esc(a.slot) + '</b>' +
+        '<select class="acc-group">' + groupOpts + '</select>' +
+        '<select class="acc-ex">' + exOpts + '</select>' +
+        '<label>Sets <input type="number" min="1" step="1" class="acc-sets" value="' + a.sets + '"></label>' +
+        '<label>Reps <input type="number" min="1" step="1" class="acc-reps" value="' + a.reps + '"></label>' +
+        '<span class="pill">' + esc(a.rir || '—') + '</span>' +
+        '</div>' +
+        (kit ? '<div class="hint sm">Kit: ' + esc(kit) + (knee ? ' · <b>Knee:</b> ' + esc(knee) : '') + '</div>' : '') +
+        (a.note ? '<div class="hint sm">' + esc(a.note) + '</div>' : '') +
+        '<div class="row wrap log-row">' +
+        '<label>Weight <input type="number" min="0" step="0.5" class="acc-w" value="' + (lg.weight === null || lg.weight === undefined ? '' : lg.weight) + '"> kg</label>' +
+        '<label>Reps <input type="number" min="0" step="1" class="acc-r" value="' + (lg.reps === null || lg.reps === undefined ? '' : lg.reps) + '"></label>' +
+        '<label>RIR <input type="number" min="0" step="1" class="acc-rir" value="' + (lg.rir === null || lg.rir === undefined ? '' : lg.rir) + '"></label>' +
+        '<input type="text" class="acc-note" placeholder="notes" value="' + esc(lg.note) + '">' +
+        '</div></div>';
+    }).join('');
+
+    return '<div class="card day" data-week="' + week + '" data-day="' + dayIdx + '">' +
+      '<h3>' + esc(day.day) + '<span class="hint inline">Primary</span></h3>' +
+      '<div class="row"><label>Primary lift <select class="primary-lift">' + liftOpts(day.primary) + '</select></label>' +
+      '<span class="pill">TM ' + fmt(B.tmFor(day.primary, inp.lifts)) + ' kg</span></div>' +
+      '<table class="table sets"><thead><tr><th>#</th><th>%TM</th><th>Load</th><th>Reps</th><th>Done</th><th>✓</th></tr></thead>' +
+      '<tbody>' + primaryRows + '</tbody></table>' +
+      secondaryBlock +
+      '<h4>Accessories</h4>' + accRows +
+      '<div class="row"><button type="button" class="primary" data-action="save-day">Save day</button>' +
+      '<button type="button" data-action="copy-week">Apply this day\'s accessory picks to all weeks</button></div>' +
+      '</div>';
+  }
+
+  /* ---------- Inputs ---------- */
+
+  function renderInputs() {
+    var inp = state.inputs;
+    var n = B.nutrition(inp);
+    var waveOpts = function (sel) {
+      return ['10s', '8s', '5s', '3s'].map(function (w) {
+        return '<option value="' + w + '"' + (w === sel ? ' selected' : '') + '>' + w + '</option>';
+      }).join('');
+    };
+    return '<section class="card">' +
+      '<h2>Training maxes</h2>' +
+      '<p class="hint">TM from JuggernautAI — the training max, not a 1RM. Per-rep increment is what each rep past the standard on the Realization AMRAP adds to the TM.</p>' +
+      '<table class="table"><thead><tr><th>Lift</th><th>TM (kg)</th><th>Per-rep increment (kg)</th></tr></thead><tbody>' +
+      inp.lifts.map(function (l, i) {
+        return '<tr><td>' + esc(l.name) + '</td>' +
+          '<td><input type="number" step="0.5" min="0" class="in-tm" data-i="' + i + '" value="' + l.tm + '"></td>' +
+          '<td><input type="number" step="0.25" min="0" class="in-inc" data-i="' + i + '" value="' + l.inc + '"></td></tr>';
+      }).join('') + '</tbody></table>' +
+      '<h2>Block settings</h2>' +
+      '<div class="row wrap">' +
+      '<label>Weeks 1–4 <select class="in-wave" data-i="0">' + waveOpts(inp.waves[0]) + '</select></label>' +
+      '<label>Weeks 5–8 <select class="in-wave" data-i="1">' + waveOpts(inp.waves[1]) + '</select></label>' +
+      '<label>Weeks 9–12 <select class="in-wave" data-i="2">' + waveOpts(inp.waves[2]) + '</select></label>' +
+      '<label>Load rounding (kg) <input type="number" step="0.25" min="0.25" id="in-rounding" value="' + inp.rounding + '"></label>' +
+      '</div>' +
+      '<p class="hint">Higher-rep waves first (10s→8s→5s) builds volume tolerance before intensity rises. 2.5 kg rounding = standard plates; 1.25 if you use fractionals.</p>' +
+      '<h2>Bulk nutrition targets</h2>' +
+      '<div class="row wrap">' +
+      '<label>Bodyweight (kg) <input type="number" step="0.1" min="0" id="in-bw" value="' + inp.bodyweight + '"></label>' +
+      '<label>Maintenance (kcal) <input type="number" step="10" min="0" id="in-maint" value="' + inp.maintenance + '"></label>' +
+      '<label>Surplus (kcal) <input type="number" step="10" id="in-surplus" value="' + inp.surplus + '"></label>' +
+      '</div>' +
+      '<table class="table"><tbody>' +
+      '<tr><td>Protein target</td><td><b>' + n.proteinLow + ' – ' + n.proteinHigh + ' g/day</b></td><td class="hint">2.0–2.2 g/kg</td></tr>' +
+      '<tr><td>Target daily calories</td><td><b>' + n.calories + ' kcal</b></td><td class="hint">Maintenance + surplus. Re-estimate maintenance every 2–3 weeks from your weight trend.</td></tr>' +
+      '<tr><td>Rest-day carbs</td><td><b>Same as training days</b></td><td class="hint">No deficit to manage, so the rest-day carb cut does not apply. Keep protein constant, let carbs fill the surplus.</td></tr>' +
+      '</tbody></table>' +
+      '<button type="button" class="primary" id="save-inputs" data-action="save-inputs">Save inputs</button>' +
+      '</section>' +
+      '<section class="card"><h2>Data</h2><div class="row">' +
+      '<button type="button" data-action="export">Export JSON</button>' +
+      '<button type="button" data-action="import">Import JSON</button>' +
+      '<input type="file" id="import-file" accept=".json,application/json" hidden>' +
+      '<button type="button" data-action="export-csv">Export accessory log (CSV)</button>' +
+      '<button type="button" class="danger" data-action="reset">Reset all</button>' +
+      '</div><p class="hint">Stored in this browser only. Export before switching devices.</p></section>';
+  }
+
+  /* ---------- TM Tracker ---------- */
+
+  function renderTracker() {
+    var inp = state.inputs;
+    var slots = [{ i: 0, label: 'Weeks 1–4' }, { i: 1, label: 'Weeks 5–8' }, { i: 2, label: 'Weeks 9–12' }];
+    var tracked = ['Squat', 'Bench Press', 'Deadlift'];
+    var rows = '';
+    slots.forEach(function (slot) {
+      var wave = inp.waves[slot.i];
+      var std = B.standardReps(wave);
+      tracked.forEach(function (lift) {
+        var k = slot.i + '|' + lift;
+        var oldTM = B.tmFor(lift, inp.lifts);
+        var inc = B.incFor(lift, inp.lifts);
+        var reps = state.tracker[k];
+        var nTM = B.nextTM(oldTM, reps === undefined ? null : reps, std, inc);
+        rows += '<tr><td>' + slot.label + '</td><td>' + wave + '</td><td>' + lift + '</td>' +
+          '<td>' + fmt(oldTM) + '</td><td>' + std + '</td>' +
+          '<td><input type="number" min="0" step="1" class="tr-reps" data-k="' + k + '" value="' + (reps === undefined || reps === null ? '' : reps) + '"></td>' +
+          '<td>' + fmt(inc) + '</td>' +
+          '<td class="new-tm"><b>' + (nTM === null ? '–' : fmt(nTM)) + '</b></td>' +
+          '<td class="apply-cell">' + (nTM === null ? '' : '<button type="button" class="small" data-action="apply-tm" data-lift="' + esc(lift) + '" data-tm="' + nTM + '">Apply to Inputs</button>') + '</td></tr>';
+      });
+    });
+    return '<section class="card"><h2>Training max adjustment</h2>' +
+      '<p class="hint">New TM = old TM + (AMRAP reps − standard reps) × per-rep increment. Miss the standard and the TM drops — that is the method working, not a failure.</p>' +
+      '<div class="scroll"><table class="table"><thead><tr><th>Wave slot</th><th>Wave</th><th>Lift</th><th>Old TM</th><th>Standard</th><th>AMRAP reps</th><th>Per-rep inc</th><th>New TM</th><th></th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table></div>' +
+      '<p class="hint">After each 4-week wave, enter the AMRAP reps and apply the new TM before the next wave starts.</p></section>';
+  }
+
+  /* ---------- Accessory Log ---------- */
+
+  function renderLog() {
+    var rows = '';
+    var count = 0;
+    for (var w = 1; w <= B.TOTAL_WEEKS; w++) {
+      var entry = weekEntry(w);
+      entry.days.forEach(function (day, di) {
+        var log = (state.logs[w] && state.logs[w][di]) || null;
+        if (!log) { return; }
+        day.accessories.forEach(function (a, ai) {
+          var lg = (log.accessories && log.accessories[ai]) || null;
+          if (!lg || (lg.weight === null && lg.reps === null)) { return; }
+          count++;
+          rows += '<tr><td>' + w + '</td><td>' + esc(day.day) + '</td><td>' + esc(a.slot) + '</td>' +
+            '<td>' + esc(lg.exercise || a.exercise) + '</td><td>' + fmt(lg.weight) + '</td><td>' + fmt(lg.reps) + '</td>' +
+            '<td>' + (lg.rir === null || lg.rir === undefined ? '–' : lg.rir) + '</td><td>' + esc(lg.note) + '</td></tr>';
+        });
+      });
+    }
+    if (!count) {
+      return '<section class="card"><p>No accessory work logged yet. Log weight × reps × RIR on the Block tab and it collects here.</p></section>';
+    }
+    return '<section class="card"><h2>Accessory progression log</h2>' +
+      '<p class="hint">' + count + ' logged sets. Push more reps at the same weight first, then more weight — this is where hypertrophy actually gets tracked.</p>' +
+      '<div class="scroll"><table class="table"><thead><tr><th>Week</th><th>Day</th><th>Slot</th><th>Exercise</th><th>Weight</th><th>Reps</th><th>RIR</th><th>Notes</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table></div></section>';
+  }
+
+  /* ---------- Library ---------- */
+
+  function renderLibrary() {
+    return '<section>' + D.GROUPS.map(function (g) {
+      var items = B.exercisesInGroup(g);
+      if (!items.length) { return ''; }
+      return '<div class="card"><h3>' + prettyGroup(g) + '</h3>' +
+        '<table class="table"><thead><tr><th>Exercise</th><th>Equipment</th><th>Note</th></tr></thead><tbody>' +
+        items.map(function (e) {
+          return '<tr><td>' + esc(e.name) + '</td><td class="hint">' + esc(e.equipment) + '</td><td class="hint">' + esc(e.kneeNote) + '</td></tr>';
+        }).join('') + '</tbody></table></div>';
+    }).join('') +
+    '<div class="card"><p class="hint">' + esc(D.LIBRARY_NOTE) + '</p></div></section>';
+  }
+
+  function renderGuide() {
+    var html = D.README.map(function (line) {
+      if (!line) { return ''; }
+      if (/^(What this is|How to use it|Colour legend|What changed from|Still true from)/.test(line)) {
+        return '</p><h3>' + esc(line) + '</h3><p class="hint">';
+      }
+      return esc(line) + ' ';
+    }).join('');
+    return '<section class="card"><h2>' + esc(D.README[0]) + '</h2><p class="hint">' + html + '</p></section>';
+  }
+
+  /* ---------- persistence of edits ---------- */
+
+  function readDay() {
+    var card = document.querySelector('.card.day');
+    if (!card) { return; }
+    var week = Number(card.dataset.week);
+    var dayIdx = Number(card.dataset.day);
+    var day = weekEntry(week).days[dayIdx];
+    var log = logFor(week, dayIdx);
+
+    var pl = card.querySelector('.primary-lift');
+    if (pl) { day.primary = pl.value; }
+
+    day.secondary.lift = card.querySelector('.sec-lift').value;
+    day.secondary.sets = num(card.querySelector('.sec-sets').value) || day.secondary.sets;
+    day.secondary.reps = num(card.querySelector('.sec-reps').value) || day.secondary.reps;
+    var pct = num(card.querySelector('.sec-pct').value);
+    if (pct !== null) { day.secondary.pct = pct / 100; }
+    log.secondary = { reps: num(card.querySelector('.sec-log').value) };
+
+    log.primary = [];
+    card.querySelectorAll('.plog').forEach(function (el) {
+      var i = Number(el.dataset.i);
+      log.primary[i] = log.primary[i] || {};
+      log.primary[i].reps = num(el.value);
+    });
+    card.querySelectorAll('.pdone').forEach(function (el) {
+      var i = Number(el.dataset.i);
+      log.primary[i] = log.primary[i] || {};
+      log.primary[i].done = el.checked;
+    });
+
+    log.accessories = [];
+    card.querySelectorAll('.acc').forEach(function (accEl) {
+      var i = Number(accEl.dataset.i);
+      var a = day.accessories[i];
+      a.group = accEl.querySelector('.acc-group').value;
+      a.exercise = accEl.querySelector('.acc-ex').value;
+      a.sets = num(accEl.querySelector('.acc-sets').value) || a.sets;
+      a.reps = num(accEl.querySelector('.acc-reps').value) || a.reps;
+      log.accessories[i] = {
+        exercise: a.exercise,
+        weight: num(accEl.querySelector('.acc-w').value),
+        reps: num(accEl.querySelector('.acc-r').value),
+        rir: num(accEl.querySelector('.acc-rir').value),
+        note: accEl.querySelector('.acc-note').value.trim()
+      };
+    });
+  }
+
+  function saveInputs() {
+    var inp = state.inputs;
+    document.querySelectorAll('.in-tm').forEach(function (el) {
+      var v = num(el.value); if (v !== null) { inp.lifts[Number(el.dataset.i)].tm = v; }
+    });
+    document.querySelectorAll('.in-inc').forEach(function (el) {
+      var v = num(el.value); if (v !== null) { inp.lifts[Number(el.dataset.i)].inc = v; }
+    });
+    document.querySelectorAll('.in-wave').forEach(function (el) { inp.waves[Number(el.dataset.i)] = el.value; });
+    var r = num(document.getElementById('in-rounding').value);
+    if (r && r > 0) { inp.rounding = r; }
+    var bw = num(document.getElementById('in-bw').value);
+    if (bw !== null) { inp.bodyweight = bw; }
+    var m = num(document.getElementById('in-maint').value);
+    if (m !== null) { inp.maintenance = m; }
+    var s = num(document.getElementById('in-surplus').value);
+    if (s !== null) { inp.surplus = s; }
+    save(); renderApp(); toast('Inputs saved — loads recalculated');
+  }
+
+  function exportCSV() {
+    var rows = [['Week', 'Day', 'Slot', 'Exercise', 'Weight (kg)', 'Reps', 'RIR', 'Notes']];
+    for (var w = 1; w <= B.TOTAL_WEEKS; w++) {
+      var entry = weekEntry(w);
+      entry.days.forEach(function (day, di) {
+        var log = (state.logs[w] && state.logs[w][di]) || null;
+        if (!log) { return; }
+        day.accessories.forEach(function (a, ai) {
+          var lg = (log.accessories && log.accessories[ai]) || null;
+          if (!lg || (lg.weight === null && lg.reps === null)) { return; }
+          rows.push([w, day.day, a.slot, lg.exercise || a.exercise, lg.weight, lg.reps, lg.rir, lg.note]);
+        });
+      });
+    }
+    var csv = rows.map(function (r) {
+      return r.map(function (c) {
+        var v = c === null || c === undefined ? '' : String(c);
+        return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+      }).join(',');
+    }).join('\n');
+    downloadBlob(new Blob([csv], { type: 'text/csv' }), 'accessory-log.csv');
+  }
+
+  function downloadBlob(blob, name) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  /* ---------- events ---------- */
+
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest ? e.target.closest('[data-action]') : null;
+    if (!btn) { return; }
+    var a = btn.dataset.action;
+    if (a === 'tab') {
+      if (state.ui.tab === 'block') { readDay(); }
+      state.ui.tab = btn.dataset.tab; save(); renderApp();
+    } else if (a === 'week-prev') {
+      readDay(); state.ui.week = Math.max(1, state.ui.week - 1); save(); renderApp();
+    } else if (a === 'week-next') {
+      readDay(); state.ui.week = Math.min(B.TOTAL_WEEKS, state.ui.week + 1); save(); renderApp();
+    } else if (a === 'day') {
+      readDay(); state.ui.day = Number(btn.dataset.day); save(); renderApp();
+    } else if (a === 'save-day') {
+      readDay(); save(); renderApp(); toast('Day saved');
+    } else if (a === 'copy-week') {
+      readDay();
+      var src = weekEntry(state.ui.week).days[state.ui.day];
+      for (var w = 1; w <= B.TOTAL_WEEKS; w++) {
+        var d = weekEntry(w).days[state.ui.day];
+        if (!d) { continue; }
+        d.accessories = JSON.parse(JSON.stringify(src.accessories));
+      }
+      save(); renderApp(); toast('Accessory picks applied to all 12 weeks');
+    } else if (a === 'save-inputs') {
+      saveInputs();
+    } else if (a === 'apply-tm') {
+      var lift = btn.dataset.lift, tm = Number(btn.dataset.tm);
+      state.inputs.lifts.forEach(function (l) { if (l.name === lift) { l.tm = tm; } });
+      save(); renderApp(); toast(lift + ' TM → ' + fmt(tm) + ' kg');
+    } else if (a === 'export') {
+      downloadBlob(new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }),
+        'bulk-block-' + new Date().toISOString().slice(0, 10) + '.json');
+    } else if (a === 'export-csv') {
+      exportCSV();
+    } else if (a === 'import') {
+      document.getElementById('import-file').click();
+    } else if (a === 'reset') {
+      if (confirm('Reset everything back to the workbook defaults?')) { state = defaultState(); save(); renderApp(); }
+    }
+  });
+
+  document.addEventListener('change', function (e) {
+    var t = e.target;
+    if (t.id === 'week-select') { readDay(); state.ui.week = Number(t.value); save(); renderApp(); }
+    // .tr-reps is handled on 'input' only — rebuilding the row on blur would
+    // destroy the Apply button mid-click.
+    else if (t.classList.contains('acc-group')) {
+      // Group changed: reset the exercise to the first in the new group, like INDIRECT() does.
+      readDayGroupChange(t);
+    }
+    else if (t.classList.contains('primary-lift') || t.classList.contains('sec-lift') ||
+             t.classList.contains('sec-pct') || t.classList.contains('acc-ex')) {
+      readDay(); save(); renderApp();
+    }
+    else if (t.id === 'import-file') {
+      var f = t.files[0];
+      if (f) {
+        var reader = new FileReader();
+        reader.onload = function () {
+          try {
+            var parsed = JSON.parse(reader.result);
+            if (!parsed || !parsed.inputs || !parsed.block) { throw new Error('bad'); }
+            state = parsed;
+            var base = defaultState();
+            Object.keys(base).forEach(function (k) { if (state[k] === undefined) { state[k] = base[k]; } });
+            save(); renderApp(); toast('Imported');
+          } catch (err) { toast('Import failed — not a valid export file'); }
+        };
+        reader.readAsText(f);
+      }
+      t.value = '';
+    }
+  });
+
+  // Recompute the New TM cell in place so typing keeps focus.
+  function trackerInput(el) {
+    var k = el.dataset.k;
+    var v = num(el.value);
+    if (v === null) { delete state.tracker[k]; } else { state.tracker[k] = v; }
+    save();
+    var parts = k.split('|');
+    var lift = parts[1];
+    var wave = state.inputs.waves[Number(parts[0])];
+    var nTM = B.nextTM(B.tmFor(lift, state.inputs.lifts), v, B.standardReps(wave), B.incFor(lift, state.inputs.lifts));
+    var row = el.closest('tr');
+    row.querySelector('.new-tm').innerHTML = '<b>' + (nTM === null ? '–' : fmt(nTM)) + '</b>';
+    row.querySelector('.apply-cell').innerHTML = nTM === null ? ''
+      : '<button type="button" class="small" data-action="apply-tm" data-lift="' + esc(lift) + '" data-tm="' + nTM + '">Apply to Inputs</button>';
+  }
+
+  document.addEventListener('input', function (e) {
+    if (e.target.classList && e.target.classList.contains('tr-reps')) { trackerInput(e.target); }
+  });
+
+  function readDayGroupChange(select) {
+    var accEl = select.closest('.acc');
+    var i = Number(accEl.dataset.i);
+    readDay();
+    var day = weekEntry(state.ui.week).days[state.ui.day];
+    var list = B.exercisesInGroup(day.accessories[i].group);
+    day.accessories[i].exercise = list.length ? list[0].name : '';
+    save(); renderApp();
+  }
+
+  renderApp();
+})();
+
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('./sw.js').catch(function () {});
+  });
+}
+</script>
+</body>
+</html>
