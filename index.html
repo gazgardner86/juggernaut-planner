@@ -3198,6 +3198,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
       //                        accessories:[{weight,reps,rir,note}] }
       logs: {},
       tracker: {},           // tracker['0|Squat'] = amrap reps
+      customExercises: [],   // {group, name} added by the user on top of the library
       ui: { tab: 'block', week: 1, day: 0 }
     };
   }
@@ -3263,6 +3264,31 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
   }
 
   function weekEntry(week) { return state.block[week - 1]; }
+
+  // The library plus anything the user has added, so custom picks behave
+  // exactly like built-in ones everywhere they're offered.
+  function exercisesFor(group) {
+    return B.exercisesInGroup(group).concat(
+      (state.customExercises || []).filter(function (e) { return e.group === group; })
+    );
+  }
+
+  function isCustom(name, group) {
+    return (state.customExercises || []).some(function (e) {
+      return e.name === name && e.group === group;
+    });
+  }
+
+  function entryFor(name) {
+    return B.libraryEntry(name) || null;
+  }
+
+  function addCustom(group, name) {
+    var exists = exercisesFor(group).some(function (e) {
+      return e.name.toLowerCase() === name.toLowerCase();
+    });
+    if (!exists) { state.customExercises.push({ group: group, name: name, equipment: '', kneeNote: '' }); }
+  }
 
   /* ---------- shell ---------- */
 
@@ -3375,10 +3401,10 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
       var groupOpts = D.GROUPS.map(function (g) {
         return '<option value="' + g + '"' + (g === a.group ? ' selected' : '') + '>' + prettyGroup(g) + '</option>';
       }).join('');
-      var exOpts = B.exercisesInGroup(a.group).map(function (e) {
+      var exOpts = exercisesFor(a.group).map(function (e) {
         return '<option value="' + esc(e.name) + '"' + (e.name === a.exercise ? ' selected' : '') + '>' + esc(e.name) + '</option>';
-      }).join('');
-      var entryInfo = B.libraryEntry(a.exercise);
+      }).join('') + '<option value="__add__">+ Add your own…</option>';
+      var entryInfo = entryFor(a.exercise);
       var kit = entryInfo && entryInfo.equipment ? entryInfo.equipment : '';
       var knee = entryInfo && entryInfo.kneeNote ? entryInfo.kneeNote : '';
       return '<div class="acc" data-i="' + i + '">' +
@@ -3524,13 +3550,18 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
   /* ---------- Library ---------- */
 
   function renderLibrary() {
-    return '<section>' + D.GROUPS.map(function (g) {
-      var items = B.exercisesInGroup(g);
+    return '<section>' +
+    '<div class="card"><p class="hint">Anything missing? Pick a group on any accessory slot, then choose <b>+ Add your own…</b> at the bottom of the exercise list. Your additions show up here and in every dropdown for that group.</p></div>' +
+    D.GROUPS.map(function (g) {
+      var items = exercisesFor(g);
       if (!items.length) { return ''; }
       return '<div class="card"><h3>' + prettyGroup(g) + '</h3>' +
-        '<table class="table"><thead><tr><th>Exercise</th><th>Equipment</th><th>Note</th></tr></thead><tbody>' +
+        '<table class="table"><thead><tr><th>Exercise</th><th>Equipment</th><th>Note</th><th></th></tr></thead><tbody>' +
         items.map(function (e) {
-          return '<tr><td>' + esc(e.name) + '</td><td class="hint">' + esc(e.equipment) + '</td><td class="hint">' + esc(e.kneeNote) + '</td></tr>';
+          var mine = isCustom(e.name, g);
+          return '<tr><td>' + esc(e.name) + (mine ? ' <span class="tag">YOURS</span>' : '') + '</td>' +
+            '<td class="hint">' + esc(e.equipment) + '</td><td class="hint">' + esc(e.kneeNote) + '</td>' +
+            '<td>' + (mine ? '<button type="button" class="small danger" data-action="del-custom" data-group="' + esc(g) + '" data-name="' + esc(e.name) + '">Remove</button>' : '') + '</td></tr>';
         }).join('') + '</tbody></table></div>';
     }).join('') +
     '<div class="card"><p class="hint">' + esc(D.LIBRARY_NOTE) + '</p></div></section>';
@@ -3680,6 +3711,20 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
       var lift = btn.dataset.lift, tm = Number(btn.dataset.tm);
       state.inputs.lifts.forEach(function (l) { if (l.name === lift) { l.tm = tm; } });
       save(); renderApp(); toast(lift + ' TM → ' + fmt(tm) + ' kg');
+    } else if (a === 'del-custom') {
+      var name = btn.dataset.name, group = btn.dataset.group;
+      if (confirm('Remove "' + name + '"? Any slot using it falls back to the first exercise in that group.')) {
+        state.customExercises = state.customExercises.filter(function (e) {
+          return !(e.name === name && e.group === group);
+        });
+        var fallback = (B.exercisesInGroup(group)[0] || {}).name || '';
+        state.block.forEach(function (w) {
+          w.days.forEach(function (d) {
+            d.accessories.forEach(function (x) { if (x.exercise === name) { x.exercise = fallback; } });
+          });
+        });
+        save(); renderApp();
+      }
     } else if (a === 'export') {
       downloadBlob(new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }),
         'bulk-block-' + new Date().toISOString().slice(0, 10) + '.json');
@@ -3701,6 +3746,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
       // Group changed: reset the exercise to the first in the new group, like INDIRECT() does.
       readDayGroupChange(t);
     }
+    else if (t.classList.contains('acc-ex') && t.value === '__add__') { addCustomExercise(t); }
     else if (t.classList.contains('primary-lift') || t.classList.contains('sec-lift') ||
              t.classList.contains('sec-pct') || t.classList.contains('acc-ex')) {
       readDay(); save(); renderApp();
@@ -3745,12 +3791,31 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
     if (e.target.classList && e.target.classList.contains('tr-reps')) { trackerInput(e.target); }
   });
 
+  function addCustomExercise(select) {
+    var accEl = select.closest('.acc');
+    var i = Number(accEl.dataset.i);
+    var group = accEl.querySelector('.acc-group').value;
+    var prev = weekEntry(state.ui.week).days[state.ui.day].accessories[i].exercise;
+    var name = (window.prompt('Add an exercise to ' + prettyGroup(group)) || '').trim();
+    // readDay() would store the "__add__" sentinel, so fix that slot straight after.
+    readDay();
+    var acc = weekEntry(state.ui.week).days[state.ui.day].accessories[i];
+    if (name) {
+      addCustom(group, name);
+      acc.exercise = name;
+    } else {
+      acc.exercise = prev;
+    }
+    save(); renderApp();
+    if (name) { toast('Added "' + name + '"'); }
+  }
+
   function readDayGroupChange(select) {
     var accEl = select.closest('.acc');
     var i = Number(accEl.dataset.i);
     readDay();
     var day = weekEntry(state.ui.week).days[state.ui.day];
-    var list = B.exercisesInGroup(day.accessories[i].group);
+    var list = exercisesFor(day.accessories[i].group);
     day.accessories[i].exercise = list.length ? list[0].name : '';
     save(); renderApp();
   }
