@@ -60,6 +60,9 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
 .acc { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; }
 .acc-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .acc-head select { max-width: 200px; }
+.seclog { gap: 6px 8px; margin-top: 6px; }
+.setbox { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; font-size: 0.72rem; color: var(--muted); }
+.setbox input[type="number"] { width: 56px; }
 .log-row { margin: 8px 0 0; padding-top: 8px; border-top: 1px dashed var(--line); }
 .log-row input[type="text"] { flex: 1; min-width: 140px; }
 .banner { background: var(--amap); border: 1px solid var(--amap-line); border-radius: 8px; padding: 8px 12px; font-size: 0.85rem; margin-bottom: 10px; }
@@ -84,7 +87,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
 <div id="app"></div>
 <footer>Loads = training max × %TM, rounded to your plate increment. Realization AMRAPs drive the training max for the next wave via the TM Tracker. Data is stored in this browser only — export to back it up.<p style="margin-top:10px"><a href="./juggernaut.html" style="color:inherit">16-week Juggernaut Method trainer →</a></p></footer>
 <script>
-/* Generated build artifact — starting values are neutral placeholders. */
+/* Generated build artifact: workbook data + src/block-revisions.mjs. Do not edit. */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) { module.exports = factory(); }
   else { root.BulkData = factory(); }
@@ -339,6 +342,24 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
       "kneeNote": ""
     },
     {
+      "group": "Calf",
+      "name": "Standing calf raise",
+      "equipment": "Smith machine or calf raise machine",
+      "kneeNote": ""
+    },
+    {
+      "group": "Calf",
+      "name": "Seated calf raise",
+      "equipment": "Seated calf machine",
+      "kneeNote": "Soleus bias; knee stays bent and unloaded"
+    },
+    {
+      "group": "Calf",
+      "name": "Leg press calf raise",
+      "equipment": "45° leg press",
+      "kneeNote": "Knee stays soft, drive through the ball of the foot"
+    },
+    {
       "group": "Core",
       "name": "Front plank",
       "equipment": "Bodyweight + mat",
@@ -455,6 +476,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
     "Quad_Knee_Friendly",
     "Hinge_Hamstring",
     "Glute",
+    "Calf",
     "Core",
     "Arms",
     "Conditioning"
@@ -847,7 +869,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
       {
         "name": "Bench Press",
         "tm": 70,
-        "inc": 2.5
+        "inc": 1.25
       },
       {
         "name": "Deadlift",
@@ -857,12 +879,12 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
       {
         "name": "Overhead Press",
         "tm": 45,
-        "inc": 2.5
+        "inc": 1.25
       },
       {
         "name": "Incline Bench",
         "tm": 60,
-        "inc": 2.5
+        "inc": 1.25
       }
     ],
     "waves": [
@@ -922,12 +944,12 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
             },
             {
               "slot": "Accessory 5",
-              "group": "Core",
-              "exercise": "Front plank",
+              "group": "Calf",
+              "exercise": "Standing calf raise",
               "sets": 3,
-              "reps": 45,
-              "note": "Reps column = seconds held",
-              "rir": "—"
+              "reps": 12,
+              "note": "Full stretch at the bottom, pause at the top. No direct calf work existed in the block.",
+              "rir": "RIR 1"
             }
           ],
           "secondary": {
@@ -988,7 +1010,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
             }
           ],
           "secondary": {
-            "lift": "Deadlift",
+            "lift": "Overhead Press",
             "sets": 4,
             "pct": 0.55,
             "reps": 6
@@ -1018,12 +1040,12 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
             },
             {
               "slot": "Accessory 3",
-              "group": "Core",
-              "exercise": "Barbell Russian twist",
+              "group": "Hinge_Hamstring",
+              "exercise": "Seated leg curl",
               "sets": 3,
-              "reps": 12,
-              "note": "Per side",
-              "rir": "—"
+              "reps": 10,
+              "note": "Knee flexion — the RDL only trains the hamstrings at the hip.",
+              "rir": "RIR 1"
             },
             {
               "slot": "Accessory 4",
@@ -1099,12 +1121,12 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
             },
             {
               "slot": "Accessory 5",
-              "group": "Core",
-              "exercise": "Front plank",
+              "group": "Calf",
+              "exercise": "Standing calf raise",
               "sets": 3,
-              "reps": 45,
-              "note": "Reps column = seconds held",
-              "rir": "—"
+              "reps": 12,
+              "note": "Full stretch at the bottom, pause at the top. No direct calf work existed in the block.",
+              "rir": "RIR 1"
             }
           ],
           "secondary": {
@@ -1195,12 +1217,12 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
             },
             {
               "slot": "Accessory 3",
-              "group": "Core",
-              "exercise": "Barbell Russian twist",
+              "group": "Hinge_Hamstring",
+              "exercise": "Seated leg curl",
               "sets": 3,
-              "reps": 12,
-              "note": "Per side",
-              "rir": "—"
+              "reps": 10,
+              "note": "Knee flexion — the RDL only trains the hamstrings at the hip.",
+              "rir": "RIR 1"
             },
             {
               "slot": "Accessory 4",
@@ -1242,7 +1264,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 1",
               "group": "Hinge_Hamstring",
               "exercise": "Romanian deadlift",
-              "sets": 4,
+              "sets": 3,
               "reps": 10,
               "note": "Swapped from heavy deficit deadlift — higher reps drive more growth here than a low-rep compound",
               "rir": "RIR 2"
@@ -1250,8 +1272,8 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
             {
               "slot": "Accessory 2",
               "group": "Glute",
-              "exercise": "Bulgarian Split Squats",
-              "sets": 3,
+              "exercise": "Barbell hip thrust",
+              "sets": 2,
               "reps": 10,
               "note": "Knee-friendly sub for standing lunge patterns",
               "rir": "RIR 2"
@@ -1260,7 +1282,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 3",
               "group": "Quad_Knee_Friendly",
               "exercise": "Leg extension (light)",
-              "sets": 3,
+              "sets": 2,
               "reps": 12,
               "note": "Direct quad volume beyond the squat itself",
               "rir": "RIR 2"
@@ -1269,25 +1291,25 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 4",
               "group": "Vertical_Push",
               "exercise": "Cable lateral raise",
-              "sets": 3,
+              "sets": 2,
               "reps": 15,
               "note": "Side delt — spread across days rather than stacked on Day 2",
               "rir": "RIR 1"
             },
             {
               "slot": "Accessory 5",
-              "group": "Core",
-              "exercise": "Front plank",
-              "sets": 3,
-              "reps": 45,
-              "note": "Reps column = seconds held",
-              "rir": "—"
+              "group": "Calf",
+              "exercise": "Standing calf raise",
+              "sets": 2,
+              "reps": 12,
+              "note": "Full stretch at the bottom, pause at the top. No direct calf work existed in the block.",
+              "rir": "RIR 1"
             }
           ],
           "secondary": {
             "lift": "Incline Bench",
-            "sets": 5,
-            "pct": 0.75,
+            "sets": 3,
+            "pct": 0.6,
             "reps": 6
           }
         },
@@ -1299,7 +1321,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 1",
               "group": "Horizontal_Pull",
               "exercise": "Chest-supported DB row",
-              "sets": 4,
+              "sets": 3,
               "reps": 10,
               "note": null,
               "rir": "RIR 2"
@@ -1308,7 +1330,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 2",
               "group": "Vertical_Push",
               "exercise": "DB lateral raise",
-              "sets": 3,
+              "sets": 2,
               "reps": 15,
               "note": null,
               "rir": "RIR 1"
@@ -1317,7 +1339,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 3",
               "group": "Horizontal_Pull",
               "exercise": "Cable face pull",
-              "sets": 3,
+              "sets": 2,
               "reps": 15,
               "note": "Rear delt / upper-back health on your heaviest pressing day",
               "rir": "RIR 1"
@@ -1326,7 +1348,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 4",
               "group": "Arms",
               "exercise": "Triceps pushdown",
-              "sets": 3,
+              "sets": 2,
               "reps": 12,
               "note": null,
               "rir": "RIR 1"
@@ -1335,7 +1357,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 5",
               "group": "Arms",
               "exercise": "DB hammer curl",
-              "sets": 3,
+              "sets": 2,
               "reps": 12,
               "note": null,
               "rir": "RIR 2"
@@ -1343,8 +1365,8 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
           ],
           "secondary": {
             "lift": "Bench Press",
-            "sets": 5,
-            "pct": 0.75,
+            "sets": 3,
+            "pct": 0.6,
             "reps": 6
           }
         },
@@ -1356,7 +1378,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 1",
               "group": "Vertical_Pull",
               "exercise": "Lat pulldown",
-              "sets": 4,
+              "sets": 3,
               "reps": 10,
               "note": null,
               "rir": "RIR 2"
@@ -1365,25 +1387,25 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 2",
               "group": "Quad_Knee_Friendly",
               "exercise": "Leg extension (light)",
-              "sets": 3,
+              "sets": 2,
               "reps": 12,
               "note": "Different quad exercise from Day 1 for variety",
               "rir": "RIR 1"
             },
             {
               "slot": "Accessory 3",
-              "group": "Core",
-              "exercise": "Barbell Russian twist",
-              "sets": 3,
-              "reps": 12,
-              "note": "Per side",
-              "rir": "—"
+              "group": "Hinge_Hamstring",
+              "exercise": "Seated leg curl",
+              "sets": 2,
+              "reps": 10,
+              "note": "Knee flexion — the RDL only trains the hamstrings at the hip.",
+              "rir": "RIR 1"
             },
             {
               "slot": "Accessory 4",
               "group": "Arms",
               "exercise": "DB hammer curl",
-              "sets": 3,
+              "sets": 2,
               "reps": 12,
               "note": "Second direct biceps session of the week",
               "rir": "RIR 2"
@@ -1392,7 +1414,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 5",
               "group": "Arms",
               "exercise": "DB skull crusher",
-              "sets": 3,
+              "sets": 2,
               "reps": 12,
               "note": "Second direct triceps session of the week",
               "rir": "RIR 2"
@@ -1400,8 +1422,8 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
           ],
           "secondary": {
             "lift": "Squat",
-            "sets": 5,
-            "pct": 0.75,
+            "sets": 3,
+            "pct": 0.6,
             "reps": 6
           }
         }
@@ -1453,12 +1475,12 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
             },
             {
               "slot": "Accessory 5",
-              "group": "Core",
-              "exercise": "Front plank",
+              "group": "Calf",
+              "exercise": "Standing calf raise",
               "sets": 3,
-              "reps": 45,
-              "note": "Reps column = seconds held",
-              "rir": "—"
+              "reps": 12,
+              "note": "Full stretch at the bottom, pause at the top. No direct calf work existed in the block.",
+              "rir": "RIR 1"
             }
           ],
           "secondary": {
@@ -1549,12 +1571,12 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
             },
             {
               "slot": "Accessory 3",
-              "group": "Core",
-              "exercise": "Pallof press",
+              "group": "Hinge_Hamstring",
+              "exercise": "Seated leg curl",
               "sets": 3,
-              "reps": 12,
-              "note": "Per side",
-              "rir": "—"
+              "reps": 10,
+              "note": "Knee flexion — the RDL only trains the hamstrings at the hip.",
+              "rir": "RIR 1"
             },
             {
               "slot": "Accessory 4",
@@ -1630,12 +1652,12 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
             },
             {
               "slot": "Accessory 5",
-              "group": "Core",
-              "exercise": "Front plank",
+              "group": "Calf",
+              "exercise": "Standing calf raise",
               "sets": 3,
-              "reps": 45,
-              "note": "Reps column = seconds held",
-              "rir": "—"
+              "reps": 12,
+              "note": "Full stretch at the bottom, pause at the top. No direct calf work existed in the block.",
+              "rir": "RIR 1"
             }
           ],
           "secondary": {
@@ -1726,12 +1748,12 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
             },
             {
               "slot": "Accessory 3",
-              "group": "Core",
-              "exercise": "Pallof press",
+              "group": "Hinge_Hamstring",
+              "exercise": "Seated leg curl",
               "sets": 3,
-              "reps": 12,
-              "note": "Per side",
-              "rir": "—"
+              "reps": 10,
+              "note": "Knee flexion — the RDL only trains the hamstrings at the hip.",
+              "rir": "RIR 1"
             },
             {
               "slot": "Accessory 4",
@@ -1807,12 +1829,12 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
             },
             {
               "slot": "Accessory 5",
-              "group": "Core",
-              "exercise": "Front plank",
+              "group": "Calf",
+              "exercise": "Standing calf raise",
               "sets": 3,
-              "reps": 45,
-              "note": "Reps column = seconds held",
-              "rir": "—"
+              "reps": 12,
+              "note": "Full stretch at the bottom, pause at the top. No direct calf work existed in the block.",
+              "rir": "RIR 1"
             }
           ],
           "secondary": {
@@ -1903,12 +1925,12 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
             },
             {
               "slot": "Accessory 3",
-              "group": "Core",
-              "exercise": "Pallof press",
+              "group": "Hinge_Hamstring",
+              "exercise": "Seated leg curl",
               "sets": 3,
-              "reps": 12,
-              "note": "Per side",
-              "rir": "—"
+              "reps": 10,
+              "note": "Knee flexion — the RDL only trains the hamstrings at the hip.",
+              "rir": "RIR 1"
             },
             {
               "slot": "Accessory 4",
@@ -1950,7 +1972,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 1",
               "group": "Hinge_Hamstring",
               "exercise": "Romanian deadlift",
-              "sets": 4,
+              "sets": 3,
               "reps": 10,
               "note": "Swapped from heavy deficit deadlift — higher reps drive more growth here than a low-rep compound",
               "rir": "RIR 2"
@@ -1959,7 +1981,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 2",
               "group": "Glute",
               "exercise": "Barbell hip thrust",
-              "sets": 3,
+              "sets": 2,
               "reps": 10,
               "note": "Knee-friendly sub for standing lunge patterns",
               "rir": "RIR 2"
@@ -1968,7 +1990,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 3",
               "group": "Quad_Knee_Friendly",
               "exercise": "Leg press (controlled range)",
-              "sets": 3,
+              "sets": 2,
               "reps": 12,
               "note": "Direct quad volume beyond the squat itself",
               "rir": "RIR 2"
@@ -1977,25 +1999,25 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 4",
               "group": "Vertical_Push",
               "exercise": "Cable lateral raise",
-              "sets": 3,
+              "sets": 2,
               "reps": 15,
               "note": "Side delt — spread across days rather than stacked on Day 2",
               "rir": "RIR 1"
             },
             {
               "slot": "Accessory 5",
-              "group": "Core",
-              "exercise": "Front plank",
-              "sets": 3,
-              "reps": 45,
-              "note": "Reps column = seconds held",
-              "rir": "—"
+              "group": "Calf",
+              "exercise": "Standing calf raise",
+              "sets": 2,
+              "reps": 12,
+              "note": "Full stretch at the bottom, pause at the top. No direct calf work existed in the block.",
+              "rir": "RIR 1"
             }
           ],
           "secondary": {
             "lift": "Incline Bench",
-            "sets": 4,
-            "pct": 0.55,
+            "sets": 3,
+            "pct": 0.6,
             "reps": 6
           }
         },
@@ -2007,7 +2029,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 1",
               "group": "Horizontal_Pull",
               "exercise": "Chest-supported DB row",
-              "sets": 4,
+              "sets": 3,
               "reps": 10,
               "note": null,
               "rir": "RIR 2"
@@ -2016,7 +2038,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 2",
               "group": "Vertical_Push",
               "exercise": "DB lateral raise",
-              "sets": 3,
+              "sets": 2,
               "reps": 15,
               "note": null,
               "rir": "RIR 1"
@@ -2025,7 +2047,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 3",
               "group": "Horizontal_Pull",
               "exercise": "Cable face pull",
-              "sets": 3,
+              "sets": 2,
               "reps": 15,
               "note": "Rear delt / upper-back health on your heaviest pressing day",
               "rir": "RIR 1"
@@ -2034,7 +2056,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 4",
               "group": "Arms",
               "exercise": "Triceps pushdown",
-              "sets": 3,
+              "sets": 2,
               "reps": 12,
               "note": null,
               "rir": "RIR 1"
@@ -2043,7 +2065,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 5",
               "group": "Arms",
               "exercise": "DB hammer curl",
-              "sets": 3,
+              "sets": 2,
               "reps": 12,
               "note": null,
               "rir": "RIR 2"
@@ -2051,8 +2073,8 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
           ],
           "secondary": {
             "lift": "Overhead Press",
-            "sets": 4,
-            "pct": 0.55,
+            "sets": 3,
+            "pct": 0.6,
             "reps": 6
           }
         },
@@ -2064,7 +2086,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 1",
               "group": "Vertical_Pull",
               "exercise": "Lat pulldown",
-              "sets": 4,
+              "sets": 3,
               "reps": 10,
               "note": null,
               "rir": "RIR 2"
@@ -2073,25 +2095,25 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 2",
               "group": "Quad_Knee_Friendly",
               "exercise": "Leg extension (light)",
-              "sets": 3,
+              "sets": 2,
               "reps": 12,
               "note": "Different quad exercise from Day 1 for variety",
               "rir": "RIR 1"
             },
             {
               "slot": "Accessory 3",
-              "group": "Core",
-              "exercise": "Pallof press",
-              "sets": 3,
-              "reps": 12,
-              "note": "Per side",
-              "rir": "—"
+              "group": "Hinge_Hamstring",
+              "exercise": "Seated leg curl",
+              "sets": 2,
+              "reps": 10,
+              "note": "Knee flexion — the RDL only trains the hamstrings at the hip.",
+              "rir": "RIR 1"
             },
             {
               "slot": "Accessory 4",
               "group": "Arms",
               "exercise": "Cable curl",
-              "sets": 3,
+              "sets": 2,
               "reps": 12,
               "note": "Second direct biceps session of the week",
               "rir": "RIR 2"
@@ -2100,7 +2122,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 5",
               "group": "Arms",
               "exercise": "DB skull crusher",
-              "sets": 3,
+              "sets": 2,
               "reps": 12,
               "note": "Second direct triceps session of the week",
               "rir": "RIR 2"
@@ -2108,8 +2130,8 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
           ],
           "secondary": {
             "lift": "Bench Press",
-            "sets": 4,
-            "pct": 0.55,
+            "sets": 3,
+            "pct": 0.6,
             "reps": 6
           }
         }
@@ -2161,12 +2183,12 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
             },
             {
               "slot": "Accessory 5",
-              "group": "Core",
-              "exercise": "Front plank",
+              "group": "Calf",
+              "exercise": "Standing calf raise",
               "sets": 3,
-              "reps": 45,
-              "note": "Reps column = seconds held",
-              "rir": "—"
+              "reps": 12,
+              "note": "Full stretch at the bottom, pause at the top. No direct calf work existed in the block.",
+              "rir": "RIR 1"
             }
           ],
           "secondary": {
@@ -2257,12 +2279,12 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
             },
             {
               "slot": "Accessory 3",
-              "group": "Core",
-              "exercise": "Pallof press",
+              "group": "Hinge_Hamstring",
+              "exercise": "Seated leg curl",
               "sets": 3,
-              "reps": 12,
-              "note": "Per side",
-              "rir": "—"
+              "reps": 10,
+              "note": "Knee flexion — the RDL only trains the hamstrings at the hip.",
+              "rir": "RIR 1"
             },
             {
               "slot": "Accessory 4",
@@ -2338,12 +2360,12 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
             },
             {
               "slot": "Accessory 5",
-              "group": "Core",
-              "exercise": "Front plank",
+              "group": "Calf",
+              "exercise": "Standing calf raise",
               "sets": 3,
-              "reps": 45,
-              "note": "Reps column = seconds held",
-              "rir": "—"
+              "reps": 12,
+              "note": "Full stretch at the bottom, pause at the top. No direct calf work existed in the block.",
+              "rir": "RIR 1"
             }
           ],
           "secondary": {
@@ -2434,12 +2456,12 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
             },
             {
               "slot": "Accessory 3",
-              "group": "Core",
-              "exercise": "Pallof press",
+              "group": "Hinge_Hamstring",
+              "exercise": "Seated leg curl",
               "sets": 3,
-              "reps": 12,
-              "note": "Per side",
-              "rir": "—"
+              "reps": 10,
+              "note": "Knee flexion — the RDL only trains the hamstrings at the hip.",
+              "rir": "RIR 1"
             },
             {
               "slot": "Accessory 4",
@@ -2515,12 +2537,12 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
             },
             {
               "slot": "Accessory 5",
-              "group": "Core",
-              "exercise": "Front plank",
+              "group": "Calf",
+              "exercise": "Standing calf raise",
               "sets": 3,
-              "reps": 45,
-              "note": "Reps column = seconds held",
-              "rir": "—"
+              "reps": 12,
+              "note": "Full stretch at the bottom, pause at the top. No direct calf work existed in the block.",
+              "rir": "RIR 1"
             }
           ],
           "secondary": {
@@ -2611,12 +2633,12 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
             },
             {
               "slot": "Accessory 3",
-              "group": "Core",
-              "exercise": "Pallof press",
+              "group": "Hinge_Hamstring",
+              "exercise": "Seated leg curl",
               "sets": 3,
-              "reps": 12,
-              "note": "Per side",
-              "rir": "—"
+              "reps": 10,
+              "note": "Knee flexion — the RDL only trains the hamstrings at the hip.",
+              "rir": "RIR 1"
             },
             {
               "slot": "Accessory 4",
@@ -2658,7 +2680,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 1",
               "group": "Hinge_Hamstring",
               "exercise": "Romanian deadlift",
-              "sets": 4,
+              "sets": 3,
               "reps": 10,
               "note": "Swapped from heavy deficit deadlift — higher reps drive more growth here than a low-rep compound",
               "rir": "RIR 2"
@@ -2667,7 +2689,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 2",
               "group": "Glute",
               "exercise": "Barbell hip thrust",
-              "sets": 3,
+              "sets": 2,
               "reps": 10,
               "note": "Knee-friendly sub for standing lunge patterns",
               "rir": "RIR 2"
@@ -2676,7 +2698,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 3",
               "group": "Quad_Knee_Friendly",
               "exercise": "Leg press (controlled range)",
-              "sets": 3,
+              "sets": 2,
               "reps": 12,
               "note": "Direct quad volume beyond the squat itself",
               "rir": "RIR 2"
@@ -2685,25 +2707,25 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 4",
               "group": "Vertical_Push",
               "exercise": "Cable lateral raise",
-              "sets": 3,
+              "sets": 2,
               "reps": 15,
               "note": "Side delt — spread across days rather than stacked on Day 2",
               "rir": "RIR 1"
             },
             {
               "slot": "Accessory 5",
-              "group": "Core",
-              "exercise": "Front plank",
-              "sets": 3,
-              "reps": 45,
-              "note": "Reps column = seconds held",
-              "rir": "—"
+              "group": "Calf",
+              "exercise": "Standing calf raise",
+              "sets": 2,
+              "reps": 12,
+              "note": "Full stretch at the bottom, pause at the top. No direct calf work existed in the block.",
+              "rir": "RIR 1"
             }
           ],
           "secondary": {
             "lift": "Incline Bench",
-            "sets": 4,
-            "pct": 0.55,
+            "sets": 3,
+            "pct": 0.6,
             "reps": 6
           }
         },
@@ -2715,7 +2737,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 1",
               "group": "Horizontal_Pull",
               "exercise": "Chest-supported DB row",
-              "sets": 4,
+              "sets": 3,
               "reps": 10,
               "note": null,
               "rir": "RIR 2"
@@ -2724,7 +2746,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 2",
               "group": "Vertical_Push",
               "exercise": "DB lateral raise",
-              "sets": 3,
+              "sets": 2,
               "reps": 15,
               "note": null,
               "rir": "RIR 1"
@@ -2733,7 +2755,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 3",
               "group": "Horizontal_Pull",
               "exercise": "Cable face pull",
-              "sets": 3,
+              "sets": 2,
               "reps": 15,
               "note": "Rear delt / upper-back health on your heaviest pressing day",
               "rir": "RIR 1"
@@ -2742,7 +2764,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 4",
               "group": "Arms",
               "exercise": "Triceps pushdown",
-              "sets": 3,
+              "sets": 2,
               "reps": 12,
               "note": null,
               "rir": "RIR 1"
@@ -2751,7 +2773,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 5",
               "group": "Arms",
               "exercise": "DB hammer curl",
-              "sets": 3,
+              "sets": 2,
               "reps": 12,
               "note": null,
               "rir": "RIR 2"
@@ -2759,8 +2781,8 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
           ],
           "secondary": {
             "lift": "Overhead Press",
-            "sets": 4,
-            "pct": 0.55,
+            "sets": 3,
+            "pct": 0.6,
             "reps": 6
           }
         },
@@ -2772,7 +2794,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 1",
               "group": "Vertical_Pull",
               "exercise": "Lat pulldown",
-              "sets": 4,
+              "sets": 3,
               "reps": 10,
               "note": null,
               "rir": "RIR 2"
@@ -2781,25 +2803,25 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 2",
               "group": "Quad_Knee_Friendly",
               "exercise": "Leg extension (light)",
-              "sets": 3,
+              "sets": 2,
               "reps": 12,
               "note": "Different quad exercise from Day 1 for variety",
               "rir": "RIR 1"
             },
             {
               "slot": "Accessory 3",
-              "group": "Core",
-              "exercise": "Pallof press",
-              "sets": 3,
-              "reps": 12,
-              "note": "Per side",
-              "rir": "—"
+              "group": "Hinge_Hamstring",
+              "exercise": "Seated leg curl",
+              "sets": 2,
+              "reps": 10,
+              "note": "Knee flexion — the RDL only trains the hamstrings at the hip.",
+              "rir": "RIR 1"
             },
             {
               "slot": "Accessory 4",
               "group": "Arms",
               "exercise": "Cable curl",
-              "sets": 3,
+              "sets": 2,
               "reps": 12,
               "note": "Second direct biceps session of the week",
               "rir": "RIR 2"
@@ -2808,7 +2830,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
               "slot": "Accessory 5",
               "group": "Arms",
               "exercise": "DB skull crusher",
-              "sets": 3,
+              "sets": 2,
               "reps": 12,
               "note": "Second direct triceps session of the week",
               "rir": "RIR 2"
@@ -2816,8 +2838,8 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
           ],
           "secondary": {
             "lift": "Bench Press",
-            "sets": 4,
-            "pct": 0.55,
+            "sets": 3,
+            "pct": 0.6,
             "reps": 6
           }
         }
@@ -2869,12 +2891,12 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
             },
             {
               "slot": "Accessory 5",
-              "group": "Core",
-              "exercise": "Front plank",
+              "group": "Calf",
+              "exercise": "Standing calf raise",
               "sets": 3,
-              "reps": 45,
-              "note": "Reps column = seconds held",
-              "rir": "—"
+              "reps": 12,
+              "note": "Full stretch at the bottom, pause at the top. No direct calf work existed in the block.",
+              "rir": "RIR 1"
             }
           ],
           "secondary": {
@@ -2965,12 +2987,12 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
             },
             {
               "slot": "Accessory 3",
-              "group": "Core",
-              "exercise": "Pallof press",
+              "group": "Hinge_Hamstring",
+              "exercise": "Seated leg curl",
               "sets": 3,
-              "reps": 12,
-              "note": "Per side",
-              "rir": "—"
+              "reps": 10,
+              "note": "Knee flexion — the RDL only trains the hamstrings at the hip.",
+              "rir": "RIR 1"
             },
             {
               "slot": "Accessory 4",
@@ -3194,8 +3216,8 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
       inputs: JSON.parse(JSON.stringify(D.INPUTS)),
       // Deep copy of the workbook's Block sheet — every field stays editable.
       block: JSON.parse(JSON.stringify(D.BLOCK)),
-      // logs[week][dayIdx] = { primary:[{reps,done}], secondary:{reps,done},
-      //                        accessories:[{weight,reps,rir,note}] }
+      // logs[week][dayIdx] = { primary:[{reps,done}], secondary:{reps:[n per set]},
+      //                        accessories:[{exercise,weight,reps,rir,note}] }
       logs: {},
       tracker: {},           // tracker['0|Squat'] = amrap reps
       customExercises: [],   // {group, name} added by the user on top of the library
@@ -3281,6 +3303,20 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
 
   function entryFor(name) {
     return B.libraryEntry(name) || null;
+  }
+
+  // Any lift programmed as a primary takes a Realization AMRAP, so it needs a
+  // TM row. Derived from the block so editing a primary keeps the tracker right.
+  function trackedLifts() {
+    var used = [];
+    state.block.forEach(function (w) {
+      w.days.forEach(function (d) {
+        if (d.primary && used.indexOf(d.primary) === -1) { used.push(d.primary); }
+      });
+    });
+    return state.inputs.lifts
+      .map(function (l) { return l.name; })
+      .filter(function (n) { return used.indexOf(n) !== -1; });
   }
 
   function addCustom(group, name) {
@@ -3384,6 +3420,18 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
     // --- secondary ---
     var sec = day.secondary;
     var secLoad = B.secondaryLoad(sec, inp.lifts, inp.rounding);
+    // One box per prescribed set, so "4 x 6" logs as four entries rather than
+    // one ambiguous number. Legacy single values land in set 1.
+    var secReps = (log.secondary && Array.isArray(log.secondary.reps))
+      ? log.secondary.reps
+      : (log.secondary && typeof log.secondary.reps === 'number' ? [log.secondary.reps] : []);
+    var secLogInputs = '';
+    for (var si = 0; si < (Number(sec.sets) || 0); si++) {
+      var sv = secReps[si];
+      secLogInputs += '<label class="setbox">' + (si + 1) +
+        '<input type="number" min="0" step="1" class="sec-log" data-i="' + si + '" value="' +
+        (sv === null || sv === undefined ? '' : sv) + '" placeholder="' + sec.reps + '"></label>';
+    }
     var secondaryBlock = '<h4>Secondary <span class="hint inline">sets × reps × %TM are yours to set</span></h4>' +
       '<div class="row wrap">' +
       '<label>Lift <select class="sec-lift">' + liftOpts(sec.lift) + '</select></label>' +
@@ -3391,9 +3439,8 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
       '<label>Reps <input type="number" min="1" step="1" class="sec-reps" value="' + sec.reps + '"></label>' +
       '<label>%TM <input type="number" min="0" max="100" step="0.5" class="sec-pct" value="' + (Math.round(sec.pct * 1000) / 10) + '"></label>' +
       '<span class="pill big">' + fmt(secLoad) + ' kg</span>' +
-      '<label>Logged reps <input type="number" min="0" step="1" class="sec-log" value="' +
-        (log.secondary && log.secondary.reps !== null && log.secondary.reps !== undefined ? log.secondary.reps : '') + '"></label>' +
-      '</div>';
+      '</div>' +
+      '<div class="row wrap seclog"><span class="hint">Reps done</span>' + secLogInputs + '</div>';
 
     // --- accessories ---
     var accRows = day.accessories.map(function (a, i) {
@@ -3434,7 +3481,8 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
       secondaryBlock +
       '<h4>Accessories</h4>' + accRows +
       '<div class="row"><button type="button" class="primary" data-action="save-day">Save day</button>' +
-      '<button type="button" data-action="copy-week">Apply this day\'s accessory picks to all weeks</button></div>' +
+      '<button type="button" data-action="copy-week">Apply exercise picks to all 12 weeks</button></div>' +
+      '<p class="hint">Copies the exercise, reps and RIR for this day into every week. Each week keeps its own set count, so realization weeks stay trimmed.</p>' +
       '</div>';
   }
 
@@ -3492,7 +3540,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
   function renderTracker() {
     var inp = state.inputs;
     var slots = [{ i: 0, label: 'Weeks 1–4' }, { i: 1, label: 'Weeks 5–8' }, { i: 2, label: 'Weeks 9–12' }];
-    var tracked = ['Squat', 'Bench Press', 'Deadlift'];
+    var tracked = trackedLifts();
     var rows = '';
     slots.forEach(function (slot) {
       var wave = inp.waves[slot.i];
@@ -3515,6 +3563,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
       '<p class="hint">New TM = old TM + (AMRAP reps − standard reps) × per-rep increment. Miss the standard and the TM drops — that is the method working, not a failure.</p>' +
       '<div class="scroll"><table class="table"><thead><tr><th>Wave slot</th><th>Wave</th><th>Lift</th><th>Old TM</th><th>Standard</th><th>AMRAP reps</th><th>Per-rep inc</th><th>New TM</th><th></th></tr></thead>' +
       '<tbody>' + rows + '</tbody></table></div>' +
+      '<p class="hint">Rows follow whichever lifts are set as primaries in the Block, since those are the ones taking a Realization AMRAP. Change a primary and this updates.</p>' +
       '<p class="hint">After each 4-week wave, enter the AMRAP reps and apply the new TM before the next wave starts.</p></section>';
   }
 
@@ -3596,7 +3645,11 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
     day.secondary.reps = num(card.querySelector('.sec-reps').value) || day.secondary.reps;
     var pct = num(card.querySelector('.sec-pct').value);
     if (pct !== null) { day.secondary.pct = pct / 100; }
-    log.secondary = { reps: num(card.querySelector('.sec-log').value) };
+    var secReps = [];
+    card.querySelectorAll('.sec-log').forEach(function (el) {
+      secReps[Number(el.dataset.i)] = num(el.value);
+    });
+    log.secondary = { reps: secReps };
 
     log.primary = [];
     card.querySelectorAll('.plog').forEach(function (el) {
@@ -3702,9 +3755,16 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
       for (var w = 1; w <= B.TOTAL_WEEKS; w++) {
         var d = weekEntry(w).days[state.ui.day];
         if (!d) { continue; }
-        d.accessories = JSON.parse(JSON.stringify(src.accessories));
+        // Exercise choice propagates; each week keeps its own set count, so the
+        // lighter realization weeks are not overwritten with accumulation volume.
+        d.accessories = src.accessories.map(function (a2, i) {
+          var copy = JSON.parse(JSON.stringify(a2));
+          var existing = d.accessories[i];
+          if (existing && existing.sets) { copy.sets = existing.sets; }
+          return copy;
+        });
       }
-      save(); renderApp(); toast('Accessory picks applied to all 12 weeks');
+      save(); renderApp(); toast('Exercise picks applied to all 12 weeks (set counts kept)');
     } else if (a === 'save-inputs') {
       saveInputs();
     } else if (a === 'apply-tm') {
@@ -3748,7 +3808,8 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
     }
     else if (t.classList.contains('acc-ex') && t.value === '__add__') { addCustomExercise(t); }
     else if (t.classList.contains('primary-lift') || t.classList.contains('sec-lift') ||
-             t.classList.contains('sec-pct') || t.classList.contains('acc-ex')) {
+             t.classList.contains('sec-pct') || t.classList.contains('sec-sets') ||
+             t.classList.contains('acc-ex')) {
       readDay(); save(); renderApp();
     }
     else if (t.id === 'import-file') {
