@@ -214,8 +214,11 @@ button.small { padding: 4px 10px; font-size: 0.8rem; margin-top: 6px; }
     return out;
   }
 
+  // The book caps the adjustment at 10 reps beyond the standard.
+  var REP_CAP_OVER_STANDARD = 10;
   function nextWorkingMax(workingMax, standard, achievedReps, incrementPerRep) {
-    return Math.round((workingMax + (achievedReps - standard) * incrementPerRep) * 100) / 100;
+    var over = Math.min(achievedReps - standard, REP_CAP_OVER_STANDARD);
+    return Math.round((workingMax + over * incrementPerRep) * 100) / 100;
   }
 
   function workingMaxFrom1RM(oneRM) {
@@ -236,7 +239,7 @@ button.small { padding: 4px 10px; font-size: 0.8rem; margin-top: 6px; }
     weekInfo: weekInfo,
     setsForWeek: setsForWeek,
     roundToIncrement: roundToIncrement,
-    nextWorkingMax: nextWorkingMax,
+    nextWorkingMax: nextWorkingMax, REP_CAP_OVER_STANDARD: REP_CAP_OVER_STANDARD,
     workingMaxFrom1RM: workingMaxFrom1RM,
     estimate1RM: estimate1RM
   };

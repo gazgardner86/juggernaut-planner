@@ -543,6 +543,16 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
         {
           "pct": 0.675,
           "reps": 10,
+          "amrap": false
+        },
+        {
+          "pct": 0.675,
+          "reps": 10,
+          "amrap": false
+        },
+        {
+          "pct": 0.675,
+          "reps": 10,
           "amrap": true
         }
       ],
@@ -623,6 +633,16 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
         {
           "pct": 0.675,
           "reps": 3,
+          "amrap": false
+        },
+        {
+          "pct": 0.725,
+          "reps": 8,
+          "amrap": false
+        },
+        {
+          "pct": 0.725,
+          "reps": 8,
           "amrap": false
         },
         {
@@ -723,6 +743,21 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
         {
           "pct": 0.775,
           "reps": 5,
+          "amrap": false
+        },
+        {
+          "pct": 0.775,
+          "reps": 5,
+          "amrap": false
+        },
+        {
+          "pct": 0.775,
+          "reps": 5,
+          "amrap": false
+        },
+        {
+          "pct": 0.775,
+          "reps": 5,
           "amrap": true
         }
       ],
@@ -749,6 +784,11 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
         },
         {
           "pct": 0.8,
+          "reps": 1,
+          "amrap": false
+        },
+        {
+          "pct": 0.85,
           "reps": 5,
           "amrap": true
         }
@@ -823,6 +863,26 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
         {
           "pct": 0.825,
           "reps": 3,
+          "amrap": false
+        },
+        {
+          "pct": 0.825,
+          "reps": 3,
+          "amrap": false
+        },
+        {
+          "pct": 0.825,
+          "reps": 3,
+          "amrap": false
+        },
+        {
+          "pct": 0.825,
+          "reps": 3,
+          "amrap": false
+        },
+        {
+          "pct": 0.825,
+          "reps": 3,
           "amrap": true
         }
       ],
@@ -854,6 +914,11 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
         },
         {
           "pct": 0.85,
+          "reps": 1,
+          "amrap": false
+        },
+        {
+          "pct": 0.9,
           "reps": 3,
           "amrap": true
         }
@@ -3159,9 +3224,12 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
     return mround(tm * secondary.pct, rounding);
   }
 
+  // The book caps the adjustment at 10 reps beyond the standard.
+  var REP_CAP_OVER_STANDARD = 10;
   function nextTM(oldTM, amrapReps, standard, incPerRep) {
     if (amrapReps === null || amrapReps === undefined || amrapReps === '') { return null; }
-    return Math.round((oldTM + (amrapReps - standard) * incPerRep) * 100) / 100;
+    var over = Math.min(amrapReps - standard, REP_CAP_OVER_STANDARD);
+    return Math.round((oldTM + over * incPerRep) * 100) / 100;
   }
 
   function exercisesInGroup(group) {
@@ -3210,7 +3278,7 @@ button.small { padding: 4px 9px; font-size: 0.78rem; }
     incFor: incFor,
     primarySets: primarySets,
     secondaryLoad: secondaryLoad,
-    nextTM: nextTM,
+    nextTM: nextTM, REP_CAP_OVER_STANDARD: REP_CAP_OVER_STANDARD,
     exercisesInGroup: exercisesInGroup,
     libraryEntry: libraryEntry,
     nutrition: nutrition,

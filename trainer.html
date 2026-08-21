@@ -1,0 +1,1565 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Juggernaut Trainer</title>
+<style>
+:root {
+  --bg:#f4f6f8; --card:#fff; --text:#16191d; --muted:#5b6472; --line:#dfe3e8;
+  --accent:#1f6f4a; --accent-text:#fff; --amap:#fff2e4; --amap-line:#b9481f;
+  --danger:#b03a2e; --tag:#b9481f; --last:#1f6f4a;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:#121417; --card:#1c1f24; --text:#e9ebee; --muted:#98a1ad; --line:#2f353e;
+    --accent:#35a06b; --accent-text:#06120c; --amap:#3a2b1a; --amap-line:#d9663f;
+    --danger:#d1543f; --tag:#d9663f; --last:#5fc493;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.45}
+header,#app,footer{max-width:920px;margin:0 auto;padding:0 12px}
+header{padding-top:18px}
+header h1{margin:0 0 2px;font-size:1.3rem}
+header .sub{margin:0 0 10px;color:var(--muted);font-size:.85rem}
+footer{color:var(--muted);font-size:.78rem;padding:18px 12px 40px}
+.tabs{display:flex;gap:6px;margin:8px 0 14px;flex-wrap:wrap}
+.tab{background:var(--card);border:1px solid var(--line);color:var(--text);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:.92rem}
+.tab.active{background:var(--accent);border-color:var(--accent);color:var(--accent-text);font-weight:600}
+.daytab{background:var(--card);border:1px solid var(--line);color:var(--text);padding:7px 12px;border-radius:8px;cursor:pointer;font-size:.86rem}
+.daytab.active{border-color:var(--accent);color:var(--accent);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:13px 15px;margin-bottom:12px}
+.card.sess{border-left:3px solid var(--accent)}
+.card.highlight{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+h2{font-size:1.02rem;margin:10px 0 8px}
+h3{font-size:.98rem;margin:0 0 6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hint{color:var(--muted);font-size:.84rem;margin:5px 0}
+.hint.sm{font-size:.78rem;margin:2px 0}
+.amap-hint{border-left:3px solid var(--amap-line);padding-left:10px}
+.kindtag{font-size:.62rem;text-transform:uppercase;letter-spacing:.07em;padding:2px 7px;border-radius:999px;border:1px solid var(--line);color:var(--muted);font-weight:700}
+.kindtag.main{background:var(--accent);border-color:var(--accent);color:var(--accent-text)}
+.kindtag.support{border-color:var(--accent);color:var(--accent)}
+.lasttime{font-size:.82rem;color:var(--last);margin:5px 0;padding:5px 8px;background:var(--bg);border-radius:6px}
+.warm{font-size:.8rem;color:var(--muted);margin:4px 0;font-style:italic}
+.table{width:100%;border-collapse:collapse;font-size:.9rem;margin:6px 0}
+.table th,.table td{text-align:left;padding:5px 7px;border-bottom:1px solid var(--line);vertical-align:middle}
+.table th{color:var(--muted);font-weight:600;font-size:.72rem;text-transform:uppercase;letter-spacing:.03em}
+.sets .setn{color:var(--muted);width:22px}
+.sets .pctcol{color:var(--muted);width:52px}
+.sets .target{color:var(--muted);white-space:nowrap}
+tr.amap td{background:var(--amap)}
+.tag{color:var(--tag);font-size:.66rem;font-weight:700;letter-spacing:.05em}
+input[type=number],input[type=text],select{background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px 7px;font-size:.92rem;font-family:inherit}
+input[type=number]{width:74px}
+.sets input[type=number]{width:68px}
+label{font-size:.83rem;color:var(--muted);display:inline-flex;align-items:center;gap:5px}
+button{font-family:inherit;font-size:.9rem;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--text);cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-text);font-weight:600}
+button.danger{color:var(--danger);border-color:var(--danger);background:transparent}
+button.small{padding:4px 9px;font-size:.77rem}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:7px 0}
+.row.wrap{gap:9px 13px}
+.row.spread{justify-content:space-between}
+.weekbar{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.weekbar select{flex:1;min-width:190px}
+.pill{background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:.79rem;color:var(--muted);white-space:nowrap;margin-left:4px}
+.banner{background:var(--amap);border:1px solid var(--amap-line);border-radius:8px;padding:8px 12px;font-size:.84rem;margin-bottom:10px}
+.scroll{overflow-x:auto}
+.slotedit{border-left:3px solid var(--line)}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);padding:10px 18px;border-radius:8px;font-size:.88rem;opacity:0;transition:all .25s ease;z-index:10}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#1f6f4a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Juggernaut Trainer">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="icon" href="./icon-192.png">
+</head>
+<body>
+<header>
+  <h1>Juggernaut Trainer <span style="font-size:.7em;color:var(--muted);font-weight:400">v2</span></h1>
+  <p class="sub">16-week BULK block · 4 waves × 4 weeks · training-max driven</p>
+</header>
+<div id="app"></div>
+<footer>Main lifts run the wave tables off your training max; the Realization AMRAP sets the next one. Everything else is yours to set. Data stays in this browser — export from Setup to back it up.<p style="margin-top:10px"><a href="./index.html" style="color:inherit">v1 bulk block →</a></p></footer>
+<script>
+/*
+ * Juggernaut trainer v2 — engine.
+ *
+ * One idea instead of three: every prescribed piece of work is a SLOT.
+ *   { movement, load, sets, reps, rir }
+ *
+ * A slot's load is typed, which is what lets a chin-up, a machine row and a
+ * barbell squat all live in the same structure:
+ *   { kind:'wave' }                      main lift — sets/reps/% from the wave table
+ *   { kind:'pctTM', lift, pct }          a percentage of some tracked lift's TM
+ *   { kind:'weight', kg }                a plain load
+ *   { kind:'bodyweight', added }         bodyweight plus whatever is on the belt
+ *   { kind:'open' }                      you decide in the gym
+ *
+ * Only wave slots take an AMRAP and drive the training max. Everything else is
+ * prescription plus logging. The wave tables and the progression formula are
+ * the method and are locked by tests/methodology-lock.test.mjs.
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) { module.exports = factory(); }
+  else { root.JG2 = factory(); }
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  var PHASES = ['Accumulation', 'Intensification', 'Realization', 'Deload'];
+
+  // The method. Percentages of the training max, reps, and where the AMRAP sits.
+  var WAVES = {
+    '10s': {
+      Accumulation: [[0.6, 10], [0.6, 10], [0.6, 10], [0.6, 10], [0.6, 10, 'A']],
+      Intensification: [[0.55, 5], [0.625, 5], [0.675, 10], [0.675, 10], [0.675, 10, 'A']],
+      Realization: [[0.5, 5], [0.6, 3], [0.7, 1], [0.75, 10, 'A']],
+      Deload: [[0.4, 5], [0.5, 5], [0.6, 5]]
+    },
+    '8s': {
+      Accumulation: [[0.65, 8], [0.65, 8], [0.65, 8], [0.65, 8], [0.65, 8, 'A']],
+      Intensification: [[0.6, 3], [0.675, 3], [0.725, 8], [0.725, 8], [0.725, 8, 'A']],
+      Realization: [[0.5, 5], [0.6, 3], [0.7, 2], [0.75, 1], [0.8, 8, 'A']],
+      Deload: [[0.4, 5], [0.5, 5], [0.6, 5]]
+    },
+    '5s': {
+      Accumulation: [[0.7, 5], [0.7, 5], [0.7, 5], [0.7, 5], [0.7, 5], [0.7, 5, 'A']],
+      Intensification: [[0.65, 2], [0.725, 2], [0.775, 5], [0.775, 5], [0.775, 5], [0.775, 5, 'A']],
+      Realization: [[0.5, 5], [0.6, 3], [0.7, 2], [0.75, 1], [0.8, 1], [0.85, 5, 'A']],
+      Deload: [[0.4, 5], [0.5, 5], [0.6, 5]]
+    },
+    '3s': {
+      Accumulation: [[0.75, 3], [0.75, 3], [0.75, 3], [0.75, 3], [0.75, 3], [0.75, 3], [0.75, 3, 'A']],
+      Intensification: [[0.7, 1], [0.775, 1], [0.825, 3], [0.825, 3], [0.825, 3], [0.825, 3], [0.825, 3, 'A']],
+      Realization: [[0.5, 5], [0.6, 3], [0.7, 2], [0.75, 1], [0.8, 1], [0.85, 1], [0.9, 3, 'A']],
+      Deload: [[0.4, 5], [0.5, 5], [0.6, 5]]
+    }
+  };
+
+  // Excel MROUND semantics: halves away from zero. Kept so v1 and v2 agree.
+  function mround(value, step) {
+    if (!step || step <= 0) { return value; }
+    var q = Math.abs(value) / step;
+    var r = Math.floor(q + 0.5) * step * (value < 0 ? -1 : 1);
+    return Math.round(r * 1000) / 1000;
+  }
+
+  function phaseFor(week) { return PHASES[(week - 1) % 4]; }
+  function waveSlotFor(week) { return Math.floor((week - 1) / 4); }
+  function waveFor(week, waveSlots) { return waveSlots[waveSlotFor(week) % waveSlots.length]; }
+  function standardReps(wave) { return parseInt(wave, 10); }
+
+  function tracked(name, lifts) {
+    for (var i = 0; i < lifts.length; i++) { if (lifts[i].name === name) { return lifts[i]; } }
+    return null;
+  }
+
+  /* ---------------- load resolution ---------------- */
+
+  // Returns kg, or null when the app can't know it (open loads, missing TM).
+  function resolveLoad(load, movement, ctx) {
+    if (!load) { return null; }
+    var lift;
+    switch (load.kind) {
+      case 'wave':
+        lift = tracked(movement, ctx.lifts);
+        return lift ? lift.tm : null;                     // caller applies the %
+      case 'pctTM':
+        lift = tracked(load.lift || movement, ctx.lifts);
+        return lift ? mround(lift.tm * load.pct, ctx.rounding) : null;
+      case 'weight':
+        return load.kg === null || load.kg === undefined ? null : load.kg;
+      case 'bodyweight':
+        // Bodyweight is not a plate load — don't round it to the plate step.
+        return ctx.bodyweight ? Math.round((ctx.bodyweight + (load.added || 0)) * 10) / 10 : null;
+      default:
+        return null;                                       // 'open'
+    }
+  }
+
+  function loadLabel(load, movement, ctx) {
+    if (!load) { return ''; }
+    if (load.kind === 'pctTM') { return Math.round(load.pct * 1000) / 10 + '% ' + (load.lift || movement); }
+    if (load.kind === 'bodyweight') {
+      var a = load.added || 0;
+      return a ? 'bodyweight + ' + a : 'bodyweight';
+    }
+    if (load.kind === 'open') { return 'your call'; }
+    return '';
+  }
+
+  /* ---------------- prescription ---------------- */
+
+  // Volume scaling per phase, applied to everything except the main lift —
+  // the wave table already varies the main work.
+  function phaseScale(phase, rules) {
+    var r = (rules || {})[phase];
+    return r && r.scale ? r.scale : 1;
+  }
+
+  // Scaling is per phase only. A per-wave bonus was tried and removed: the main
+  // lift's rep volume falls across the waves but its SET count rises (15 a week
+  // in the 10s, 21 in the 3s), so weekly totals already climb into the 3s wave
+  // without help. See the note in CLAUDE.md before adding one back.
+  function scaleSets(sets, phase, rules) {
+    var s = phaseScale(phase, rules);
+    if (s === 1) { return sets; }
+    return Math.max(1, Math.ceil(sets * s));
+  }
+
+  // Warm-up ramp into the first working set. Realization ramps itself through
+  // ascending singles, and a deload opens at 40% which is already a warm-up.
+  function warmups(firstKg, phase, ctx) {
+    if (phase === 'Realization' || phase === 'Deload' || !firstKg) { return []; }
+    return [
+      { reps: 5, kg: mround(firstKg * 0.5, ctx.rounding) },
+      { reps: 3, kg: mround(firstKg * 0.75, ctx.rounding) }
+    ];
+  }
+
+  // Expand one slot into the sets you actually perform.
+  function prescribe(slot, week, ctx) {
+    var phase = phaseFor(week);
+    var out = { movement: slot.movement, kind: slot.kind, rir: slot.rir, note: slot.note, sets: [], warmups: [] };
+
+    if (slot.load && slot.load.kind === 'wave') {
+      var wave = waveFor(week, ctx.waveSlots);
+      var table = (WAVES[wave] || {})[phase] || [];
+      var tm = resolveLoad(slot.load, slot.movement, ctx);
+      out.wave = wave;
+      out.standard = standardReps(wave);
+      out.sets = table.map(function (row, i) {
+        return {
+          n: i + 1,
+          pct: row[0],
+          reps: row[1],
+          amrap: row[2] === 'A',
+          kg: tm === null ? null : mround(tm * row[0], ctx.rounding)
+        };
+      });
+      if (out.sets.length) {
+        out.warmups = warmups(out.sets[0].kg, phase, { rounding: ctx.rounding });
+      }
+      return out;
+    }
+
+    var n = scaleSets(slot.sets || 1, phase, ctx.phaseRules);
+    var kg = resolveLoad(slot.load, slot.movement, ctx);
+    var reps = slot.reps;
+    // A support lift eases off in the realization week for the same reason the
+    // accessories do: that week's AMRAP sets the next training max.
+    if (slot.kind === 'support' && phase === 'Realization' && slot.load && slot.load.kind === 'pctTM') {
+      kg = resolveLoad({ kind: 'pctTM', lift: slot.load.lift, pct: 0.6 }, slot.movement, ctx);
+    }
+    for (var i = 0; i < n; i++) {
+      out.sets.push({ n: i + 1, reps: reps, kg: kg, amrap: false });
+    }
+    out.label = loadLabel(slot.load, slot.movement, ctx);
+    return out;
+  }
+
+  /* ---------------- the day ---------------- */
+
+  function slotsFor(programme, week, dayIndex) {
+    var day = programme.days[dayIndex];
+    var slots = day.slots.map(function (s) { return JSON.parse(JSON.stringify(s)); });
+    var ov = (programme.weekOverrides || {})[week];
+    var dayOv = ov && ov[day.name];
+    if (dayOv && dayOv.slots) {
+      Object.keys(dayOv.slots).forEach(function (id) {
+        for (var i = 0; i < slots.length; i++) {
+          if (slots[i].id === id) {
+            var patch = dayOv.slots[id];
+            Object.keys(patch).forEach(function (k) { slots[i][k] = patch[k]; });
+          }
+        }
+      });
+    }
+    return slots;
+  }
+
+  function prescribeDay(programme, week, dayIndex, ctx) {
+    var c = {
+      lifts: ctx.lifts, rounding: ctx.rounding, bodyweight: ctx.bodyweight,
+      waveSlots: ctx.waveSlots || programme.waveSlots, phaseRules: programme.phaseRules
+    };
+    return slotsFor(programme, week, dayIndex).map(function (s) {
+      var p = prescribe(s, week, c);
+      p.id = s.id;
+      p.slot = s;
+      return p;
+    });
+  }
+
+  /* ---------------- progression ---------------- */
+
+  // "[(Reps Performed - Standard) x Increment per rep] + Working Max = New Working Max",
+  // with the book's cap: only 10 reps beyond the standard count. Very high rep
+  // sets are common early on and would otherwise inflate the max past what the
+  // lift has earned.
+  var REP_CAP_OVER_STANDARD = 10;
+  function nextTM(oldTM, amrapReps, standard, incPerRep) {
+    if (amrapReps === null || amrapReps === undefined || amrapReps === '') { return null; }
+    var over = Math.min(amrapReps - standard, REP_CAP_OVER_STANDARD);
+    return Math.round((oldTM + over * incPerRep) * 100) / 100;
+  }
+
+  function estimate1RM(kg, reps) {
+    if (!kg || !reps || reps < 1) { return 0; }
+    return Math.round(kg * (1 + reps / 30) * 10) / 10;
+  }
+
+  // Which lifts take an AMRAP anywhere in the programme — the TM Tracker's rows.
+  function progressingLifts(programme) {
+    var seen = [];
+    for (var w = 1; w <= programme.weeks; w++) {
+      for (var d = 0; d < programme.days.length; d++) {
+        slotsFor(programme, w, d).forEach(function (s) {
+          if (s.load && s.load.kind === 'wave' && seen.indexOf(s.movement) === -1) { seen.push(s.movement); }
+        });
+      }
+    }
+    return seen;
+  }
+
+  /* ---------------- volume ---------------- */
+
+  function weeklyVolume(programme, week, ctx) {
+    var totals = {};
+    for (var d = 0; d < programme.days.length; d++) {
+      prescribeDay(programme, week, d, ctx).forEach(function (p) {
+        var m = programme.movements.filter(function (x) { return x.name === p.movement; })[0];
+        var group = m ? m.group : 'Other';
+        totals[group] = (totals[group] || 0) + p.sets.length;
+      });
+    }
+    return totals;
+  }
+
+  return {
+    PHASES: PHASES, WAVES: WAVES,
+    mround: mround, phaseFor: phaseFor, waveFor: waveFor, waveSlotFor: waveSlotFor,
+    standardReps: standardReps, tracked: tracked,
+    resolveLoad: resolveLoad, loadLabel: loadLabel,
+    prescribe: prescribe, prescribeDay: prescribeDay, slotsFor: slotsFor,
+    nextTM: nextTM, REP_CAP_OVER_STANDARD: REP_CAP_OVER_STANDARD, estimate1RM: estimate1RM, progressingLifts: progressingLifts,
+    weeklyVolume: weeklyVolume, scaleSets: scaleSets
+  };
+});
+
+</script>
+<script>
+/*
+ * The 16-week BULK block as a programme definition, not a 48-day grid.
+ *
+ * Three days of slots + phase rules + sparse week overrides. Changing an
+ * exercise is one edit here, not sixteen. Everything the coaching work in this
+ * repo settled on is encoded below with its reason.
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) { module.exports = factory(); }
+  else { root.JG2Programme = factory(); }
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  // The smallest load jump available is a property of the equipment, not of the
+  // programme — a cable stack, a pair of dumbbells and a barbell all step by
+  // different amounts, and they differ gym to gym. Each movement declares which
+  // kind of equipment it uses; the actual numbers live in settings.increments so
+  // they can be set to whatever the gym actually has.
+  var EQUIP = ['barbell', 'dumbbell', 'machine', 'cable', 'belt', 'none'];
+
+  var M = function (name, group, kit, equip, note) {
+    return { name: name, group: group, kit: kit || '', equip: equip || 'none', note: note || '' };
+  };
+
+  var MOVEMENTS = [
+    // Horizontal push
+    M('Bench Press', 'Horizontal_Push', 'Barbell + bench', 'barbell'),
+    M('Incline Bench', 'Horizontal_Push', 'Barbell + incline bench', 'barbell'),
+    M('Close-grip bench press', 'Horizontal_Push', 'Barbell + bench', 'barbell', 'Triceps bias, kinder on the shoulder'),
+    M('Cable fly', 'Horizontal_Push', 'Dual adjustable cable', 'cable', 'Loaded stretch the press does not give you'),
+    M('DB bench press', 'Horizontal_Push', 'Dumbbells + flat bench', 'dumbbell'),
+    M('Machine chest press', 'Horizontal_Push', 'Selectorised chest press', 'machine'),
+    M('Weighted dip', 'Horizontal_Push', 'Dip station + belt', 'belt'),
+    // Vertical push
+    M('Overhead Press', 'Vertical_Push', 'Barbell', 'barbell'),
+    M('Seated DB shoulder press', 'Vertical_Push', 'Dumbbells + upright bench', 'dumbbell'),
+    M('Machine shoulder press', 'Vertical_Push', 'Selectorised shoulder press', 'machine'),
+    M('DB lateral raise', 'Vertical_Push', 'Dumbbells', 'dumbbell'),
+    M('Cable lateral raise', 'Vertical_Push', 'Cable stack', 'cable', 'Tension held at the top, unlike a dumbbell'),
+    // Horizontal pull
+    M('Chest-supported row', 'Horizontal_Pull', 'T-bar or chest-supported machine', 'machine', 'Mid-back without any lower-back cost'),
+    M('Seated cable row', 'Horizontal_Pull', 'Cable row station', 'cable'),
+    M('Chest-supported DB row', 'Horizontal_Pull', 'Dumbbells + incline bench', 'dumbbell'),
+    M('Barbell row', 'Horizontal_Pull', 'Barbell', 'barbell', 'Spinally loaded — costs erector recovery'),
+    M('Machine row', 'Horizontal_Pull', 'Selectorised row', 'machine'),
+    M('Cable face pull', 'Horizontal_Pull', 'Cable + rope', 'cable', 'Rear delt and external rotation against your pressing volume'),
+    // Vertical pull
+    M('Weighted chin-up', 'Vertical_Pull', 'Pull-up bar + belt', 'belt', 'Treat it like a main lift: log the added weight every session'),
+    M('Lat pulldown', 'Vertical_Pull', 'Lat pulldown station', 'machine'),
+    M('Neutral-grip pulldown', 'Vertical_Pull', 'Lat pulldown + V bar', 'machine'),
+    M('Assisted pull-up', 'Vertical_Pull', 'Assisted dip/chin machine', 'machine', 'Reduce the assistance week to week'),
+    M('Straight-arm pulldown', 'Vertical_Pull', 'Cable + straight bar', 'cable'),
+    // Quad
+    M('Squat', 'Quad', 'Barbell + rack', 'barbell'),
+    M('Leg press', 'Quad', '45° leg press', 'machine'),
+    M('Hack squat', 'Quad', 'Hack squat machine', 'machine', 'Hardest quad loading available with the torso supported'),
+    M('Leg extension', 'Quad', 'Leg extension machine', 'machine'),
+    M('Bulgarian split squat', 'Quad', 'Dumbbells + bench', 'dumbbell'),
+    M('Walking lunge', 'Quad', 'Dumbbells', 'dumbbell'),
+    M('Step-up', 'Quad', 'Dumbbells + box', 'dumbbell'),
+    M('Smith squat to box', 'Quad', 'Smith machine + box', 'barbell', 'Depth capped by box height'),
+    M('Spanish squat', 'Quad', 'Band anchored to a rig', 'none', 'A warm-up, not a growth driver'),
+    // Hinge / hamstring
+    M('Deadlift', 'Hinge_Hamstring', 'Barbell', 'barbell'),
+    M('Romanian deadlift', 'Hinge_Hamstring', 'Barbell', 'barbell', 'Hip extension only — pair it with knee flexion'),
+    M('Seated leg curl', 'Hinge_Hamstring', 'Seated leg curl machine', 'machine', 'The knee flexion an RDL never gives you'),
+    M('Lying leg curl', 'Hinge_Hamstring', 'Lying leg curl machine', 'machine'),
+    M('DB stiff-leg deadlift', 'Hinge_Hamstring', 'Dumbbells', 'dumbbell'),
+    M('45° back extension', 'Hinge_Hamstring', 'Back extension bench', 'belt', 'Only if the lower back limits your squat or pull'),
+    M('Cable pull-through', 'Hinge_Hamstring', 'Cable + rope', 'cable'),
+    // Glute
+    M('Barbell hip thrust', 'Glute', 'Barbell + bench + pad', 'barbell'),
+    M('Hip thrust machine', 'Glute', 'Hip thrust machine', 'machine'),
+    M('Cable glute kickback', 'Glute', 'Cable + ankle strap', 'cable'),
+    M('Abduction machine', 'Glute', 'Hip abduction machine', 'machine'),
+    // Calf
+    M('Standing calf raise', 'Calf', 'Calf raise machine or Smith', 'machine', 'Full stretch at the bottom, pause at the top'),
+    M('Seated calf raise', 'Calf', 'Seated calf machine', 'machine', 'Soleus bias'),
+    M('Leg press calf raise', 'Calf', '45° leg press', 'machine'),
+    // Core
+    M('Cable crunch', 'Core', 'Cable + rope', 'cable', 'Load it and progress it like any other lift'),
+    M('Hanging knee raise', 'Core', "Pull-up bar / captain's chair", 'belt'),
+    M('Ab wheel rollout', 'Core', 'Ab wheel', 'none'),
+    M('Pallof press', 'Core', 'Cable, mid pulley', 'cable'),
+    M('Front plank', 'Core', 'Mat', 'none', 'Bracing work, not growth work'),
+    // Arms
+    M('EZ-bar curl', 'Arms', 'EZ bar', 'barbell'),
+    M('DB hammer curl', 'Arms', 'Dumbbells', 'dumbbell', 'Brachialis and brachioradialis bias'),
+    M('Cable curl', 'Arms', 'Cable + bar', 'cable'),
+    M('Triceps pushdown', 'Arms', 'Cable + bar or rope', 'cable'),
+    M('Overhead cable extension', 'Arms', 'Cable + rope', 'cable', 'The long head, which pressing never trains under stretch'),
+    M('DB skull crusher', 'Arms', 'Dumbbells + bench', 'dumbbell'),
+    // Conditioning
+    M('Rower intervals', 'Conditioning', 'Rower', 'none'),
+    M('Bike intervals', 'Conditioning', 'Upright/assault bike', 'none'),
+    M('Incline treadmill walk', 'Conditioning', 'Treadmill', 'none', 'Zero impact, good on a rest day'),
+    M('KB swing', 'Conditioning', 'Kettlebells', 'none'),
+    M('Farmer carry', 'Conditioning', 'Heavy dumbbells / hex bar', 'dumbbell')
+  ];
+
+  var GROUPS = ['Horizontal_Push', 'Vertical_Push', 'Horizontal_Pull', 'Vertical_Pull',
+    'Quad', 'Hinge_Hamstring', 'Glute', 'Calf', 'Core', 'Arms', 'Conditioning'];
+
+  var wave = function () { return { kind: 'wave' }; };
+  var pct = function (lift, p) { return { kind: 'pctTM', lift: lift, pct: p }; };
+  var kgs = function (n) { return { kind: 'weight', kg: n }; };
+  var open = function () { return { kind: 'open' }; };
+
+  function acc(id, movement, sets, reps, rir, note) {
+    return { id: id, kind: 'accessory', movement: movement, load: open(), sets: sets, reps: reps, rir: rir, note: note || '' };
+  }
+
+  // Base template = weeks 5-16. Weeks 1-4 differ only in which press is the
+  // main lift, handled by weekOverrides below.
+  var DAYS = [
+    {
+      name: 'Day 1',
+      slots: [
+        { id: 'main', kind: 'main', movement: 'Squat', load: wave() },
+        { id: 'support', kind: 'support', movement: 'Overhead Press', load: pct('Overhead Press', 0.65), sets: 4, reps: 6, rir: 3,
+          note: 'Pressed on completely fresh shoulders — its best session of the week' },
+        acc('a1', 'Romanian deadlift', 4, 10, 2),
+        acc('a2', 'Seated cable row', 3, 12, 2, 'Day 1 had no pulling at all; this balances the week'),
+        acc('a3', 'Hack squat', 3, 10, 1, 'Torso supported, so the quads get loaded without the erectors paying for it'),
+        acc('a4', 'Cable lateral raise', 3, 15, 1),
+        acc('a5', 'Neutral-grip pulldown', 3, 12, 1, 'Second vertical pull, two days off the chin-up — higher rep, different grip')
+      ]
+    },
+    {
+      name: 'Day 2',
+      slots: [
+        { id: 'main', kind: 'main', movement: 'Bench Press', load: wave() },
+        { id: 'support', kind: 'support', movement: 'Chest-supported row', load: kgs(60), sets: 4, reps: 8, rir: 2,
+          note: 'A pull in the main work, on fresh tissue, with no erector cost' },
+        acc('a1', 'Cable fly', 3, 12, 1),
+        acc('a2', 'DB lateral raise', 3, 15, 1),
+        acc('a3', 'Cable face pull', 3, 15, 1),
+        acc('a4', 'Overhead cable extension', 3, 12, 1),
+        acc('a5', 'Hanging knee raise', 3, 12, 1, 'Loaded spinal flexion — the presses and rows brace the trunk but never flex it')
+      ]
+    },
+    {
+      name: 'Day 3',
+      slots: [
+        { id: 'main', kind: 'main', movement: 'Deadlift', load: wave() },
+        { id: 'support', kind: 'support', movement: 'Incline Bench', load: pct('Incline Bench', 0.65), sets: 4, reps: 6, rir: 3 },
+        { id: 'a1', kind: 'accessory', movement: 'Weighted chin-up', load: { kind: 'bodyweight', added: 0 }, sets: 4, reps: 7, rir: 1,
+          note: 'Your loaded vertical pull — progress the belt weight like a main lift' },
+        acc('a2', 'Leg extension', 3, 15, 1, 'Rectus femoris is shortened at the hip in a squat and never trained well by it'),
+        acc('a3', 'Seated leg curl', 3, 10, 1),
+        acc('a4', 'EZ-bar curl', 3, 12, 1),
+        acc('a5', 'Cable crunch', 3, 12, 1)
+      ]
+    }
+  ];
+
+  // Weeks 1-4 give overhead press the primary slot so it runs a full wave with
+  // AMRAPs. Bench keeps two exposures throughout.
+  var pressWave = {};
+  [1, 2, 3, 4].forEach(function (w) {
+    pressWave[w] = {
+      'Day 1': { slots: { support: { movement: 'Incline Bench', load: pct('Incline Bench', 0.65) } } },
+      'Day 2': { slots: { main: { movement: 'Overhead Press' } } },
+      'Day 3': { slots: { support: { movement: 'Bench Press', load: pct('Bench Press', 0.65) } } }
+    };
+  });
+
+  return {
+    id: 'bulk-12wk-v2',
+    name: '16-Week BULK Block',
+    // The full method: four waves of four weeks. The workbook stopped at three
+    // waves, which drops the 3s wave — the one that turns the accumulated work
+    // into a heavy single-digit top set.
+    weeks: 16,
+    waveSlots: ['10s', '8s', '5s', '3s'],
+    days: DAYS,
+    movements: MOVEMENTS,
+    groups: GROUPS,
+    equipment: EQUIP,
+    weekOverrides: pressWave,
+    // Volume scaling for everything except the main lift, whose wave table
+    // already varies. Realization is the week whose AMRAP sets the next TM.
+    phaseRules: {
+      Realization: { scale: 2 / 3 },
+      Deload: { scale: 1 / 3 }
+    },
+    defaults: {
+      lifts: [
+        { name: 'Squat', tm: 100, inc: 2.5 },
+        { name: 'Bench Press', tm: 70, inc: 1.25 },
+        { name: 'Deadlift', tm: 120, inc: 2.5 },
+        { name: 'Overhead Press', tm: 45, inc: 1.25 },
+        { name: 'Incline Bench', tm: 60, inc: 1.25 }
+      ],
+      rounding: 2.5,
+      unit: 'kg',
+      // The smallest jump each kind of equipment allows, in the unit above.
+      // Defaults assume 1.25 kg plates, 2 kg dumbbell steps, and machines with
+      // 2.5 lb (~1.13 kg) add-ons — set them to whatever your gym actually has.
+      // 'none' has no meaningful jump, so those movements never auto-progress.
+      increments: {
+        barbell: 2.5,
+        dumbbell: 2,
+        machine: 1.13,
+        cable: 1.13,
+        belt: 1.25
+      },
+      bodyweight: 80,
+      maintenance: 2500,
+      surplus: 300
+    }
+  };
+});
+
+</script>
+<script>
+/* Juggernaut trainer v2 — UI and state. All maths lives in engine.js. */
+(function () {
+  'use strict';
+
+  var E = window.JG2;
+  var P0 = window.JG2Programme;
+  var KEY = 'gym-coach-jg-v2';
+  var V1KEY = 'gym-coach-bulk-block-v1';
+
+  /* ---------------- state ---------------- */
+
+  function defaultState() {
+    return {
+      version: 2,
+      settings: {
+        rounding: P0.defaults.rounding, unit: P0.defaults.unit,
+        increments: JSON.parse(JSON.stringify(P0.defaults.increments)),
+        bodyweight: P0.defaults.bodyweight,
+        maintenance: P0.defaults.maintenance, surplus: P0.defaults.surplus
+      },
+      lifts: JSON.parse(JSON.stringify(P0.defaults.lifts)),
+      // The user's own copy of the programme: template + overrides, not 36 days.
+      programme: { days: JSON.parse(JSON.stringify(P0.days)), weekOverrides: JSON.parse(JSON.stringify(P0.weekOverrides)) },
+      cursor: { week: 1, day: 0 },
+      logs: {},
+      tracker: {},
+      // Tracker key -> the TM the wave was lifted at, recorded when Apply is
+      // clicked. Recomputes always run from this base, so tapping Apply twice
+      // (or re-editing the reps later) never compounds — v1 stored preWM on the
+      // session log for the same reason.
+      trackerBase: {},
+      customMovements: [],
+      // Movement name -> equipment class, when the built-in classification is
+      // wrong for your gym, or for a movement you added yourself.
+      equipOverrides: {},
+      // Movement name -> its own progression step, set by hand in Library.
+      // Beats the equipment class for that one movement.
+      movementIncrements: {},
+      ui: { tab: 'today', blockWeek: 1, blockDay: 0 }
+    };
+  }
+
+  var memoryOnly = false;
+  var state = load();
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        var base = defaultState();
+        Object.keys(base).forEach(function (k) { if (parsed[k] === undefined) { parsed[k] = base[k]; } });
+        // settings gained keys after v2 shipped, so backfill inside it too —
+        // a state saved before then has no increments at all.
+        Object.keys(base.settings).forEach(function (k) {
+          if (parsed.settings[k] === undefined) { parsed.settings[k] = base.settings[k]; }
+        });
+        Object.keys(base.settings.increments).forEach(function (k) {
+          if (parsed.settings.increments[k] === undefined) { parsed.settings.increments[k] = base.settings.increments[k]; }
+        });
+        return parsed;
+      }
+      return migrateFromV1() || defaultState();
+    } catch (e) { memoryOnly = true; }
+    return defaultState();
+  }
+
+  // Carry across what maps cleanly from v1: training maxes and the nutrition
+  // inputs. v1's logs stay in v1 — the shapes are too different to guess at.
+  function migrateFromV1() {
+    try {
+      var old = JSON.parse(localStorage.getItem(V1KEY) || 'null');
+      if (!old || !old.inputs) { return null; }
+      var s = defaultState();
+      s.lifts = s.lifts.map(function (l) {
+        var m = (old.inputs.lifts || []).filter(function (x) { return x.name === l.name; })[0];
+        return m ? { name: l.name, tm: m.tm, inc: m.inc } : l;
+      });
+      s.settings.rounding = old.inputs.rounding || s.settings.rounding;
+      s.settings.bodyweight = old.inputs.bodyweight || s.settings.bodyweight;
+      s.settings.maintenance = old.inputs.maintenance || s.settings.maintenance;
+      s.settings.surplus = old.inputs.surplus === undefined ? s.settings.surplus : old.inputs.surplus;
+      s.migrated = true;
+      return s;
+    } catch (e) { return null; }
+  }
+
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { memoryOnly = true; }
+  }
+
+  /* ---------------- helpers ---------------- */
+
+  function esc(s) {
+    return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function num(v) { if (v === '' || v === null || v === undefined) { return null; } var n = Number(v); return isNaN(n) ? null : n; }
+  function fmt(n) { return (n === null || n === undefined || isNaN(n)) ? '–' : String(Math.round(n * 100) / 100); }
+  function pretty(g) { return String(g || '').replace(/_/g, ' '); }
+  var U = function () { return state.settings.unit; };
+
+  function programme() {
+    return {
+      id: P0.id, name: P0.name, weeks: P0.weeks, waveSlots: P0.waveSlots,
+      days: state.programme.days, movements: movements(), groups: P0.groups,
+      weekOverrides: state.programme.weekOverrides, phaseRules: P0.phaseRules
+    };
+  }
+  function movements() {
+    var all = P0.movements.concat(state.customMovements || []);
+    var ov = state.equipOverrides || {};
+    return all.map(function (m) {
+      return ov[m.name] === undefined ? m
+        : { name: m.name, group: m.group, kit: m.kit, equip: ov[m.name], note: m.note };
+    });
+  }
+
+  // The step this movement progresses by. A number typed against the movement
+  // itself in Library wins; otherwise it comes from the equipment class. 'none'
+  // (bands, plain bodyweight, conditioning) has no meaningful jump, so those
+  // never auto-progress unless you give them a number by hand.
+  function incrementFor(movementName) {
+    var own = (state.movementIncrements || {})[movementName];
+    if (own !== undefined && own !== null && own > 0) { return own; }
+    return equipIncrementFor(movementName);
+  }
+
+  function equipIncrementFor(movementName) {
+    var equip = (movementInfo(movementName) || {}).equip || 'none';
+    if (equip === 'none') { return null; }
+    var v = (state.settings.increments || {})[equip];
+    return v === undefined || v === null || v <= 0 ? null : v;
+  }
+  function movementsIn(group) { return movements().filter(function (m) { return m.group === group; }); }
+  function movementInfo(name) { return movements().filter(function (m) { return m.name === name; })[0] || null; }
+
+  function ctx() {
+    return {
+      lifts: state.lifts, rounding: state.settings.rounding,
+      bodyweight: state.settings.bodyweight, waveSlots: P0.waveSlots
+    };
+  }
+
+  function logKey(week, day) { return week + '|' + day; }
+  function logFor(week, day) {
+    var k = logKey(week, day);
+    if (!state.logs[k]) { state.logs[k] = { date: null, slots: {} }; }
+    return state.logs[k];
+  }
+
+  // The most recent logged sets for a movement, before the given session.
+  function lastTime(movement, week, day) {
+    for (var w = week; w >= 1; w--) {
+      for (var d = (w === week ? day - 1 : programme().days.length - 1); d >= 0; d--) {
+        var l = state.logs[logKey(w, d)];
+        if (!l) { continue; }
+        var hit = null;
+        Object.keys(l.slots).forEach(function (id) {
+          var s = l.slots[id];
+          if (s && s.movement === movement && (s.sets || []).some(function (x) { return x && x.reps; })) { hit = s; }
+        });
+        if (hit) { return { entry: hit, week: w, day: d }; }
+      }
+    }
+    return null;
+  }
+
+  function toast(msg) {
+    var el = document.createElement('div');
+    el.className = 'toast'; el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(function () { el.classList.add('show'); }, 10);
+    setTimeout(function () { el.classList.remove('show'); }, 2400);
+    setTimeout(function () { el.remove(); }, 2900);
+  }
+
+  /* ---------------- shell ---------------- */
+
+  var TABS = [
+    { id: 'today', label: 'Today' },
+    { id: 'block', label: 'Block' },
+    { id: 'setup', label: 'Setup' },
+    { id: 'progress', label: 'Progress' },
+    { id: 'library', label: 'Library' }
+  ];
+
+  function render() {
+    var views = { today: viewToday, block: viewBlock, setup: viewSetup, progress: viewProgress, library: viewLibrary };
+    document.getElementById('app').innerHTML =
+      (memoryOnly ? '<div class="banner">Browser storage unavailable — this tab only. Export from Setup.</div>' : '') +
+      (state.migrated ? '<div class="banner">Training maxes and nutrition carried over from your v1 data. v1 logs stay in the old app. <button type="button" class="small" data-action="dismiss-migrate">OK</button></div>' : '') +
+      '<nav class="tabs">' + TABS.map(function (t) {
+        return '<button type="button" id="tab-' + t.id + '" class="tab' + (state.ui.tab === t.id ? ' active' : '') +
+          '" data-action="tab" data-tab="' + t.id + '">' + t.label + '</button>';
+      }).join('') + '</nav><main>' + views[state.ui.tab]() + '</main>';
+  }
+
+  /* ---------------- session rendering ---------------- */
+
+  function sessionHeader(week, day, editable) {
+    var wave = E.waveFor(week, P0.waveSlots), phase = E.phaseFor(week);
+    var d = programme().days[day];
+    return '<div class="card sess">' +
+      '<div class="row spread"><h2>' + esc(d.name) + ' · Week ' + week + '</h2>' +
+      '<span><span class="pill">' + wave + '</span><span class="pill">' + phase + '</span></span></div>' +
+      (phase === 'Realization' ? '<p class="hint amap-hint">Realization: the last main set is an AMRAP against a standard of ' +
+        E.standardReps(wave) + '. Log the reps in <b>Progress</b> — that is what moves your training max.</p>' : '') +
+      (phase === 'Deload' ? '<p class="hint amap-hint">Deload: main work as written, everything else cut right back. Leave fresh.</p>' : '') +
+      '</div>';
+  }
+
+  function renderSlot(p, week, day, idx) {
+    var log = logFor(week, day);
+    var entry = log.slots[p.id] || {};
+    var logged = entry.sets || [];
+    var prev = lastTime(p.movement, week, day);
+    var info = movementInfo(p.movement);
+    var isMain = p.slot.load.kind === 'wave';
+
+    var prevLine = '';
+    if (prev) {
+      var txt = (prev.entry.sets || []).filter(function (s) { return s && s.reps; })
+        .map(function (s) { return (s.kg === null || s.kg === undefined ? '?' : s.kg) + '×' + (s.reps === null || s.reps === undefined ? '?' : s.reps); }).join('  ');
+      prevLine = '<div class="lasttime"><b>Last time</b> (wk ' + prev.week + '): ' + esc(txt) + '</div>';
+    }
+
+    var warm = p.warmups.length
+      ? '<div class="warm">Warm-up: ' + p.warmups.map(function (w) { return fmt(w.kg) + ' × ' + w.reps; }).join('  ·  ') + '</div>'
+      : '';
+
+    var rows = p.sets.map(function (s, i) {
+      var lg = logged[i] || {};
+      var kgVal = lg.kg !== null && lg.kg !== undefined ? lg.kg : (s.kg === null ? fmtBox(suggestedKgFor(p.movement, week, day, i)) : s.kg);
+      var repVal = lg.reps !== null && lg.reps !== undefined ? lg.reps : '';
+      var rirVal = lg.rir !== null && lg.rir !== undefined ? lg.rir : '';
+      return '<tr' + (s.amrap ? ' class="amap"' : '') + '>' +
+        '<td class="setn">' + s.n + '</td>' +
+        (isMain ? '<td class="pctcol">' + Math.round(s.pct * 1000) / 10 + '%</td>' : '') +
+        '<td><input type="number" step="0.5" min="0" class="in-kg" data-i="' + i + '" value="' + kgVal + '"></td>' +
+        '<td class="target">' + (s.amrap ? s.reps + '+ <span class="tag">AMRAP</span>' : '× ' + s.reps) + '</td>' +
+        '<td><input type="number" step="1" min="0" class="in-reps" data-i="' + i + '" value="' + repVal + '" placeholder="' + s.reps + '"></td>' +
+        (isMain ? '' : '<td><input type="number" step="1" min="0" class="in-rir" data-i="' + i + '" value="' + rirVal + '" placeholder="' + (p.rir === undefined ? '' : p.rir) + '"></td>') +
+        '</tr>';
+    }).join('');
+
+    return '<div class="card slot" data-slot="' + esc(p.id) + '" data-movement="' + esc(p.movement) + '">' +
+      '<div class="row spread">' +
+      '<h3><span class="kindtag ' + p.kind + '">' + p.kind + '</span> ' + esc(p.movement) + '</h3>' +
+      '<span class="pill">' + (isMain ? p.wave + ' · TM ' + fmt((E.tracked(p.movement, state.lifts) || {}).tm) + ' ' + U()
+        : (p.label ? esc(p.label) : '') + (p.rir !== undefined ? ' · RIR ' + p.rir : '')) + '</span>' +
+      '</div>' +
+      (info && info.kit ? '<div class="hint sm">' + esc(info.kit) + (info.note ? ' — ' + esc(info.note) : '') + '</div>' : '') +
+      (p.note ? '<div class="hint sm">' + esc(p.note) + '</div>' : '') +
+      prevLine + warm +
+      '<table class="table sets"><thead><tr><th></th>' + (isMain ? '<th>%TM</th>' : '') +
+      '<th>' + U() + '</th><th>Target</th><th>Reps</th>' + (isMain ? '' : '<th>RIR</th>') + '</tr></thead><tbody>' + rows + '</tbody></table>' +
+      '</div>';
+  }
+
+  function fmtBox(n) { return n === null || n === undefined ? '' : n; }
+
+  var EQUIP_LABELS = [
+    { id: 'barbell', label: 'Barbell', note: 'Smallest pair of plates — 1.25 kg each side' },
+    { id: 'dumbbell', label: 'Dumbbells', note: 'The gap between one dumbbell and the next' },
+    { id: 'machine', label: 'Machines', note: 'Selectorised stacks, leg press, hack squat' },
+    { id: 'cable', label: 'Cables', note: 'Often the same stack increment as the machines' },
+    { id: 'belt', label: 'Bodyweight + belt', note: 'Chin-ups, dips — the plate you hang on' }
+  ];
+
+  // Open loads have no prescribed number, so the box would otherwise start
+  // blank every session. Suggest last time's weight for that set instead —
+  // it's still just a prefill: a set only logs once reps are entered, so
+  // this can't record a set you didn't do. If last time earned a progression
+  // bump (see progressAccessories), the suggestion carries that bump forward
+  // without rewriting what you actually logged.
+  function suggestedKgFor(movement, week, day, i) {
+    var prev = lastTime(movement, week, day);
+    if (!prev) { return null; }
+    var prevSets = prev.entry.sets || [];
+    var bump = prev.entry.suggestBump || 0;
+    var exact = prevSets[i];
+    if (exact && exact.kg !== null && exact.kg !== undefined) { return exact.kg + bump; }
+    for (var j = prevSets.length - 1; j >= 0; j--) {
+      if (prevSets[j] && prevSets[j].kg !== null && prevSets[j].kg !== undefined) { return prevSets[j].kg + bump; }
+    }
+    return null;
+  }
+
+  function viewToday() {
+    var week = state.cursor.week, day = state.cursor.day;
+    var prescribed = E.prescribeDay(programme(), week, day, ctx());
+    var done = state.logs[logKey(week, day)] && state.logs[logKey(week, day)].date;
+    return sessionHeader(week, day) +
+      prescribed.map(function (p, i) { return renderSlot(p, week, day, i); }).join('') +
+      '<div class="card"><div class="row">' +
+      '<button type="button" class="primary" data-action="save-session">Save session</button>' +
+      '<button type="button" data-action="finish-session">Save &amp; next session ▶</button>' +
+      '<button type="button" data-action="skip-back">◀ back</button>' +
+      '</div>' + (done ? '<p class="hint">Logged ' + esc(done) + '</p>' : '') + '</div>';
+  }
+
+  /* ---------------- block editing ---------------- */
+
+  function daysLogged(week) {
+    var n = 0;
+    for (var d = 0; d < state.programme.days.length; d++) {
+      var l = state.logs[logKey(week, d)];
+      if (l && l.date) { n++; }
+    }
+    return n;
+  }
+
+  // Shared by the Block browser and the Setup "start here" picker so both
+  // list weeks the same way: wave and phase alongside the number, plus how
+  // much of the week is already logged.
+  function weekOptionsHtml(selectedWeek) {
+    var total = state.programme.days.length;
+    var opts = '';
+    for (var w = 1; w <= P0.weeks; w++) {
+      var dl = daysLogged(w);
+      var mark = dl === total ? ' ✓' : dl > 0 ? ' · ' + dl + '/' + total : '';
+      opts += '<option value="' + w + '"' + (w === selectedWeek ? ' selected' : '') + '>Week ' + w + ' — ' +
+        E.waveFor(w, P0.waveSlots) + ' · ' + E.phaseFor(w) + mark + '</option>';
+    }
+    return opts;
+  }
+
+  function viewBlock() {
+    var week = state.ui.blockWeek, day = state.ui.blockDay;
+    var pr = programme();
+    var opts = weekOptionsHtml(week);
+    var slots = E.slotsFor(pr, week, day);
+    var trackedNames = state.lifts.map(function (l) { return l.name; });
+    var progressing = E.progressingLifts(pr);
+
+    var rows = slots.map(function (s) {
+      var isMain = s.load.kind === 'wave';
+      var pool = isMain ? progressing : movementsIn((movementInfo(s.movement) || {}).group || pr.groups[0]).map(function (m) { return m.name; });
+      var groupSel = isMain ? '' :
+        '<label>Group <select class="s-group">' + pr.groups.map(function (g) {
+          var cur = (movementInfo(s.movement) || {}).group;
+          return '<option value="' + g + '"' + (g === cur ? ' selected' : '') + '>' + pretty(g) + '</option>';
+        }).join('') + '</select></label>';
+      var movSel = '<label>Movement <select class="s-move">' +
+        pool.map(function (n) { return '<option value="' + esc(n) + '"' + (n === s.movement ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') +
+        (isMain ? '' : '<option value="__add__">+ Add your own…</option>') + '</select></label>';
+
+      var loadCtl = '';
+      if (!isMain) {
+        loadCtl = '<label>Load <select class="s-loadkind">' +
+          ['pctTM', 'weight', 'bodyweight', 'open'].map(function (k) {
+            var lbl = { pctTM: '% of a TM', weight: 'fixed weight', bodyweight: 'bodyweight', open: 'your call' }[k];
+            return '<option value="' + k + '"' + (k === s.load.kind ? ' selected' : '') + '>' + lbl + '</option>';
+          }).join('') + '</select></label>';
+        if (s.load.kind === 'pctTM') {
+          loadCtl += '<label>of <select class="s-loadlift">' + trackedNames.map(function (n) {
+            return '<option value="' + esc(n) + '"' + (n === (s.load.lift || s.movement) ? ' selected' : '') + '>' + esc(n) + '</option>';
+          }).join('') + '</select></label>' +
+            '<label>% <input type="number" step="0.5" class="s-pct" value="' + (Math.round(s.load.pct * 1000) / 10) + '"></label>';
+        } else if (s.load.kind === 'weight') {
+          loadCtl += '<label>' + U() + ' <input type="number" step="0.5" class="s-kg" value="' + (s.load.kg === null || s.load.kg === undefined ? '' : s.load.kg) + '"></label>';
+        } else if (s.load.kind === 'bodyweight') {
+          loadCtl += '<label>+ <input type="number" step="0.5" class="s-added" value="' + (s.load.added || 0) + '"></label>';
+        } else if (s.load.kind === 'open') {
+          loadCtl += '<span class="hint">No fixed number — you\'ll still enter what you actually lifted on the Today tab, same as every other slot. This just means the plan doesn\'t prescribe one for you.</span>';
+        }
+        loadCtl += '<label>Sets <input type="number" min="1" step="1" class="s-sets" value="' + s.sets + '"></label>' +
+          '<label>Reps <input type="number" min="1" step="1" class="s-reps" value="' + s.reps + '"></label>' +
+          '<label>RIR <input type="number" min="0" step="1" class="s-rir" value="' + (s.rir === undefined ? '' : s.rir) + '"></label>' +
+          // Sets the progression step, and is the only way an exercise you added
+          // yourself gets one — new movements start as 'none' and never progress.
+          '<label>Kit <select class="s-equip" data-movement="' + esc(s.movement) + '">' +
+          P0.equipment.map(function (eq) {
+            var cur = (movementInfo(s.movement) || {}).equip || 'none';
+            var lbl = eq === 'none' ? 'no auto-progression' : eq;
+            return '<option value="' + eq + '"' + (eq === cur ? ' selected' : '') + '>' + lbl + '</option>';
+          }).join('') + '</select></label>';
+      } else {
+        loadCtl = '<span class="hint">Sets, reps and percentages come from the ' + E.waveFor(week, P0.waveSlots) + ' wave table.</span>';
+      }
+
+      return '<div class="card slotedit" data-slot="' + esc(s.id) + '">' +
+        '<div class="row spread"><b><span class="kindtag ' + s.kind + '">' + s.kind + '</span></b></div>' +
+        '<div class="row wrap">' + groupSel + movSel + '</div>' +
+        '<div class="row wrap">' + loadCtl + '</div></div>';
+    }).join('');
+
+    var vol = E.weeklyVolume(pr, week, ctx());
+    return '<div class="card weekbar">' +
+      '<select id="block-week">' + opts + '</select>' +
+      pr.days.map(function (d, i) {
+        var dlog = state.logs[logKey(week, i)];
+        return '<button type="button" class="daytab' + (i === day ? ' active' : '') + '" data-action="block-day" data-day="' + i + '">' + esc(d.name) + (dlog && dlog.date ? ' ✓' : '') + '</button>';
+      }).join('') + '</div>' +
+      '<p class="hint">Edits apply to <b>this week only</b> unless you push them to the whole block. The main lift\'s sets and percentages always come from the wave table.</p>' +
+      rows +
+      '<div class="card"><div class="row">' +
+      '<button type="button" class="primary" data-action="save-slots">Save this week</button>' +
+      '<button type="button" data-action="push-all">Apply to all ' + P0.weeks + ' weeks</button>' +
+      '<button type="button" data-action="jump-here">Train this session</button></div></div>' +
+      '<div class="card"><h3>Week ' + week + ' sets by group</h3><p class="hint">' +
+      Object.keys(vol).sort().map(function (g) { return pretty(g) + ' ' + vol[g]; }).join(' · ') +
+      ' &nbsp;—&nbsp; <b>' + Object.keys(vol).reduce(function (t, g) { return t + vol[g]; }, 0) + ' sets</b></p></div>';
+  }
+
+  /* ---------------- setup ---------------- */
+
+  function viewSetup() {
+    var s = state.settings;
+    // Protein is prescribed per kg of bodyweight; convert when the app is in lb
+    // or the maths silently doubles the target.
+    var bwKg = s.unit === 'lb' ? s.bodyweight * 0.45359237 : s.bodyweight;
+    var protein = [Math.round(bwKg * 2), Math.round(bwKg * 2.2)];
+    var atDefault = state.cursor.week === 1 && state.cursor.day === 0 &&
+      Object.keys(state.logs).length === 0;
+    var startCard = '<section class="card' + (state.migrated && atDefault ? ' highlight' : '') + '">' +
+      '<h2>Start / jump to a week</h2>' +
+      (state.migrated && atDefault ?
+        '<p class="hint">Training maxes and nutrition carried over from the old app. Logs did not — pick the week you\'re actually on before your next session, so the wave table and volume match where you are.</p>' : '') +
+      '<p class="hint">Currently set to <b>' + esc(programme().days[state.cursor.day].name) + ', Week ' + state.cursor.week + '</b> ' +
+      '(' + E.waveFor(state.cursor.week, P0.waveSlots) + ' · ' + E.phaseFor(state.cursor.week) + ').</p>' +
+      '<div class="row wrap">' +
+      '<label>Week <select id="start-week">' + weekOptionsHtml(state.cursor.week) + '</select></label>' +
+      '<label>Day <select id="start-day">' + programme().days.map(function (d, i) {
+        return '<option value="' + i + '"' + (i === state.cursor.day ? ' selected' : '') + '>' + esc(d.name) + '</option>';
+      }).join('') + '</select></label>' +
+      '<button type="button" class="primary" data-action="start-week">Start here</button>' +
+      '</div></section>';
+    return startCard +
+      '<section class="card"><h2>Training maxes</h2>' +
+      '<p class="hint">Every lift here can be used as a percentage-based load. Only lifts used as a <b>main</b> lift take an AMRAP and progress automatically — see Progress.</p>' +
+      '<table class="table"><thead><tr><th>Lift</th><th>TM (' + U() + ')</th><th>Per-rep increment</th><th></th></tr></thead><tbody>' +
+      state.lifts.map(function (l, i) {
+        var prog = E.progressingLifts(programme()).indexOf(l.name) !== -1;
+        return '<tr><td>' + esc(l.name) + '</td>' +
+          '<td><input type="number" step="0.5" min="0" class="in-tm" data-i="' + i + '" value="' + l.tm + '"></td>' +
+          '<td><input type="number" step="0.25" min="0" class="in-inc" data-i="' + i + '" value="' + l.inc + '"></td>' +
+          '<td class="hint">' + (prog ? 'progresses' : 'load only') + '</td></tr>';
+      }).join('') + '</tbody></table>' +
+      '<h2>Block</h2><div class="row wrap">' +
+      '<label>Units <select id="in-unit">' + ['kg', 'lb'].map(function (u) {
+        return '<option value="' + u + '"' + (u === s.unit ? ' selected' : '') + '>' + u + '</option>';
+      }).join('') + '</select></label>' +
+      '<label>Round to <input type="number" step="0.25" min="0.25" id="in-round" value="' + s.rounding + '"></label>' +
+      '<label>Bodyweight <input type="number" step="0.1" id="in-bw" value="' + s.bodyweight + '"></label>' +
+      '</div><p class="hint">Switching units relabels the numbers — nothing is converted. Enter your maxes, steps and bodyweight in the unit you train in.</p>' +
+      '<p class="hint">Waves: ' + P0.waveSlots.map(function (w, i) {
+        return w + ' (weeks ' + (i * 4 + 1) + '–' + (i * 4 + 4) + ')';
+      }).join(' → ') + '</p>' +
+      '<h2>Weight jumps</h2>' +
+      '<p class="hint">The smallest step each kind of kit allows at <b>your</b> gym. This is what an accessory goes up by when you earn a progression — nothing to do with the rounding above, which is for the main lifts.</p>' +
+      '<table class="table"><thead><tr><th>Equipment</th><th>Step (' + U() + ')</th><th></th></tr></thead><tbody>' +
+      EQUIP_LABELS.map(function (e) {
+        return '<tr><td>' + esc(e.label) + '</td>' +
+          '<td><input type="number" step="0.01" min="0.01" class="in-step" data-equip="' + e.id + '" value="' + (s.increments[e.id] === undefined ? '' : s.increments[e.id]) + '"></td>' +
+          '<td class="hint">' + esc(e.note) + '</td></tr>';
+      }).join('') + '</tbody></table>' +
+      '<h2>Nutrition</h2><div class="row wrap">' +
+      '<label>Maintenance (kcal) <input type="number" step="10" id="in-maint" value="' + s.maintenance + '"></label>' +
+      '<label>Surplus (kcal) <input type="number" step="10" id="in-surplus" value="' + s.surplus + '"></label>' +
+      '</div><table class="table"><tbody>' +
+      '<tr><td>Protein</td><td><b>' + protein[0] + ' – ' + protein[1] + ' g/day</b></td><td class="hint">2.0–2.2 g/kg</td></tr>' +
+      '<tr><td>Target calories</td><td><b>' + (s.maintenance + s.surplus) + ' kcal</b></td><td class="hint">Re-estimate maintenance every 2–3 weeks from your weight trend</td></tr>' +
+      '</tbody></table>' +
+      '<button type="button" class="primary" id="save-setup" data-action="save-setup">Save</button></section>' +
+      '<section class="card"><h2>Data</h2><div class="row">' +
+      '<button type="button" data-action="export">Export JSON</button>' +
+      '<button type="button" data-action="import">Import JSON</button>' +
+      '<input type="file" id="import-file" accept=".json" hidden>' +
+      '<button type="button" data-action="export-csv">Export log (CSV)</button>' +
+      '<button type="button" class="danger" data-action="reset">Reset</button></div>' +
+      '<p class="hint">Stored in this browser only.</p></section>';
+  }
+
+  /* ---------------- progress ---------------- */
+
+  // The realization AMRAP already logged on Today, so Progress can prefill it
+  // instead of asking for the same number twice. Looks up the AMRAP by its set
+  // index in the prescription — the last *logged* set is not good enough,
+  // because a session abandoned before the AMRAP would hand back a ramp single.
+  function loggedAmrapFor(slot, name) {
+    var week = slot * 4 + 3;
+    for (var d = 0; d < state.programme.days.length; d++) {
+      var log = state.logs[logKey(week, d)];
+      if (!log || !log.slots || !log.slots.main || log.slots.main.movement !== name) { continue; }
+      var pres = E.prescribeDay(programme(), week, d, ctx()).filter(function (p) { return p.id === 'main'; })[0];
+      if (!pres) { continue; }
+      var ai = -1;
+      pres.sets.forEach(function (s, i) { if (s.amrap) { ai = i; } });
+      var s = ai === -1 ? null : (log.slots.main.sets || [])[ai];
+      if (s && s.reps !== null && s.reps !== undefined) { return s.reps; }
+    }
+    return null;
+  }
+
+  function viewProgress() {
+    var pr = programme();
+    var lifts = E.progressingLifts(pr);
+    var rows = '';
+    P0.waveSlots.forEach(function (wave, slot) {
+      var std = E.standardReps(wave);
+      lifts.forEach(function (name) {
+        var lift = E.tracked(name, state.lifts);
+        if (!lift) { return; }
+        var k = slot + '|' + name;
+        var reps = state.tracker[k];
+        var fromLog = false;
+        if (reps === undefined) {
+          var lr = loggedAmrapFor(slot, name);
+          if (lr !== null) { reps = lr; fromLog = true; }
+        }
+        // Once applied, the recompute base is the TM the wave was lifted at,
+        // not the current TM — otherwise a second Apply compounds.
+        var base = state.trackerBase[k] === undefined ? lift.tm : state.trackerBase[k];
+        var nt = E.nextTM(base, reps === undefined ? null : reps, std, lift.inc);
+        var applied = nt !== null && state.trackerBase[k] !== undefined && lift.tm === nt;
+        rows += '<tr><td>Wk ' + (slot * 4 + 1) + '–' + (slot * 4 + 4) + '</td><td>' + wave + '</td><td>' + esc(name) + '</td>' +
+          '<td>' + fmt(base) + '</td><td>' + std + '</td>' +
+          '<td><input type="number" min="0" step="1" class="tr-reps" data-k="' + esc(k) + '" value="' + (reps === undefined || reps === null ? '' : reps) + '">' +
+          (fromLog ? '<div class="hint sm">from your week ' + (slot * 4 + 3) + ' log</div>' : '') + '</td>' +
+          '<td>' + fmt(lift.inc) + '</td><td class="new-tm"><b>' + (nt === null ? '–' : fmt(nt)) + '</b></td>' +
+          '<td class="apply-cell">' + (applied ? '<span class="hint">applied ✓</span>'
+            : (nt === null ? '' : '<button type="button" class="small" data-action="apply-tm" data-lift="' + esc(name) + '" data-tm="' + nt + '" data-k="' + esc(k) + '" data-base="' + base + '">Apply</button>')) + '</td></tr>';
+      });
+    });
+
+    // Estimated 1RM per main lift, best set per session. Every accumulation and
+    // intensification week ends in an AMRAP; this is what those are for.
+    // Deloads are submaximal by design and would only put a fake dip in the
+    // trend, so they are skipped.
+    var oneRm = {};
+    Object.keys(state.logs).forEach(function (k) {
+      var l = state.logs[k];
+      if (!l.slots || !l.slots.main || !l.slots.main.movement) { return; }
+      var wk = Number(k.split('|')[0]);
+      if (E.phaseFor(wk) === 'Deload') { return; }
+      var best = 0;
+      (l.slots.main.sets || []).forEach(function (s) {
+        if (s && s.kg && s.reps) {
+          var e = E.estimate1RM(s.kg, s.reps);
+          if (e > best) { best = e; }
+        }
+      });
+      if (best) { (oneRm[l.slots.main.movement] = oneRm[l.slots.main.movement] || []).push({ wk: wk, e: best }); }
+    });
+    var oneRmHtml = Object.keys(oneRm).sort().map(function (m) {
+      var entries = oneRm[m].sort(function (a, b) { return a.wk - b.wk; }).slice(-6);
+      var last = entries[entries.length - 1];
+      return '<tr><td>' + esc(m) + '</td><td class="hint">' +
+        entries.map(function (e) {
+          return 'wk' + e.wk + ' ' + (e === last ? '<b>' + fmt(e.e) + '</b>' : fmt(e.e));
+        }).join(' → ') + '</td></tr>';
+    }).join('');
+
+    // per-movement progression, newest first
+    var hist = {};
+    Object.keys(state.logs).forEach(function (k) {
+      var l = state.logs[k];
+      Object.keys(l.slots || {}).forEach(function (id) {
+        var s = l.slots[id];
+        if (!s || !s.movement) { return; }
+        var sets = (s.sets || []).filter(function (x) { return x && x.reps; });
+        if (!sets.length) { return; }
+        (hist[s.movement] = hist[s.movement] || []).push({ k: k, week: Number(k.split('|')[0]), sets: sets });
+      });
+    });
+    var histHtml = Object.keys(hist).sort().map(function (m) {
+      var entries = hist[m].sort(function (a, b) { return b.week - a.week; }).slice(0, 4);
+      return '<tr><td>' + esc(m) + '</td><td class="hint">' + entries.map(function (e) {
+        return 'wk' + e.week + ': ' + e.sets.map(function (s) { return (s.kg === null || s.kg === undefined ? '?' : s.kg) + '×' + s.reps; }).join(', ');
+      }).join(' &nbsp;|&nbsp; ') + '</td></tr>';
+    }).join('');
+
+    return '<section class="card"><h2>Training max</h2>' +
+      '<p class="hint">New TM = old TM + (AMRAP reps − standard) × increment. Rows are the lifts used as a main lift; miss the standard and the TM drops, which is the method working.</p>' +
+      '<div class="scroll"><table class="table"><thead><tr><th>Weeks</th><th>Wave</th><th>Lift</th><th>TM</th><th>Std</th><th>AMRAP</th><th>Inc</th><th>New TM</th><th></th></tr></thead><tbody>' +
+      rows + '</tbody></table></div></section>' +
+      (oneRmHtml ? '<section class="card"><h2>Estimated 1RM</h2>' +
+        '<p class="hint">Best set per logged main-lift session (deloads excluded). Flat into a new wave means the TM is about right; falling means it is set too high.</p>' +
+        '<div class="scroll"><table class="table"><thead><tr><th>Lift</th><th>Trend (' + U() + ')</th></tr></thead><tbody>' +
+        oneRmHtml + '</tbody></table></div></section>' : '') +
+      '<section class="card"><h2>Movement history</h2>' +
+      (histHtml ? '<div class="scroll"><table class="table"><thead><tr><th>Movement</th><th>Recent sessions</th></tr></thead><tbody>' + histHtml + '</tbody></table></div>'
+        : '<p class="hint">Nothing logged yet.</p>') + '</section>';
+  }
+
+  /* ---------------- library ---------------- */
+
+  // What the Step box says about where a movement's number comes from.
+  function incSourceLabel(name) {
+    if ((state.movementIncrements || {})[name] > 0) { return 'set by you'; }
+    var eq = equipIncrementFor(name);
+    return eq === null ? 'no auto-progression' : 'from ' + ((movementInfo(name) || {}).equip || '');
+  }
+
+  function viewLibrary() {
+    return '<section class="card"><h2>Exercise library</h2>' +
+      '<p class="hint"><b>Step</b> is how much this exercise goes up by when you earn a progression. ' +
+      'Leave it blank to follow the equipment default from Setup; type a number to pin this one exercise to a step of its own. ' +
+      'A blank step on something with no equipment type means it never auto-progresses — give it a number here and it will.</p></section>' +
+      '<section>' + P0.groups.map(function (g) {
+        var items = movementsIn(g);
+        if (!items.length) { return ''; }
+        return '<div class="card"><h3>' + pretty(g) + '</h3>' +
+          '<table class="table"><thead><tr><th>Exercise</th><th>Step (' + U() + ')</th><th>Kit</th></tr></thead><tbody>' +
+          items.map(function (m) {
+            var mine = (state.customMovements || []).some(function (c) { return c.name === m.name; });
+            var own = (state.movementIncrements || {})[m.name];
+            var eq = equipIncrementFor(m.name);
+            return '<tr><td>' + esc(m.name) + (mine ? ' <span class="tag">YOURS</span>' : '') +
+              (m.note ? '<div class="hint sm">' + esc(m.note) + '</div>' : '') + '</td>' +
+              '<td><input type="number" step="0.01" min="0.01" class="lib-inc" data-movement="' + esc(m.name) + '"' +
+              ' value="' + (own === undefined || own === null ? '' : own) + '"' +
+              ' placeholder="' + (eq === null ? '—' : eq) + '">' +
+              '<div class="hint sm inc-src">' + esc(incSourceLabel(m.name)) + '</div></td>' +
+              '<td class="hint">' + esc(m.kit) + '</td></tr>';
+          }).join('') + '</tbody></table></div>';
+      }).join('') + '</section>';
+  }
+
+  /* ---------------- reading the DOM ---------------- */
+
+  // A set counts as done when you enter REPS. The weight box is prefilled with
+  // the prescription, so recording it on its own would log sets you never did —
+  // which then shadows the prescription and pollutes the history.
+  function readSession() {
+    var week = state.cursor.week, day = state.cursor.day;
+    var log = logFor(week, day);
+    var anything = false;
+    document.querySelectorAll('.card.slot').forEach(function (card) {
+      var id = card.dataset.slot;
+      var sets = [];
+      var reps = {}, kgs = {}, rirs = {};
+      card.querySelectorAll('.in-reps').forEach(function (el) { reps[Number(el.dataset.i)] = num(el.value); });
+      card.querySelectorAll('.in-kg').forEach(function (el) { kgs[Number(el.dataset.i)] = num(el.value); });
+      card.querySelectorAll('.in-rir').forEach(function (el) { rirs[Number(el.dataset.i)] = num(el.value); });
+      Object.keys(reps).forEach(function (k) {
+        var i = Number(k);
+        sets[i] = reps[i] === null ? null : { kg: kgs[i], reps: reps[i], rir: rirs[i] === undefined ? null : rirs[i] };
+        if (sets[i]) { anything = true; }
+      });
+      if (sets.some(function (x) { return x; })) {
+        // readSession() re-runs on every tab switch away from Today, even
+        // after an explicit save — rebuilding the entry from the DOM must not
+        // silently drop a progression bump a prior save already earned.
+        var prevBump = (log.slots[id] || {}).suggestBump;
+        log.slots[id] = { movement: card.dataset.movement, sets: sets };
+        if (prevBump !== undefined) { log.slots[id].suggestBump = prevBump; }
+      } else {
+        delete log.slots[id];
+      }
+    });
+    if (anything && !log.date) { log.date = new Date().toISOString().slice(0, 10); }
+    if (!anything) { delete state.logs[logKey(week, day)]; }
+  }
+
+  function readSlotEdits() {
+    var week = state.ui.blockWeek, day = state.ui.blockDay;
+    var dayName = state.programme.days[day].name;
+    document.querySelectorAll('.card.slotedit').forEach(function (card) {
+      var id = card.dataset.slot;
+      var patch = {};
+      var mv = card.querySelector('.s-move');
+      if (mv && mv.value !== '__add__') { patch.movement = mv.value; }
+      // Equipment belongs to the movement, not the week — record it against the
+      // movement the select was rendered for, not whatever it has since become.
+      var eqSel = card.querySelector('.s-equip');
+      if (eqSel) {
+        var forMovement = eqSel.dataset.movement;
+        var base = (P0.movements.concat(state.customMovements || []))
+          .filter(function (m) { return m.name === forMovement; })[0];
+        if (base && eqSel.value === base.equip) { delete state.equipOverrides[forMovement]; }
+        else if (base) { state.equipOverrides[forMovement] = eqSel.value; }
+      }
+      var kindSel = card.querySelector('.s-loadkind');
+      if (kindSel) {
+        var kind = kindSel.value;
+        var load = { kind: kind };
+        if (kind === 'pctTM') {
+          load.lift = card.querySelector('.s-loadlift') ? card.querySelector('.s-loadlift').value : patch.movement;
+          var pv = num(card.querySelector('.s-pct') ? card.querySelector('.s-pct').value : null);
+          load.pct = pv === null ? 0.6 : pv / 100;
+        } else if (kind === 'weight') {
+          load.kg = num(card.querySelector('.s-kg') ? card.querySelector('.s-kg').value : null);
+        } else if (kind === 'bodyweight') {
+          load.added = num(card.querySelector('.s-added') ? card.querySelector('.s-added').value : 0) || 0;
+        }
+        patch.load = load;
+        var sv = num(card.querySelector('.s-sets').value); if (sv) { patch.sets = sv; }
+        var rv = num(card.querySelector('.s-reps').value); if (rv) { patch.reps = rv; }
+        var rir = num(card.querySelector('.s-rir').value); if (rir !== null) { patch.rir = rir; }
+      }
+      setOverride(week, dayName, id, patch);
+    });
+  }
+
+  function setOverride(week, dayName, slotId, patch) {
+    var ov = state.programme.weekOverrides;
+    ov[week] = ov[week] || {};
+    ov[week][dayName] = ov[week][dayName] || { slots: {} };
+    ov[week][dayName].slots = ov[week][dayName].slots || {};
+    var cur = ov[week][dayName].slots[slotId] || {};
+    Object.keys(patch).forEach(function (k) { cur[k] = patch[k]; });
+    ov[week][dayName].slots[slotId] = cur;
+  }
+
+  // Autoregulated accessory progression. Triggers only when every prescribed
+  // set was completed at or above the prescribed weight and reps, with a
+  // logged RIR higher than what was asked for on every set — i.e. it was
+  // genuinely easier than the plan expected, not just "got through it".
+  //
+  // Fixed-number loads (weight, bodyweight) get a real plan change: the new
+  // number is written forward into every remaining week, same mechanism as
+  // "Apply to all weeks" in Block, so it shows up there too. Open loads have
+  // no plan number to write — the suggested prefill just carries the bump
+  // forward from the log (see suggestedKgFor) without touching what you
+  // actually logged.
+  //
+  // Covers accessory slots, and support slots whose load carries its own
+  // number (the fixed-weight row, a bodyweight support) — those had no
+  // progression path at all except a manual Block edit. A %TM support follows
+  // its training max and the main lift follows the wave, so both are excluded
+  // by the load-kind check below and left to their own mechanisms.
+  //
+  // The step comes from the movement's equipment, not one global number — a
+  // cable stack and a pair of dumbbells do not jump by the same amount.
+  function progressAccessories(week, day) {
+    var dayName = state.programme.days[day].name;
+    var log = state.logs[logKey(week, day)];
+    if (!log) { return []; }
+    var prescribed = E.prescribeDay(programme(), week, day, ctx());
+    var bumped = [];
+
+    prescribed.forEach(function (p) {
+      if (p.slot.kind !== 'accessory' && p.slot.kind !== 'support') { return; }
+      var kind = p.slot.load.kind;
+      if (kind !== 'weight' && kind !== 'bodyweight' && kind !== 'open') { return; }
+
+      var inc = incrementFor(p.movement);
+      if (inc === null) { return; }
+
+      var entry = log.slots[p.id];
+      if (!entry || !entry.sets || entry.sets.length < p.sets.length) { return; }
+
+      var hit = p.sets.every(function (s, i) {
+        var lg = entry.sets[i];
+        if (!lg || lg.reps === null || lg.reps === undefined || lg.reps < s.reps) { return false; }
+        var target = s.kg === null || s.kg === undefined ? suggestedKgFor(p.movement, week, day, i) : s.kg;
+        if (target === null || target === undefined) { return false; }
+        if (lg.kg === null || lg.kg === undefined || lg.kg < target) { return false; }
+        if (lg.rir === null || lg.rir === undefined || p.rir === undefined) { return false; }
+        return lg.rir > p.rir;
+      });
+      if (!hit) { return; }
+
+      if (kind === 'weight' || kind === 'bodyweight') {
+        var base = kind === 'weight' ? p.slot.load.kg : (p.slot.load.added || 0);
+        var next = Math.round((base + inc) * 100) / 100;
+        for (var w = week + 1; w <= P0.weeks; w++) {
+          // Only follow the movement forward — a future week that has been
+          // manually reassigned to a different exercise in this slot keeps
+          // its own number.
+          var futureSlot = E.slotsFor(programme(), w, day).filter(function (x) { return x.id === p.id; })[0];
+          if (futureSlot && futureSlot.movement === p.movement) {
+            setOverride(w, dayName, p.id, kind === 'weight' ? { load: { kind: 'weight', kg: next } } : { load: { kind: 'bodyweight', added: next } });
+          }
+        }
+        bumped.push(p.movement + ' → ' + fmt(next) + (kind === 'weight' ? U() : ' added'));
+      } else {
+        entry.suggestBump = inc;
+        bumped.push(p.movement + ' → +' + fmt(inc) + U() + ' suggested next time');
+      }
+    });
+
+    return bumped;
+  }
+
+  /* ---------------- actions ---------------- */
+
+  function advance() {
+    var days = state.programme.days.length;
+    if (state.cursor.day < days - 1) { state.cursor.day++; }
+    else if (state.cursor.week < P0.weeks) { state.cursor.week++; state.cursor.day = 0; }
+  }
+  function retreat() {
+    var days = state.programme.days.length;
+    if (state.cursor.day > 0) { state.cursor.day--; }
+    else if (state.cursor.week > 1) { state.cursor.week--; state.cursor.day = days - 1; }
+  }
+
+  function download(blob, name) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name; a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function exportCSV() {
+    var rows = [['Week', 'Day', 'Movement', 'Set', U(), 'Reps']];
+    Object.keys(state.logs).sort(function (a, b) {
+      return Number(a.split('|')[0]) - Number(b.split('|')[0]) || Number(a.split('|')[1]) - Number(b.split('|')[1]);
+    }).forEach(function (k) {
+      var parts = k.split('|'), l = state.logs[k];
+      Object.keys(l.slots || {}).forEach(function (id) {
+        var s = l.slots[id];
+        (s.sets || []).forEach(function (x, i) {
+          if (!x || x.reps === null || x.reps === undefined) { return; }
+          rows.push([parts[0], state.programme.days[Number(parts[1])].name, s.movement, i + 1, x.kg, x.reps]);
+        });
+      });
+    });
+    var csv = rows.map(function (r) {
+      return r.map(function (c) {
+        var v = c === null || c === undefined ? '' : String(c);
+        return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+      }).join(',');
+    }).join('\n');
+    download(new Blob([csv], { type: 'text/csv' }), 'juggernaut-log.csv');
+  }
+
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest ? e.target.closest('[data-action]') : null;
+    if (!btn) { return; }
+    var a = btn.dataset.action;
+    if (a === 'tab') {
+      if (state.ui.tab === 'today') { readSession(); }
+      state.ui.tab = btn.dataset.tab; save(); render();
+    } else if (a === 'dismiss-migrate') {
+      delete state.migrated; save(); render();
+    } else if (a === 'save-session') {
+      readSession();
+      var bumped1 = progressAccessories(state.cursor.week, state.cursor.day);
+      save(); render(); toast(bumped1.length ? 'Progressed: ' + bumped1.join(', ') : 'Session saved');
+    } else if (a === 'finish-session') {
+      readSession();
+      var bumped2 = progressAccessories(state.cursor.week, state.cursor.day);
+      save(); advance(); save(); render();
+      toast(bumped2.length ? 'Progressed: ' + bumped2.join(', ') : 'Next session');
+    } else if (a === 'skip-back') {
+      readSession(); save(); retreat(); save(); render();
+    } else if (a === 'block-day') {
+      readSlotEdits(); state.ui.blockDay = Number(btn.dataset.day); save(); render();
+    } else if (a === 'save-slots') {
+      readSlotEdits(); save(); render(); toast('Week ' + state.ui.blockWeek + ' saved');
+    } else if (a === 'push-all') {
+      readSlotEdits();
+      var week = state.ui.blockWeek, dayName = state.programme.days[state.ui.blockDay].name;
+      var src = ((state.programme.weekOverrides[week] || {})[dayName] || {}).slots || {};
+      for (var w = 1; w <= P0.weeks; w++) {
+        Object.keys(src).forEach(function (id) {
+          var patch = JSON.parse(JSON.stringify(src[id]));
+          // set counts stay per-week so the phase rules keep their shape
+          delete patch.sets;
+          setOverride(w, dayName, id, patch);
+        });
+      }
+      save(); render(); toast('Applied to all ' + P0.weeks + ' weeks (set counts kept)');
+    } else if (a === 'jump-here') {
+      state.cursor = { week: state.ui.blockWeek, day: state.ui.blockDay };
+      state.ui.tab = 'today'; save(); render();
+    } else if (a === 'start-week') {
+      var startWeek = Number(document.getElementById('start-week').value);
+      var startDay = Number(document.getElementById('start-day').value);
+      state.cursor = { week: startWeek, day: startDay };
+      state.ui.blockWeek = startWeek; state.ui.blockDay = startDay;
+      state.ui.tab = 'today'; save(); render();
+      toast('Starting at ' + programme().days[startDay].name + ', Week ' + startWeek);
+    } else if (a === 'save-setup') {
+      document.querySelectorAll('.in-tm').forEach(function (el) {
+        var v = num(el.value); if (v !== null) { state.lifts[Number(el.dataset.i)].tm = v; }
+      });
+      document.querySelectorAll('.in-inc').forEach(function (el) {
+        var v = num(el.value); if (v !== null) { state.lifts[Number(el.dataset.i)].inc = v; }
+      });
+      document.querySelectorAll('.in-step').forEach(function (el) {
+        var v = num(el.value); if (v !== null && v > 0) { state.settings.increments[el.dataset.equip] = v; }
+      });
+      state.settings.unit = document.getElementById('in-unit').value;
+      var r = num(document.getElementById('in-round').value); if (r > 0) { state.settings.rounding = r; }
+      var bw = num(document.getElementById('in-bw').value); if (bw !== null) { state.settings.bodyweight = bw; }
+      var m = num(document.getElementById('in-maint').value); if (m !== null) { state.settings.maintenance = m; }
+      var su = num(document.getElementById('in-surplus').value); if (su !== null) { state.settings.surplus = su; }
+      save(); render(); toast('Saved');
+    } else if (a === 'apply-tm') {
+      var lname = btn.dataset.lift, tm = Number(btn.dataset.tm);
+      if (btn.dataset.k !== undefined) { state.trackerBase[btn.dataset.k] = Number(btn.dataset.base); }
+      state.lifts.forEach(function (l) { if (l.name === lname) { l.tm = tm; } });
+      save(); render(); toast(lname + ' TM → ' + fmt(tm));
+    } else if (a === 'export') {
+      download(new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }),
+        'juggernaut-v2-' + new Date().toISOString().slice(0, 10) + '.json');
+    } else if (a === 'export-csv') {
+      exportCSV();
+    } else if (a === 'import') {
+      document.getElementById('import-file').click();
+    } else if (a === 'reset') {
+      if (confirm('Reset everything to the programme defaults?')) { state = defaultState(); save(); render(); }
+    }
+  });
+
+  function trackerInput(el) {
+    var k = el.dataset.k, v = num(el.value);
+    if (v === null) { delete state.tracker[k]; } else { state.tracker[k] = v; }
+    save();
+    var parts = k.split('|'), name = parts[1];
+    var lift = E.tracked(name, state.lifts);
+    var wave = P0.waveSlots[Number(parts[0])];
+    var base = state.trackerBase[k] === undefined ? lift.tm : state.trackerBase[k];
+    var nt = E.nextTM(base, v, E.standardReps(wave), lift.inc);
+    var row = el.closest('tr');
+    row.querySelector('.new-tm').innerHTML = '<b>' + (nt === null ? '–' : fmt(nt)) + '</b>';
+    row.querySelector('.apply-cell').innerHTML = nt === null ? ''
+      : (state.trackerBase[k] !== undefined && lift.tm === nt ? '<span class="hint">applied ✓</span>'
+        : '<button type="button" class="small" data-action="apply-tm" data-lift="' + esc(name) + '" data-tm="' + nt + '" data-k="' + esc(k) + '" data-base="' + base + '">Apply</button>');
+  }
+
+  document.addEventListener('input', function (e) {
+    if (e.target.classList && e.target.classList.contains('tr-reps')) { trackerInput(e.target); }
+    else if (e.target.classList && e.target.classList.contains('lib-inc')) { libIncInput(e.target); }
+  });
+
+  // Patched in place rather than re-rendered: a re-render on every keystroke
+  // would take the focus out of the box you are typing in.
+  function libIncInput(el) {
+    var name = el.dataset.movement;
+    var v = num(el.value);
+    if (v === null || v <= 0) { delete state.movementIncrements[name]; }
+    else { state.movementIncrements[name] = v; }
+    save();
+    var src = el.parentNode.querySelector('.inc-src');
+    if (src) { src.textContent = incSourceLabel(name); }
+  }
+
+  document.addEventListener('change', function (e) {
+    var t = e.target;
+    if (t.id === 'block-week') { readSlotEdits(); state.ui.blockWeek = Number(t.value); save(); render(); }
+    else if (t.classList.contains('s-group')) {
+      readSlotEdits();
+      var card = t.closest('.slotedit');
+      var first = movementsIn(t.value)[0];
+      if (first) {
+        setOverride(state.ui.blockWeek, state.programme.days[state.ui.blockDay].name, card.dataset.slot, { movement: first.name });
+      }
+      save(); render();
+    }
+    else if (t.classList.contains('s-move') && t.value === '__add__') {
+      var card2 = t.closest('.slotedit');
+      var grp = card2.querySelector('.s-group') ? card2.querySelector('.s-group').value : P0.groups[0];
+      var name = (window.prompt('Add a movement to ' + pretty(grp)) || '').trim();
+      // No way to know what kit it uses, so it starts without a progression
+      // step — the Kit select on this card is where you give it one.
+      if (name && !movementInfo(name)) { state.customMovements.push({ name: name, group: grp, kit: '', equip: 'none', note: '' }); }
+      if (name) {
+        setOverride(state.ui.blockWeek, state.programme.days[state.ui.blockDay].name, card2.dataset.slot, { movement: name });
+      }
+      save(); render();
+    }
+    else if (t.classList.contains('s-move') || t.classList.contains('s-loadkind') ||
+      t.classList.contains('s-loadlift') || t.classList.contains('s-equip')) {
+      readSlotEdits(); save(); render();
+    }
+    else if (t.id === 'import-file') {
+      var f = t.files[0];
+      if (f) {
+        var reader = new FileReader();
+        reader.onload = function () {
+          try {
+            var parsed = JSON.parse(reader.result);
+            if (!parsed || !parsed.lifts || !parsed.programme) { throw new Error('bad'); }
+            state = parsed; save(); render(); toast('Imported');
+          } catch (err) { toast('Import failed'); }
+        };
+        reader.readAsText(f);
+      }
+      t.value = '';
+    }
+  });
+
+  render();
+})();
+
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('./sw.js').catch(function () {});
+  });
+}
+</script>
+</body>
+</html>
