@@ -775,14 +775,37 @@ button.small{padding:4px 9px;font-size:.77rem}
 
   /* ---------------- session rendering ---------------- */
 
+  // The book is explicit that the last main set is not the same effort every
+  // week: push past the prescribed reps in every phase but Deload (that's the
+  // Doug Young mechanic the whole method is built on), while how close to
+  // failure you take it is prescribed on its own — 2-3 in reserve during
+  // Accumulation, 1-2 during Intensification, and only Realization is a true
+  // no-reps-left AMRAP. Training to failure every week is exactly what the
+  // book warns burns recovery, so the two are not interchangeable.
+  var RESERVE_HINT = {
+    Accumulation: '2-3 reps in reserve',
+    Intensification: '1-2 reps in reserve',
+    Realization: 'AMRAP — nothing left in reserve'
+  };
+  // Short form for the in-row tag — the sets table is narrow on a phone and
+  // .sets .target is nowrap, so the full sentence above belongs in the header
+  // hint, not squeezed into this column.
+  var RESERVE_TAG = {
+    Accumulation: '2-3 LEFT',
+    Intensification: '1-2 LEFT',
+    Realization: 'AMRAP'
+  };
+
   function sessionHeader(week, day, editable) {
     var wave = E.waveFor(week, P0.waveSlots), phase = E.phaseFor(week);
     var d = programme().days[day];
     return '<div class="card sess">' +
       '<div class="row spread"><h2>' + esc(d.name) + ' · Week ' + week + '</h2>' +
       '<span><span class="pill">' + wave + '</span><span class="pill">' + phase + '</span></span></div>' +
+      (phase === 'Accumulation' ? '<p class="hint amap-hint">Accumulation: push past the prescribed reps on the last main set, but stop with 2-3 in reserve — not a true AMRAP.</p>' : '') +
+      (phase === 'Intensification' ? '<p class="hint amap-hint">Intensification: push past the prescribed reps on the last main set, but stop 1-2 short of failure.</p>' : '') +
       (phase === 'Realization' ? '<p class="hint amap-hint">Realization: the last main set is an AMRAP against a standard of ' +
-        E.standardReps(wave) + '. Log the reps in <b>Progress</b> — that is what moves your training max.</p>' : '') +
+        E.standardReps(wave) + ' — nothing left in reserve. Log the reps in <b>Progress</b> — that is what moves your training max.</p>' : '') +
       (phase === 'Deload' ? '<p class="hint amap-hint">Deload: main work as written, everything else cut right back. Leave fresh.</p>' : '') +
       '</div>';
   }
@@ -806,16 +829,18 @@ button.small{padding:4px 9px;font-size:.77rem}
       ? '<div class="warm">Warm-up: ' + p.warmups.map(function (w) { return fmt(w.kg) + ' × ' + w.reps; }).join('  ·  ') + '</div>'
       : '';
 
+    var phase = E.phaseFor(week);
     var rows = p.sets.map(function (s, i) {
       var lg = logged[i] || {};
       var kgVal = lg.kg !== null && lg.kg !== undefined ? lg.kg : (s.kg === null ? fmtBox(suggestedKgFor(p.movement, week, day, i)) : s.kg);
       var repVal = lg.reps !== null && lg.reps !== undefined ? lg.reps : '';
       var rirVal = lg.rir !== null && lg.rir !== undefined ? lg.rir : '';
+      var reserveLabel = RESERVE_TAG[phase] || 'AMRAP';
       return '<tr' + (s.amrap ? ' class="amap"' : '') + '>' +
         '<td class="setn">' + s.n + '</td>' +
         (isMain ? '<td class="pctcol">' + Math.round(s.pct * 1000) / 10 + '%</td>' : '') +
         '<td><input type="number" step="0.5" min="0" class="in-kg" data-i="' + i + '" value="' + kgVal + '"></td>' +
-        '<td class="target">' + (s.amrap ? s.reps + '+ <span class="tag">AMRAP</span>' : '× ' + s.reps) + '</td>' +
+        '<td class="target">' + (s.amrap ? s.reps + '+ <span class="tag">' + esc(reserveLabel) + '</span>' : '× ' + s.reps) + '</td>' +
         '<td><input type="number" step="1" min="0" class="in-reps" data-i="' + i + '" value="' + repVal + '" placeholder="' + s.reps + '"></td>' +
         (isMain ? '' : '<td><input type="number" step="1" min="0" class="in-rir" data-i="' + i + '" value="' + rirVal + '" placeholder="' + (p.rir === undefined ? '' : p.rir) + '"></td>') +
         '</tr>';
