@@ -778,21 +778,22 @@ button.small{padding:4px 9px;font-size:.77rem}
   // The book is explicit that the last main set is not the same effort every
   // week: push past the prescribed reps in every phase but Deload (that's the
   // Doug Young mechanic the whole method is built on), while how close to
-  // failure you take it is prescribed on its own — 2-3 in reserve during
-  // Accumulation, 1-2 during Intensification, and only Realization is a true
-  // no-reps-left AMRAP. Training to failure every week is exactly what the
-  // book warns burns recovery, so the two are not interchangeable.
+  // failure you take it is prescribed on its own — RIR 2-3 during
+  // Accumulation, RIR 1-2 during Intensification, and only Realization is a
+  // true RIR 0 (AMRAP). Training to failure every week is exactly what the
+  // book warns burns recovery, so the two are not interchangeable. RIR is the
+  // same language every other slot's prescribed-effort column already uses.
   var RESERVE_HINT = {
-    Accumulation: '2-3 reps in reserve',
-    Intensification: '1-2 reps in reserve',
-    Realization: 'AMRAP — nothing left in reserve'
+    Accumulation: 'RIR 2-3',
+    Intensification: 'RIR 1-2',
+    Realization: 'RIR 0 — AMRAP'
   };
   // Short form for the in-row tag — the sets table is narrow on a phone and
   // .sets .target is nowrap, so the full sentence above belongs in the header
   // hint, not squeezed into this column.
   var RESERVE_TAG = {
-    Accumulation: '2-3 LEFT',
-    Intensification: '1-2 LEFT',
+    Accumulation: 'RIR 2-3',
+    Intensification: 'RIR 1-2',
     Realization: 'AMRAP'
   };
 
@@ -802,10 +803,10 @@ button.small{padding:4px 9px;font-size:.77rem}
     return '<div class="card sess">' +
       '<div class="row spread"><h2>' + esc(d.name) + ' · Week ' + week + '</h2>' +
       '<span><span class="pill">' + wave + '</span><span class="pill">' + phase + '</span></span></div>' +
-      (phase === 'Accumulation' ? '<p class="hint amap-hint">Accumulation: push past the prescribed reps on the last main set, but stop with 2-3 in reserve — not a true AMRAP.</p>' : '') +
-      (phase === 'Intensification' ? '<p class="hint amap-hint">Intensification: push past the prescribed reps on the last main set, but stop 1-2 short of failure.</p>' : '') +
+      (phase === 'Accumulation' ? '<p class="hint amap-hint">Accumulation: push past the prescribed reps on the last main set, but stop at RIR 2-3 — not a true AMRAP.</p>' : '') +
+      (phase === 'Intensification' ? '<p class="hint amap-hint">Intensification: push past the prescribed reps on the last main set, but stop at RIR 1-2.</p>' : '') +
       (phase === 'Realization' ? '<p class="hint amap-hint">Realization: the last main set is an AMRAP against a standard of ' +
-        E.standardReps(wave) + ' — nothing left in reserve. Log the reps in <b>Progress</b> — that is what moves your training max.</p>' : '') +
+        E.standardReps(wave) + ' — RIR 0. Log the reps in <b>Progress</b> — that is what moves your training max.</p>' : '') +
       (phase === 'Deload' ? '<p class="hint amap-hint">Deload: main work as written, everything else cut right back. Leave fresh.</p>' : '') +
       '</div>';
   }
