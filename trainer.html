@@ -38,6 +38,7 @@ h3{font-size:.98rem;margin:0 0 6px;display:flex;align-items:center;gap:8px;flex-
 .hint.sm{font-size:.78rem;margin:2px 0}
 .amap-hint{border-left:3px solid var(--amap-line);padding-left:10px}
 .kindtag{font-size:.62rem;text-transform:uppercase;letter-spacing:.07em;padding:2px 7px;border-radius:999px;border:1px solid var(--line);color:var(--muted);font-weight:700}
+.vidlink{display:inline-block;text-decoration:none;color:var(--accent);font-size:.7em;vertical-align:middle;padding:2px 4px}
 .kindtag.main{background:var(--accent);border-color:var(--accent);color:var(--accent-text)}
 .kindtag.support{border-color:var(--accent);color:var(--accent)}
 .lasttime{font-size:.82rem;color:var(--last);margin:5px 0;padding:5px 8px;background:var(--bg);border-radius:6px}
@@ -811,6 +812,25 @@ button.small{padding:4px 9px;font-size:.77rem}
       '</div>';
   }
 
+  // Verified, specific videos for the main lifts only — same author as the
+  // book (Chad Wesley Smith / Juggernaut Training Systems), so the technique
+  // shown matches the method this app runs. Everything else links to a
+  // YouTube search instead of a hand-picked video: a specific video ID goes
+  // dead or private with no warning, a search query never does, and there
+  // are too many accessories to keep re-verifying individual links by hand.
+  var CURATED_VIDEOS = {
+    'Squat': 'https://www.youtube.com/watch?v=X_wwJhaN0vU',
+    'Bench Press': 'https://www.youtube.com/watch?v=LpLmYf9z1ZA',
+    'Deadlift': 'https://www.youtube.com/watch?v=rukd80YXUaE'
+  };
+  function videoLinkFor(movementName) {
+    return CURATED_VIDEOS[movementName] ||
+      ('https://www.youtube.com/results?search_query=' + encodeURIComponent(movementName + ' exercise form'));
+  }
+  function videoLink(movementName) {
+    return '<a class="vidlink" href="' + esc(videoLinkFor(movementName)) + '" target="_blank" rel="noopener" title="Watch a form demo">▶</a>';
+  }
+
   function renderSlot(p, week, day, idx) {
     var log = logFor(week, day);
     var entry = log.slots[p.id] || {};
@@ -849,7 +869,7 @@ button.small{padding:4px 9px;font-size:.77rem}
 
     return '<div class="card slot" data-slot="' + esc(p.id) + '" data-movement="' + esc(p.movement) + '">' +
       '<div class="row spread">' +
-      '<h3><span class="kindtag ' + p.kind + '">' + p.kind + '</span> ' + esc(p.movement) + '</h3>' +
+      '<h3><span class="kindtag ' + p.kind + '">' + p.kind + '</span> ' + esc(p.movement) + ' ' + videoLink(p.movement) + '</h3>' +
       '<span class="pill">' + (isMain ? p.wave + ' · TM ' + fmt((E.tracked(p.movement, state.lifts) || {}).tm) + ' ' + U()
         : (p.label ? esc(p.label) : '') + (p.rir !== undefined ? ' · RIR ' + p.rir : '')) + '</span>' +
       '</div>' +
@@ -1211,7 +1231,7 @@ button.small{padding:4px 9px;font-size:.77rem}
             var mine = (state.customMovements || []).some(function (c) { return c.name === m.name; });
             var own = (state.movementIncrements || {})[m.name];
             var eq = equipIncrementFor(m.name);
-            return '<tr><td>' + esc(m.name) + (mine ? ' <span class="tag">YOURS</span>' : '') +
+            return '<tr><td>' + esc(m.name) + ' ' + videoLink(m.name) + (mine ? ' <span class="tag">YOURS</span>' : '') +
               (m.note ? '<div class="hint sm">' + esc(m.note) + '</div>' : '') + '</td>' +
               '<td><input type="number" step="0.01" min="0.01" class="lib-inc" data-movement="' + esc(m.name) + '"' +
               ' value="' + (own === undefined || own === null ? '' : own) + '"' +
