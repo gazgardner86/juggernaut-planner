@@ -5,62 +5,182 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Juggernaut Method Trainer</title>
 <style>
-:root {
-  --bg: #f5f6f8; --card: #ffffff; --text: #1a1d21; --muted: #5c6470;
-  --line: #dde1e6; --accent: #b03a2e; --accent-text: #ffffff;
-  --amap: #fff3e6; --saved: #1e7d46; --danger: #b03a2e;
+@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600&display=swap');
+:root{
+  --bg:#f2f2f3;--text:#1d1f20;--muted:#5d5d60;--faint:#98989b;
+  --line:color-mix(in srgb,#1d1f20 16%,transparent);--line-soft:color-mix(in srgb,#1d1f20 8%,transparent);
+  --accent:#5980a6;--accent-strong:#416180;--accent-deep:#1d2d3d;--accent-tint:#eef6ff;--accent-tint-2:#d6ebff;
+  --accent-hover:#597ea3;--accent-press:#416180;--on-accent:#f2f2f3;--danger:#a3412f;
+  --mark:color-mix(in srgb,#1d1f20 55%,transparent);
+  --font-h:"Barlow Condensed",system-ui,sans-serif;--font-b:"Barlow",system-ui,sans-serif;
+  --nav-h:64px;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #14161a; --card: #1e2127; --text: #e8eaed; --muted: #9aa2ad;
-    --line: #333842; --accent: #d1543f; --accent-text: #ffffff;
-    --amap: #3a2c1c; --saved: #4dbb7f; --danger: #d1543f;
-  }
-}
-* { box-sizing: border-box; }
-body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.45; }
-header, #app, footer { max-width: 880px; margin: 0 auto; padding: 0 12px; }
-header { padding-top: 20px; }
-header h1 { margin: 0 0 4px; font-size: 1.5rem; }
-header .sub { margin: 0 0 12px; color: var(--muted); font-size: 0.9rem; }
-footer { color: var(--muted); font-size: 0.8rem; padding: 20px 12px 40px; }
-.tabs { display: flex; gap: 6px; margin: 8px 0 14px; flex-wrap: wrap; }
-.tab { background: var(--card); border: 1px solid var(--line); color: var(--text); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.95rem; }
-.tab.active { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
-.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
-h2 { font-size: 1.05rem; margin: 10px 0 8px; }
-h3 { font-size: 1rem; margin: 0 0 8px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-.wm { color: var(--muted); font-weight: 500; font-size: 0.9rem; }
-.hint { color: var(--muted); font-size: 0.85rem; margin: 6px 0; }
-.amap-hint { border-left: 3px solid var(--accent); padding-left: 10px; }
-.table { width: 100%; border-collapse: collapse; font-size: 0.92rem; margin: 8px 0; }
-.table th, .table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
-.table th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; }
-tr.amap td { background: var(--amap); }
-input[type="number"], select, textarea { background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font-size: 0.95rem; font-family: inherit; }
-input[type="number"] { width: 90px; }
-.sets input[type="number"].reps { width: 70px; }
-textarea { width: 100%; resize: vertical; }
-label.block { display: block; margin: 8px 0; font-size: 0.88rem; color: var(--muted); }
-button { font-family: inherit; font-size: 0.92rem; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--text); cursor: pointer; }
-button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
-button.danger { color: var(--danger); border-color: var(--danger); background: transparent; }
-button.small { padding: 4px 10px; font-size: 0.8rem; margin-top: 6px; }
-.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-.row.spread { justify-content: space-between; }
-.weekbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.weekbar select { flex: 1; min-width: 200px; }
-.pill { background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 0.85rem; color: var(--muted); }
-.saved { color: var(--saved); font-size: 0.88rem; margin: 4px 0; }
-.banner { background: var(--amap); border: 1px solid var(--accent); border-radius: 8px; padding: 8px 12px; font-size: 0.85rem; margin-bottom: 10px; }
-.scroll { overflow-x: auto; }
-.log { font-size: 0.92rem; }
-.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 8px; font-size: 0.9rem; opacity: 0; transition: all 0.25s ease; z-index: 10; }
-.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+@media (prefers-color-scheme: dark){:root{
+  --bg:#18191b;--text:#ececee;--muted:#a6a6aa;--faint:#7a7a7d;
+  --line:color-mix(in srgb,#ececee 18%,transparent);--line-soft:color-mix(in srgb,#ececee 9%,transparent);
+  --accent:#749dc4;--accent-strong:#94bce3;--accent-deep:#d6ebff;--accent-tint:#1d2d3d;--accent-tint-2:#2c455d;
+  --accent-hover:#94bce3;--accent-press:#b5d9fd;--on-accent:#101418;--danger:#e0806b;
+  --mark:color-mix(in srgb,#ececee 50%,transparent);
+}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font-family:var(--font-b);font-size:15px;background:var(--bg);color:var(--text);line-height:1.45}
+::selection{background:var(--accent-tint-2)}
+a{color:var(--accent-strong)}a:hover{color:var(--accent-deep)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+header,#app,footer{max-width:720px;margin:0 auto;padding:0 16px}
+header{padding-top:20px;padding-bottom:10px;display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+header h1{margin:0;font-family:var(--font-h);font-weight:600;font-size:15px;letter-spacing:.14em;text-transform:uppercase}
+header .sub{margin:0;color:var(--muted);font-size:12px}
+footer{color:var(--muted);font-size:12px;padding:8px 16px calc(var(--nav-h) + 120px)}
+h2,h3{font-family:var(--font-h);font-weight:600;text-transform:uppercase;letter-spacing:.02em}
+h2{font-size:20px;margin:4px 0 10px}
+h3{font-size:17px;margin:0 0 6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+/* buttons + fields */
+button{font-family:inherit;font-size:14px;padding:9px 14px;min-height:40px;border:1px solid var(--line);border-radius:0;background:transparent;color:var(--text);cursor:pointer}
+button:hover{background:color-mix(in srgb,var(--text) 7%,transparent)}
+button:active{background:color-mix(in srgb,var(--text) 14%,transparent)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600}
+button.primary:hover{background:var(--accent-hover)}button.primary:active{background:var(--accent-press)}
+button.danger{color:var(--danger);border-color:var(--danger)}
+button.small{padding:4px 10px;font-size:12px;min-height:32px}
+input[type=number],input[type=text],select{background:transparent;color:var(--text);border:1px solid var(--line);border-radius:0;padding:7px 9px;min-height:40px;font-size:15px;font-family:inherit}
+input[type=number]:hover,input[type=text]:hover,select:hover{border-color:color-mix(in srgb,var(--text) 45%,transparent)}
+input:focus-visible,select:focus-visible{border-color:var(--accent);outline-offset:0}
+select option{background:var(--bg);color:var(--text)}
+input[type=number]{width:84px}
+label{font-size:13px;color:var(--muted);display:inline-flex;align-items:center;gap:6px}
+/* cards: hairline frames with registration marks */
+.card{position:relative;border:1px solid var(--line);padding:16px;margin:0 0 22px;background:transparent}
+.card>.corner{position:absolute;width:11px;height:11px;color:var(--mark);pointer-events:none}
+.card>.corner::before,.card>.corner::after{content:"";position:absolute;background:currentColor}
+.card>.corner::before{left:5px;top:0;width:1px;height:100%}
+.card>.corner::after{top:5px;left:0;width:100%;height:1px}
+.corner.tl{top:-6px;left:-6px}.corner.tr{top:-6px;right:-6px}.corner.bl{bottom:-6px;left:-6px}.corner.br{bottom:-6px;right:-6px}
+.card.highlight{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.hint{color:var(--muted);font-size:13px;margin:6px 0}
+.hint.sm{font-size:12px;margin:2px 0}
+.amap-hint{border-left:2px solid var(--accent);padding-left:10px}
+.kindtag{display:inline-flex;font-size:11px;letter-spacing:.07em;text-transform:uppercase;padding:3px 8px;border:1px solid var(--line);color:var(--muted);font-weight:500;font-family:var(--font-b)}
+.kindtag.main{background:var(--accent-tint-2);border-color:var(--accent-tint-2);color:var(--accent-deep)}
+.kindtag.support{border-color:var(--accent);color:var(--accent-strong)}
+.tag{color:var(--accent-strong);font-size:11px;font-weight:600;letter-spacing:.06em}
+.pill{display:inline-flex;align-items:center;border:1px solid var(--line);padding:3px 10px;font-size:12px;color:var(--muted);white-space:nowrap}
+.pill.accent{background:var(--accent-tint-2);border-color:var(--accent-tint-2);color:var(--accent-deep)}
+.table{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0}
+.table th,.table td{text-align:left;padding:8px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+.table th{color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.08em;border-bottom-color:var(--line)}
+.table tbody tr:hover{background:color-mix(in srgb,var(--text) 4%,transparent)}
+tr.amap td{background:var(--accent-tint)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.row.wrap{gap:10px 14px}.row.spread{justify-content:space-between}
+.weekbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.weekbar select{flex:1;min-width:190px}
+.daytab{font-size:14px}
+.daytab.active{border-color:var(--accent);background:var(--accent-tint);color:var(--accent-deep);font-weight:600}
+.banner{border:1px solid var(--accent);background:var(--accent-tint);color:var(--accent-deep);padding:10px 12px;font-size:13px;margin:0 0 18px}
+.scroll{overflow-x:auto}
+.toast{position:fixed;bottom:calc(var(--nav-h) + 96px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%) translateY(20px);background:var(--accent-deep);color:var(--bg);padding:10px 18px;font-size:14px;opacity:0;transition:all .25s ease;z-index:10;max-width:90vw}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* bottom nav */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(5,1fr);background:var(--bg);border-top:1px solid var(--line);padding:4px max(8px,env(safe-area-inset-left)) calc(4px + env(safe-area-inset-bottom))}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:56px;padding:4px;border:0;background:transparent;color:var(--muted);font-size:11px;letter-spacing:.04em}
+.tab:hover{background:transparent;color:var(--text)}
+.tab.active{color:var(--accent-strong);font-weight:600}
+/* today */
+.sess-kicker{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.sess-title{font-family:var(--font-h);font-weight:600;font-size:40px;line-height:1;text-transform:uppercase;margin:4px 0 12px}
+.tags{display:flex;gap:6px;flex-wrap:wrap}
+.weekticks{display:grid;gap:3px;margin:14px 0 0;align-items:center}
+.weekticks i{height:3px;background:var(--line)}
+.weekticks i.past{background:var(--accent)}
+.weekticks i.now{background:var(--accent-strong);height:6px}
+.phase-note{margin:12px 0 0;font-size:14px}
+.slot-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.slot-name{font-family:var(--font-h);font-weight:600;font-size:23px;line-height:1.05;text-transform:uppercase;margin:8px 0 2px}
+.slot.main .slot-name{font-size:40px;line-height:.95}
+.slot-meta{font-size:13px;color:var(--muted)}
+.vidlink{display:inline-flex;align-items:center;gap:5px;flex:none;min-height:36px;padding:0 10px;border:1px solid var(--line);color:var(--accent-strong);text-decoration:none;font-size:13px;vertical-align:middle}
+.vidlink:hover{background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.table .vidlink{min-height:24px;padding:0 6px;font-size:11px}
+details.info{margin-top:8px;font-size:13px;color:var(--muted)}
+details.info summary{cursor:pointer;color:var(--accent-strong);font-size:12px;letter-spacing:.04em}
+details.info div{margin-top:4px}
+.lasttime{font-size:13px;color:var(--accent-strong);margin:10px 0 0}
+.warm{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:10px 0 0;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.chip{font-size:12px;letter-spacing:0;text-transform:none;color:var(--accent-strong);border:1px solid var(--accent);padding:2px 8px}
+.setgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px;margin-top:14px}
+.setcell{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-height:62px;padding:6px 2px}
+.setcell .c-kg{font-family:var(--font-h);font-weight:600;font-size:21px;line-height:1.1}
+.setcell .c-reps{font-size:12px;color:var(--muted)}
+.setcell.amrap{border-style:dashed;border-color:var(--accent)}
+.setcell.done{background:var(--accent);border:1px solid var(--accent);color:var(--on-accent)}
+.setcell.done:hover{background:var(--accent-hover)}
+.setcell.done .c-reps{color:var(--on-accent)}
+.setcell.done.short{background:var(--accent-tint-2);color:var(--accent-deep)}
+.setcell.done.short .c-reps{color:var(--accent-deep)}
+.setcell.open{outline:2px solid var(--accent-strong);outline-offset:1px}
+.set-note{font-size:12px;color:var(--muted);margin:8px 0 0}
+.editor{margin-top:12px;padding:12px;border:1px solid var(--accent);background:var(--accent-tint)}
+.editor[hidden]{display:none}
+.ed-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.ed-title{font-weight:600;font-size:14px}
+.ed-target{font-size:12px;color:var(--muted)}
+.ed-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ed-field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.ed-field.wide{grid-column:1 / -1}
+.ed-field>span{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.stepper{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;border:1px solid var(--line);background:var(--bg)}
+.stepper button{border:0;padding:0;min-height:46px;font-size:20px;line-height:1}
+.stepper input[type=number]{width:100%;min-height:46px;border:0;border-left:1px solid var(--line);border-right:1px solid var(--line);padding:0;text-align:center;font-family:var(--font-h);font-weight:600;font-size:22px;-moz-appearance:textfield;appearance:textfield}
+.stepper input::-webkit-inner-spin-button,.stepper input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.ed-hint{font-size:12px;color:var(--accent-deep);min-height:16px;margin:10px 0}
+.ed-actions{display:grid;grid-template-columns:1fr 2fr;gap:8px}
+.ed-actions button{min-height:46px}
+.actionbar{position:sticky;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 10px);z-index:4;display:grid;grid-template-columns:auto 1fr 1.7fr;gap:8px;padding:10px;margin:0 0 16px;background:var(--bg);border:1px solid var(--line)}
+.actionbar button{min-height:48px}
+.tabs{grid-template-columns:repeat(5,1fr)}
+.prog-head{font-family:var(--font-h);font-weight:600;font-size:40px;line-height:1;text-transform:uppercase;margin:4px 0 4px}
+.tm-top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+.tm-name{font-size:13px;color:var(--muted)}
+.tm-val{font-family:var(--font-h);font-weight:600;font-size:36px;line-height:1}
+.tm-val small{font-family:var(--font-b);font-weight:400;font-size:13px;margin-left:4px}
+.bars{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;align-items:end;height:84px;margin-top:14px}
+.bars>div{display:flex;flex-direction:column;justify-content:flex-end;gap:4px;height:100%}
+.bar{background:var(--accent);border:1px solid var(--accent)}
+.bar.future{background:transparent;border-style:dashed}
+.bar-label{font-size:11px;color:var(--muted);text-align:center}
+.bar-label b{color:var(--text);font-weight:600}
+.tm-next{font-size:12px;color:var(--muted);margin:10px 0 0}
+.seg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--line)}
+.seg button{border:0;border-left:1px solid var(--line);min-height:44px;font-size:13px;padding:4px}
+.seg button:first-child{border-left:0}
+.seg button.on{background:var(--accent);color:var(--on-accent);font-weight:600}
+.preview-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px}
+.preview-row .stepper{width:170px}
+.preview-row .stepper span{display:flex;align-items:center;justify-content:center;border-left:1px solid var(--line);border-right:1px solid var(--line);font-family:var(--font-h);font-weight:600;font-size:24px}
+.tm-flow{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.tm-flow .k{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.tm-flow .v{font-family:var(--font-h);font-weight:600;font-size:30px;line-height:1.1}
+.tm-flow .v.new{color:var(--accent-strong)}
+.td-dim{color:var(--faint)}
+.wm{color:var(--muted);font-size:13px}
+.saved{color:var(--accent-strong);font-size:13px;margin:8px 0 0}
+textarea{width:100%;resize:vertical;background:transparent;color:var(--text);border:1px solid var(--line);border-radius:0;padding:8px 10px;font:inherit;font-size:15px}
+textarea:focus-visible{border-color:var(--accent);outline-offset:0}
+label.block{display:flex;flex-direction:column;align-items:stretch;gap:4px;margin:10px 0;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+label.block textarea{text-transform:none;letter-spacing:0}
+.weekbar button{min-width:44px;min-height:44px;padding:0;display:inline-flex;align-items:center;justify-content:center}
+.weekbar select{min-height:44px}
+.lift-card .save-btn{width:100%;min-height:48px;margin-top:12px}
+.log .row.spread{gap:4px 12px}
+.log .log-title{font-family:var(--font-h);font-weight:600;font-size:20px;text-transform:uppercase}
+.log .log-meta{font-size:12px;color:var(--muted)}
 </style>
 
 <link rel="manifest" href="./manifest.webmanifest">
-<meta name="theme-color" content="#1f6f4a">
+<meta name="theme-color" content="#5980a6">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Juggernaut Method">
@@ -69,8 +189,8 @@ button.small { padding: 4px 10px; font-size: 0.8rem; margin-top: 6px; }
 </head>
 <body>
 <header>
-  <h1>Juggernaut Method Trainer</h1>
-  <p class="sub">16-week wave cycle: 10s → 8s → 5s → 3s · Accumulation / Intensification / Realization / Deload</p>
+  <h1>Juggernaut Method</h1>
+  <p class="sub">16-week wave cycle · 10s → 8s → 5s → 3s</p>
 </header>
 <div id="app"></div>
 <footer>All percentages run off the <b>working max</b> (90% of true 1RM), per The Juggernaut Method 2.0. Progression is automatic: reps over the standard on realization day raise the working max for the next wave. Data stays in this browser — use Export to back it up.<p style="margin-top:10px"><a href="./index.html" style="color:inherit">12-week BULK block →</a></p></footer>
@@ -351,15 +471,37 @@ button.small { padding: 4px 10px; font-size: 0.8rem; margin-top: 6px; }
 
   /* ---------- views ---------- */
 
+  var ICONS = {
+    train: '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
+    plan: '<rect width="18" height="18" x="3" y="4"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+    progress: '<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',
+    history: '<path d="M3 12h.01M3 18h.01M3 6h.01M8 12h13M8 18h13M8 6h13"/>',
+    setup: '<path d="M20 7h-9M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/>',
+    prev: '<path d="m15 18-6-6 6-6"/>',
+    next: '<path d="m9 18 6-6-6-6"/>'
+  };
+  function icon(paths, size) {
+    var s = size || 22;
+    return '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths + '</svg>';
+  }
+  var CORNERS = '<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>';
+
   function renderApp() {
-    var tabs = ['setup', 'train', 'plan', 'history'];
-    var views = { setup: renderSetup, train: renderTrain, plan: renderPlan, history: renderHistory };
-    document.getElementById('app').innerHTML =
+    var tabs = ['train', 'plan', 'progress', 'history', 'setup'];
+    var views = { setup: renderSetup, train: renderTrain, plan: renderPlan, progress: renderProgress, history: renderHistory };
+    var app = document.getElementById('app');
+    app.innerHTML =
       (memoryOnly ? '<div class="banner">Browser storage is unavailable — data lives only in this tab. Use Export (Setup tab) to keep it.</div>' : '') +
-      '<nav class="tabs">' + tabs.map(function (t) {
-        return '<button type="button" id="tab-' + t + '" class="tab' + (state.ui.tab === t ? ' active' : '') + '" data-action="tab" data-tab="' + t + '">' + cap(t) + '</button>';
-      }).join('') + '</nav>' +
-      '<main>' + views[state.ui.tab]() + '</main>';
+      '<main>' + views[state.ui.tab]() + '</main>' +
+      '<nav class="tabs" aria-label="Sections">' + tabs.map(function (t) {
+        var on = state.ui.tab === t;
+        return '<button type="button" id="tab-' + t + '" class="tab' + (on ? ' active' : '') + '"' + (on ? ' aria-current="page"' : '') +
+          ' data-action="tab" data-tab="' + t + '">' + icon(ICONS[t]) + '<span>' + cap(t) + '</span></button>';
+      }).join('') + '</nav>';
+    app.querySelectorAll('.card').forEach(function (c) { c.insertAdjacentHTML('afterbegin', CORNERS); });
+    app.querySelectorAll('.lift-card').forEach(function (card) {
+      card.querySelectorAll('.editor').forEach(function (ed) { refreshCell(card, ed.dataset.set); });
+    });
   }
 
   function renderSetup() {
@@ -409,21 +551,29 @@ button.small { padding: 4px 10px; font-size: 0.8rem; margin-top: 6px; }
       var wi = J.weekInfo(w);
       options += '<option value="' + w + '"' + (w === week ? ' selected' : '') + '>Week ' + w + ' — ' + wi.waveName + ' · ' + cap(wi.phase) + '</option>';
     }
+    var ticks = '';
+    for (var k = 1; k <= J.TOTAL_WEEKS; k++) { ticks += '<i class="' + (k < week ? 'past' : k === week ? 'now' : '') + '"></i>'; }
+    var note = {
+      accumulation: 'Last set of each lift: as many quality reps as possible.',
+      intensification: 'Last set of each lift: as many quality reps as possible.',
+      realization: 'The final set of each lift is a max-rep set. Every rep over the standard (' + info.standard + ') adds the lift’s increment to its working max; reps under subtract.',
+      deload: '40/50/60% × 5. Move fast and leave fresh — this week is where the adaptation happens.'
+    }[info.phase];
     return '<section>' +
-      '<div class="card weekbar">' +
-      '<button type="button" data-action="week-prev">◀</button>' +
-      '<select id="week-select">' + options + '</select>' +
-      '<button type="button" data-action="week-next">▶</button>' +
-      '<span class="pill">Cycle ' + state.cycle + '</span>' +
-      (week === J.TOTAL_WEEKS ? '<button type="button" class="primary" data-action="next-cycle">Finish cycle → start Cycle ' + (state.cycle + 1) + '</button>' : '') +
+      '<div class="card sess">' +
+      '<div class="sess-kicker">Week ' + week + ' of ' + J.TOTAL_WEEKS + ' · Cycle ' + state.cycle + '</div>' +
+      '<div class="sess-title">' + info.waveName + ' · ' + cap(info.phase) + '</div>' +
+      '<div class="tags"><span class="pill accent">' + info.waveName + ' wave</span><span class="pill">Standard ' + info.standard + '</span></div>' +
+      '<div class="weekticks" style="grid-template-columns:repeat(' + J.TOTAL_WEEKS + ',1fr)" aria-hidden="true">' + ticks + '</div>' +
+      '<p class="phase-note">' + note + '</p>' +
+      '<div class="weekbar" style="margin-top:14px">' +
+      '<button type="button" data-action="week-prev" aria-label="Previous week">' + icon(ICONS.prev, 18) + '</button>' +
+      '<select id="week-select" aria-label="Week">' + options + '</select>' +
+      '<button type="button" data-action="week-next" aria-label="Next week">' + icon(ICONS.next, 18) + '</button>' +
       '</div>' +
-      '<p class="hint">Training 3 days/week: rotate the four sessions across your days (e.g. Mon squat, Wed bench + press, Fri deadlift). The program advances by week, not by calendar day.</p>' +
-      (info.phase === 'realization'
-        ? '<p class="hint amap-hint"><b>Realization week:</b> the final set of each lift is taken for as many quality reps as possible. Every rep over the standard (' + info.standard + ') adds the lift’s increment to its working max; reps under subtract.</p>'
-        : '') +
-      (info.phase === 'deload'
-        ? '<p class="hint"><b>Deload week:</b> 40/50/60% × 5. Move fast, leave the gym feeling fresh — this week is where the adaptation happens.</p>'
-        : '') +
+      (week === J.TOTAL_WEEKS ? '<button type="button" class="primary" style="width:100%;margin-top:10px;min-height:46px" data-action="next-cycle">Finish cycle · start Cycle ' + (state.cycle + 1) + '</button>' : '') +
+      '<p class="hint">Rotate the four sessions across your training days (e.g. Mon squat, Wed bench + press, Fri deadlift). The program advances by week, not by calendar day.</p>' +
+      '</div>' +
       LIFTS.map(function (l) { return renderLiftCard(l, week, info); }).join('') +
       '</section>';
   }
@@ -432,7 +582,7 @@ button.small { padding: 4px 10px; font-size: 0.8rem; margin-top: 6px; }
     var lift = state.lifts[l.id];
     var u = state.settings.unit;
     if (!(lift.workingMax > 0)) {
-      return '<div class="card lift-card" data-lift="' + l.id + '"><h3>' + l.name + '</h3><p class="hint">No working max set — add it in Setup.</p></div>';
+      return '<div class="card lift-card" data-lift="' + l.id + '"><div class="slot-name">' + l.name + '</div><p class="hint">No working max set — add it in Setup.</p></div>';
     }
     var existing = findLog(state.cycle, week, l.id);
     // Render off the WM the session was (or will be) lifted at, so a saved
@@ -440,23 +590,35 @@ button.small { padding: 4px 10px; font-size: 0.8rem; margin-top: 6px; }
     var basisWM = existing ? existing.preWM : lift.workingMax;
     var sets = J.setsForWeek(week, basisWM, state.settings.rounding);
 
-    var rows = sets.map(function (s, i) {
+    function field(label, input, wide) {
+      return '<div class="ed-field' + (wide ? ' wide' : '') + '"><span>' + label + '</span><div class="stepper">' +
+        '<button type="button" data-action="step" data-d="-1" aria-label="Less ' + label + '">−</button>' + input +
+        '<button type="button" data-action="step" data-d="1" aria-label="More ' + label + '">+</button></div></div>';
+    }
+
+    var cells = '', editors = '';
+    sets.forEach(function (s, i) {
       var logged = existing && existing.sets && existing.sets[i];
       var repsVal = logged && logged.reps !== null && logged.reps !== undefined ? logged.reps : (s.amap ? '' : s.targetReps);
+      var rirVal = logged && logged.rir !== null && logged.rir !== undefined ? logged.rir : '';
       var done = logged ? !!logged.done : false;
       var target;
-      if (s.amap) { target = 'max reps (standard ' + info.standard + ')'; }
-      else if (s.pushSet) { target = s.targetReps + '+ (last set: as many as possible)'; }
-      else { target = String(s.targetReps); }
-      return '<tr' + (s.amap ? ' class="amap"' : '') + '>' +
-        '<td>' + (i + 1) + '</td>' +
-        '<td>' + fmt(s.pct) + '%</td>' +
-        '<td><b>' + fmt(s.weight) + '</b> ' + u + '</td>' +
-        '<td>' + target + '</td>' +
-        '<td><input type="number" class="reps" data-set="' + i + '" min="0" step="1" value="' + repsVal + '"' + (s.amap ? ' placeholder="reps"' : '') + '></td>' +
-        '<td><input type="checkbox" class="done" data-set="' + i + '"' + (done ? ' checked' : '') + '></td>' +
-        '</tr>';
-    }).join('');
+      if (s.amap) { target = 'Max reps · standard ' + info.standard; }
+      else if (s.pushSet) { target = s.targetReps + '+ · as many as possible'; }
+      else { target = 'Target ' + s.targetReps; }
+      cells += '<button type="button" class="setcell' + (s.amap || s.pushSet ? ' amrap' : '') + '" data-action="cell" data-set="' + i + '" aria-label="Set ' + (i + 1) + '">' +
+        '<span class="c-kg"></span><span class="c-reps"></span></button>';
+      editors += '<div class="editor" data-set="' + i + '" data-kg="' + s.weight + '" data-treps="' + s.targetReps + '" data-push="' + (s.amap || s.pushSet ? 1 : 0) + '" hidden>' +
+        '<div class="ed-head"><span class="ed-title">Set ' + (i + 1) + ' · ' + fmt(s.weight) + ' ' + u + '</span><span class="ed-target">' + target + ' · ' + fmt(s.pct) + '%</span></div>' +
+        '<div class="ed-fields">' +
+        field('Reps', '<input type="number" inputmode="numeric" class="reps" data-set="' + i + '" min="0" step="1" value="' + repsVal + '" placeholder="' + s.targetReps + '">') +
+        field('RIR', '<input type="number" inputmode="numeric" class="rir" data-set="' + i + '" min="0" step="1" value="' + rirVal + '" placeholder="–">') +
+        '</div>' +
+        '<input type="checkbox" class="done" data-set="' + i + '"' + (done ? ' checked' : '') + ' hidden>' +
+        '<div class="ed-hint"></div>' +
+        '<div class="ed-actions"><button type="button" data-action="clear-set">Clear</button><button type="button" class="primary" data-action="log-set">Log set</button></div>' +
+        '</div>';
+    });
 
     var savedNote = '';
     if (existing) {
@@ -464,16 +626,83 @@ button.small { padding: 4px 10px; font-size: 0.8rem; margin-top: 6px; }
         ? '<p class="saved">Logged ' + existing.date + ' — working max ' + fmt(existing.preWM) + ' → <b>' + fmt(existing.newWM) + '</b> ' + u + '</p>'
         : '<p class="saved">Logged ' + existing.date + '</p>';
     }
+    var hasExtras = existing && (existing.accessories || existing.notes);
 
-    return '<div class="card lift-card" data-lift="' + l.id + '">' +
-      '<h3>' + l.name + ' <span class="wm">WM ' + fmt(lift.workingMax) + ' ' + u + '</span></h3>' +
+    return '<div class="card lift-card slot" data-lift="' + l.id + '">' +
+      '<span class="kindtag main">Main lift</span>' +
+      '<div class="slot-name">' + l.name + '</div>' +
+      '<div class="slot-meta">WM ' + fmt(lift.workingMax) + ' ' + u + '</div>' +
       savedNote +
-      '<table class="table sets"><thead><tr><th>#</th><th>%</th><th>Weight</th><th>Target reps</th><th>Reps done</th><th>✓</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+      '<div class="setgrid">' + cells + '</div>' +
+      '<p class="set-note">Tap a set to log reps and RIR.</p>' +
+      editors +
+      '<details class="info"' + (hasExtras ? ' open' : '') + '><summary>Accessories &amp; notes</summary>' +
       '<label class="block">Accessories (one per line, e.g. "RDL 3×8 @ 100")' +
       '<textarea class="accessories" rows="2">' + esc(existing ? existing.accessories : '') + '</textarea></label>' +
       '<label class="block">Notes<textarea class="notes" rows="1">' + esc(existing ? existing.notes : '') + '</textarea></label>' +
-      '<button type="button" class="primary" data-action="save-session">' + (existing ? 'Update session' : 'Save session') + '</button>' +
+      '</details>' +
+      '<button type="button" class="primary save-btn" data-action="save-session">' + (existing ? 'Update session' : 'Save session') + '</button>' +
       '</div>';
+  }
+
+  // Paints a set cell from its editor. The inputs stay the source of truth —
+  // saveSession() reads them exactly as before.
+  function refreshCell(card, i) {
+    var ed = card.querySelector('.editor[data-set="' + i + '"]');
+    var cell = card.querySelector('.setcell[data-set="' + i + '"]');
+    if (!ed || !cell) { return; }
+    var reps = num(ed.querySelector('input.reps').value), rir = num(ed.querySelector('input.rir').value);
+    var done = ed.querySelector('input.done').checked;
+    var tReps = num(ed.dataset.treps), push = ed.dataset.push === '1';
+    var short = done && reps !== null && tReps !== null && reps < tReps;
+    cell.classList.toggle('done', done);
+    cell.classList.toggle('short', short);
+    cell.querySelector('.c-kg').textContent = fmt(num(ed.dataset.kg));
+    cell.querySelector('.c-reps').textContent = done
+      ? (reps === null ? '?' : reps) + (rir !== null ? ' @ ' + rir : '')
+      : '× ' + tReps + (push ? '+' : '');
+    var hints = [];
+    if (reps !== null && tReps !== null && reps < tReps) { hints.push((tReps - reps) + ' short of target'); }
+    if (reps !== null && push && tReps !== null && reps > tReps) { hints.push((reps - tReps) + ' over'); }
+    ed.querySelector('.ed-hint').textContent = hints.join(' · ');
+  }
+
+  function setAction(btn, a) {
+    var card = btn.closest('.lift-card');
+    if (!card) { return; }
+    if (a === 'cell') {
+      var ci = btn.dataset.set;
+      var target = card.querySelector('.editor[data-set="' + ci + '"]');
+      var opening = target.hidden;
+      document.querySelectorAll('#app .editor').forEach(function (e) { e.hidden = true; });
+      document.querySelectorAll('#app .setcell.open').forEach(function (c) { c.classList.remove('open'); });
+      if (opening) { target.hidden = false; btn.classList.add('open'); }
+      return;
+    }
+    var ed = btn.closest('.editor');
+    var i = ed.dataset.set;
+    var reps = ed.querySelector('input.reps'), rir = ed.querySelector('input.rir'), done = ed.querySelector('input.done');
+    if (a === 'step') {
+      var input = btn.parentNode.querySelector('input');
+      var cur = num(input.value);
+      if (cur === null) { cur = input === reps ? (num(ed.dataset.treps) || 0) : 2; }
+      input.value = Math.max(0, cur + Number(btn.dataset.d));
+      refreshCell(card, i);
+      return;
+    }
+    var cell = card.querySelector('.setcell[data-set="' + i + '"]');
+    if (a === 'log-set') {
+      if (reps.value === '') { reps.value = ed.dataset.treps; }
+      done.checked = true;
+    } else if (a === 'clear-set') {
+      done.checked = false; rir.value = '';
+    }
+    refreshCell(card, i);
+    ed.hidden = true; cell.classList.remove('open');
+    if (a === 'log-set') {
+      var next = card.querySelector('.setcell:not(.done)');
+      if (next) { setAction(next, 'cell'); }
+    }
   }
 
   function renderPlan() {
@@ -510,6 +739,121 @@ button.small { padding: 4px 10px; font-size: 0.8rem; margin-top: 6px; }
       '</section>';
   }
 
+  /* ---------- progress ---------- */
+
+  // Working max after each wave's realization in the current cycle, read from
+  // the logs (newWM is only set on realization sessions).
+  function waveResults(liftId) {
+    var out = [null, null, null, null], start = null;
+    state.logs.forEach(function (log) {
+      if (log.cycle !== state.cycle || log.lift !== liftId) { return; }
+      if (start === null || log.week < start.week) { start = { week: log.week, wm: log.preWM }; }
+      if (log.newWM !== null && log.newWM !== undefined) { out[J.weekInfo(log.week).waveIndex] = log.newWM; }
+    });
+    return { waves: out, start: start ? start.wm : state.lifts[liftId].workingMax };
+  }
+
+  // The next realization week this cycle that hasn't been logged for the lift.
+  function nextRealization(liftId) {
+    for (var w = state.currentWeek; w <= J.TOTAL_WEEKS; w++) {
+      var info = J.weekInfo(w);
+      if (info.phase !== 'realization') { continue; }
+      var log = findLog(state.cycle, w, liftId);
+      if (log && log.newWM !== null && log.newWM !== undefined) { continue; }
+      var amap = J.setsForWeek(w, state.lifts[liftId].workingMax, state.settings.rounding).filter(function (s) { return s.amap; })[0];
+      return { week: w, info: info, weight: amap ? amap.weight : null };
+    }
+    return null;
+  }
+
+  function renderProgress() {
+    if (!anyMaxSet()) {
+      return '<section class="card"><p>No working maxes set yet — enter them in the Setup tab first.</p></section>';
+    }
+    var u = state.settings.unit;
+    var live = LIFTS.filter(function (l) { return state.lifts[l.id].workingMax > 0; });
+    var total = 0;
+    var cards = live.map(function (l) {
+      var lift = state.lifts[l.id];
+      var r = waveResults(l.id);
+      var delta = Math.round((lift.workingMax - r.start) * 100) / 100;
+      total += delta;
+      var vals = r.waves.filter(function (v) { return v !== null; }).concat([r.start, lift.workingMax]);
+      var lo = Math.min.apply(null, vals) * 0.97, hi = Math.max.apply(null, vals) * 1.02;
+      var hpx = function (v) { return Math.max(6, Math.round((v - lo) / (hi - lo || 1) * 60)) + 'px'; };
+      var bars = J.WAVES.map(function (wave, i) {
+        var v = r.waves[i];
+        return '<div><div class="bar' + (v === null ? ' future' : '') + '" style="height:' + hpx(v === null ? lift.workingMax : v) + '"></div>' +
+          '<span class="bar-label">' + wave.name + (v === null ? '' : ' · <b>' + fmt(v) + '</b>') + '</span></div>';
+      }).join('');
+      var nx = nextRealization(l.id);
+      return '<div class="card">' +
+        '<div class="tm-top"><div><div class="tm-name">' + l.name + '</div><div class="tm-val">' + fmt(lift.workingMax) + '<small>' + u + '</small></div></div>' +
+        '<span class="pill' + (delta ? ' accent' : '') + '">' + (delta > 0 ? '+' : '') + fmt(delta) + ' ' + u + '</span></div>' +
+        '<div class="bars" aria-hidden="true">' + bars + '</div>' +
+        '<p class="tm-next">' + (nx ? 'Next max-rep set · week ' + nx.week + ' · ' + fmt(nx.weight) + ' ' + u + ' × ' + nx.info.standard + '+' : 'All realization weeks logged this cycle') + '</p>' +
+        '</div>';
+    }).join('');
+
+    // AMRAP preview
+    var sel = state.ui.progLift && state.lifts[state.ui.progLift] && state.lifts[state.ui.progLift].workingMax > 0 ? state.ui.progLift : live[0].id;
+    var slift = state.lifts[sel];
+    var nxs = nextRealization(sel);
+    var preview;
+    if (nxs) {
+      var std = nxs.info.standard;
+      var reps = state.ui.progReps === undefined || state.ui.progReps === null ? std : state.ui.progReps;
+      var newWM = J.nextWorkingMax(slift.workingMax, std, reps, slift.incPerRep);
+      var over = reps - std;
+      var capped = Math.min(over, J.REP_CAP_OVER_STANDARD);
+      var note = over > 0
+        ? over + ' over the standard × ' + fmt(slift.incPerRep) + ' = +' + fmt(capped * slift.incPerRep) + ' ' + u + (over > J.REP_CAP_OVER_STANDARD ? ' (capped at ' + J.REP_CAP_OVER_STANDARD + ' reps over)' : '')
+        : over === 0 ? 'Hit the standard: working max holds.' : (-over) + ' under the standard: working max drops ' + fmt(-capped * slift.incPerRep) + ' ' + u + '.';
+      preview = '<div class="sess-kicker">Week ' + nxs.week + ' · ' + nxs.info.waveName + ' realization</div>' +
+        '<div class="slot-name" style="font-size:28px">What your max-rep set buys</div>' +
+        '<p class="slot-meta">' + fmt(nxs.weight) + ' ' + u + ' × ' + std + '+ · standard ' + std + '</p>' +
+        '<div class="preview-row"><span>Reps</span><div class="stepper">' +
+        '<button type="button" data-action="prog-step" data-d="-1" aria-label="Fewer reps">−</button><span>' + reps + '</span>' +
+        '<button type="button" data-action="prog-step" data-d="1" aria-label="More reps">+</button></div></div>' +
+        '<div class="tm-flow"><div><div class="k">WM now</div><div class="v">' + fmt(slift.workingMax) + '</div></div>' +
+        icon('<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>', 20) +
+        '<div style="text-align:right"><div class="k">Next WM</div><div class="v new">' + fmt(newWM) + '</div></div></div>' +
+        '<p class="hint">' + note + '</p>';
+    } else {
+      preview = '<div class="slot-name" style="font-size:28px">What your max-rep set buys</div><p class="hint">Every realization week this cycle is logged for ' + liftName(sel) + '.</p>';
+    }
+    var seg = '<div class="seg" role="group" aria-label="Lift">' + live.map(function (l) {
+      return '<button type="button" class="' + (l.id === sel ? 'on' : '') + '" data-action="prog-lift" data-lift="' + l.id + '">' + esc(l.name.replace(' Press', '')) + '</button>';
+    }).join('') + '</div>';
+
+    // Ledger
+    var ledger = '<table class="table"><thead><tr><th>Lift</th><th>Start</th>' + J.WAVES.map(function (w) { return '<th>' + w.name + '</th>'; }).join('') + '</tr></thead><tbody>' +
+      live.map(function (l) {
+        var r = waveResults(l.id);
+        return '<tr><td>' + esc(l.name.replace(' Press', '')) + '</td><td>' + fmt(r.start) + '</td>' +
+          r.waves.map(function (v) { return v === null ? '<td class="td-dim">—</td>' : '<td><b>' + fmt(v) + '</b></td>'; }).join('') + '</tr>';
+      }).join('') + '</tbody></table>';
+
+    var view = state.ui.progView === 'amrap' ? 'amrap' : 'climb';
+    var switcher = '<div class="seg" role="tablist" aria-label="Progress view" style="grid-template-columns:repeat(2,minmax(0,1fr));margin-bottom:22px">' +
+      '<button type="button" role="tab" aria-selected="' + (view === 'climb') + '" class="' + (view === 'climb' ? 'on' : '') + '" data-action="prog-view" data-view="climb">Climb</button>' +
+      '<button type="button" role="tab" aria-selected="' + (view === 'amrap') + '" class="' + (view === 'amrap' ? 'on' : '') + '" data-action="prog-view" data-view="amrap">AMRAP &amp; ledger</button>' +
+      '</div>';
+    if (view === 'climb') {
+      return '<section>' + switcher +
+        '<div class="sess-kicker">Working maxes · Cycle ' + state.cycle + '</div>' +
+        '<div class="prog-head">' + (total > 0 ? '+' : '') + fmt(Math.round(total * 100) / 100) + ' ' + u + ' this cycle</div>' +
+        '<p class="hint" style="margin-bottom:22px">Solid bars are logged realizations; dashed are waves still to come.</p>' +
+        cards + '</section>';
+    }
+    return '<section>' + switcher +
+      '<div class="card">' + seg + '<div style="margin-top:14px">' + preview + '</div></div>' +
+      '<div class="sess-kicker" style="margin-bottom:6px">Ledger · ' + u + '</div>' +
+      '<div class="scroll">' + ledger + '</div>' +
+      '<p class="hint">Working max after each wave’s realization set.</p>' +
+      '</section>';
+  }
+
   function renderHistory() {
     if (!state.logs.length) {
       return '<section class="card"><p>Nothing logged yet. Sessions you save in the Train tab show up here.</p></section>';
@@ -519,7 +863,7 @@ button.small { padding: 4px 10px; font-size: 0.8rem; margin-top: 6px; }
     return '<section>' + logs.map(function (log) {
       var doneSets = (log.sets || []).filter(function (s) { return s.done; });
       var summary = doneSets.length
-        ? doneSets.map(function (s) { return fmt(s.weight) + '×' + (s.reps === null || s.reps === undefined ? '?' : s.reps); }).join(', ')
+        ? doneSets.map(function (s) { return fmt(s.weight) + '×' + (s.reps === null || s.reps === undefined ? '?' : s.reps) + (s.rir !== null && s.rir !== undefined ? ' @' + s.rir : ''); }).join(', ')
         : 'no sets marked done';
       var amapLine = '';
       if (log.amapReps !== null && log.amapReps !== undefined) {
@@ -530,7 +874,7 @@ button.small { padding: 4px 10px; font-size: 0.8rem; margin-top: 6px; }
           ' — working max ' + fmt(log.preWM) + ' → <b>' + fmt(log.newWM) + '</b> ' + u + '</div>';
       }
       return '<div class="card log">' +
-        '<div class="row spread"><b>' + liftName(log.lift) + '</b><span>' + log.date + ' · Cycle ' + log.cycle + ' · Week ' + log.week + ' · ' + log.wave + ' ' + cap(log.phase) + '</span></div>' +
+        '<div class="row spread"><span class="log-title">' + liftName(log.lift) + '</span><span class="log-meta">' + log.date + ' · Cycle ' + log.cycle + ' · Week ' + log.week + ' · ' + log.wave + ' ' + cap(log.phase) + '</span></div>' +
         '<div class="hint">Sets: ' + summary + '</div>' +
         amapLine +
         (log.accessories ? '<div class="hint">Accessories: ' + esc(log.accessories).replace(/\n/g, ' · ') + '</div>' : '') +
@@ -573,9 +917,10 @@ button.small { padding: 4px 10px; font-size: 0.8rem; margin-top: 6px; }
     var sets = prescription.map(function (s, i) {
       var repsEl = card.querySelector('input.reps[data-set="' + i + '"]');
       var doneEl = card.querySelector('input.done[data-set="' + i + '"]');
+      var rirEl = card.querySelector('input.rir[data-set="' + i + '"]');
       return {
         pct: s.pct, weight: s.weight, targetReps: s.targetReps, amap: s.amap,
-        reps: num(repsEl.value), done: doneEl.checked
+        reps: num(repsEl.value), rir: rirEl ? num(rirEl.value) : null, done: doneEl.checked
       };
     });
 
@@ -640,6 +985,15 @@ button.small { padding: 4px 10px; font-size: 0.8rem; margin-top: 6px; }
     var btn = e.target.closest ? e.target.closest('[data-action]') : null;
     if (!btn) { return; }
     var a = btn.dataset.action;
+    if (a === 'cell' || a === 'step' || a === 'log-set' || a === 'clear-set') { setAction(btn, a); return; }
+    if (a === 'prog-view') { state.ui.progView = btn.dataset.view; save(); renderApp(); return; }
+    if (a === 'prog-lift') { state.ui.progLift = btn.dataset.lift; state.ui.progReps = null; save(); renderApp(); return; }
+    if (a === 'prog-step') {
+      var pl = state.ui.progLift && state.lifts[state.ui.progLift].workingMax > 0 ? state.ui.progLift : LIFTS.filter(function (l) { return state.lifts[l.id].workingMax > 0; })[0].id;
+      var pn = nextRealization(pl);
+      var base = state.ui.progReps === undefined || state.ui.progReps === null ? (pn ? pn.info.standard : 0) : state.ui.progReps;
+      state.ui.progReps = Math.max(0, base + Number(btn.dataset.d)); renderApp(); return;
+    }
     if (a === 'tab') { state.ui.tab = btn.dataset.tab; save(); renderApp(); }
     else if (a === 'week-prev') { state.currentWeek = Math.max(1, state.currentWeek - 1); save(); renderApp(); }
     else if (a === 'week-next') { state.currentWeek = Math.min(J.TOTAL_WEEKS, state.currentWeek + 1); save(); renderApp(); }
@@ -657,6 +1011,11 @@ button.small { padding: 4px 10px; font-size: 0.8rem; margin-top: 6px; }
         save(); renderApp();
       }
     }
+  });
+
+  document.addEventListener('input', function (e) {
+    var ed = e.target.closest ? e.target.closest('.editor') : null;
+    if (ed) { refreshCell(ed.closest('.lift-card'), ed.dataset.set); }
   });
 
   document.addEventListener('change', function (e) {
