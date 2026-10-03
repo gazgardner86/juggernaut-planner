@@ -184,7 +184,7 @@ details.info .row{margin-top:10px}
 .lib-lbl{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:500;margin-bottom:2px}
 </style>
 
-<link rel="manifest" href="./manifest.webmanifest">
+<link rel="manifest" href="./manifest-trainer.webmanifest">
 <meta name="theme-color" content="#5980a6">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1174,8 +1174,19 @@ details.info .row{margin-top:10px}
     }
     var cell = card.querySelector('.setcell[data-i="' + i + '"]');
     if (a === 'log-set') {
-      if (reps.value === '') { reps.value = ed.dataset.treps; }
-      if (rir.value === '' && ed.dataset.trir !== '') { rir.value = ed.dataset.trir; }
+      if (reps.value === '') {
+        // The AMRAP set exists to record what you actually got, and on a
+        // Realization week that number becomes the next training max, so
+        // nothing is assumed for it. Any other set can be "did the plan".
+        if (ed.dataset.amrap === '1') {
+          ed.querySelector('.ed-hint').textContent = 'Enter the reps you got — nothing is assumed for this set.';
+          return;
+        }
+        reps.value = ed.dataset.treps;
+      }
+      // RIR is never filled in: it is a measurement, not a plan. Progression
+      // needs the real number, and a made-up one would also silence the
+      // "no RIR logged" warning.
     } else if (a === 'clear-set') {
       reps.value = ''; rir.value = '';
     }
