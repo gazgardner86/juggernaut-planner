@@ -1377,7 +1377,7 @@ details.info div{margin-top:4px}
 
   function progressOverview() {
     var names = E.progressingLifts(programme()).filter(function (n) { return E.tracked(n, state.lifts); });
-    if (!names.length) { return ''; }
+    if (!names.length) { return { climb: '', preview: '' }; }
     var u = U(), total = 0;
     var cards = names.map(function (name) {
       var lift = E.tracked(name, state.lifts);
@@ -1430,10 +1430,12 @@ details.info div{margin-top:4px}
         '</div>';
     }
 
-    return '<div class="sess-kicker">Training maxes</div>' +
-      '<div class="prog-head">' + (total > 0 ? '+' : '') + fmt(Math.round(total * 100) / 100) + ' ' + u + ' this block</div>' +
-      '<p class="hint" style="margin-bottom:22px">Solid bars are applied waves; dashed are waves still to come.</p>' +
-      cards + preview;
+    return {
+      climb: '<div class="sess-kicker">Training maxes</div>' +
+        '<div class="prog-head">' + (total > 0 ? '+' : '') + fmt(Math.round(total * 100) / 100) + ' ' + u + ' this block</div>' +
+        '<p class="hint" style="margin-bottom:22px">Solid bars are applied waves; dashed are waves still to come.</p>' + cards,
+      preview: preview
+    };
   }
 
   function viewProgress() {
@@ -1514,17 +1516,25 @@ details.info div{margin-top:4px}
       }).join(' &nbsp;|&nbsp; ') + '</td></tr>';
     }).join('');
 
-    return progressOverview() + '<section class="card"><h2>Training max</h2>' +
+    var ov = progressOverview();
+    var view = state.ui.progView === 'amrap' ? 'amrap' : 'climb';
+    var switcher = '<div class="seg" role="tablist" aria-label="Progress view" style="margin-bottom:22px">' +
+      '<button type="button" role="tab" aria-selected="' + (view === 'climb') + '" class="' + (view === 'climb' ? 'on' : '') + '" data-action="prog-view" data-view="climb">Climb</button>' +
+      '<button type="button" role="tab" aria-selected="' + (view === 'amrap') + '" class="' + (view === 'amrap' ? 'on' : '') + '" data-action="prog-view" data-view="amrap">AMRAP &amp; ledger</button>' +
+      '</div>';
+    var tmTable = '<section class="card"><h2>Ledger · apply results</h2>' +
       '<p class="hint">New TM = old TM + (AMRAP reps − standard) × increment. Rows are the lifts used as a main lift; miss the standard and the TM drops, which is the method working.</p>' +
       '<div class="scroll"><table class="table"><thead><tr><th>Weeks</th><th>Wave</th><th>Lift</th><th>TM</th><th>Std</th><th>AMRAP</th><th>Inc</th><th>New TM</th><th></th></tr></thead><tbody>' +
-      rows + '</tbody></table></div></section>' +
-      (oneRmHtml ? '<section class="card"><h2>Estimated 1RM</h2>' +
+      rows + '</tbody></table></div></section>';
+    var extras = (oneRmHtml ? '<section class="card"><h2>Estimated 1RM</h2>' +
         '<p class="hint">Best set per logged main-lift session (deloads excluded). Flat into a new wave means the TM is about right; falling means it is set too high.</p>' +
         '<div class="scroll"><table class="table"><thead><tr><th>Lift</th><th>Trend (' + U() + ')</th></tr></thead><tbody>' +
         oneRmHtml + '</tbody></table></div></section>' : '') +
       '<section class="card"><h2>Movement history</h2>' +
       (histHtml ? '<div class="scroll"><table class="table"><thead><tr><th>Movement</th><th>Recent sessions</th></tr></thead><tbody>' + histHtml + '</tbody></table></div>'
         : '<p class="hint">Nothing logged yet.</p>') + '</section>';
+    if (view === 'climb') { return switcher + ov.climb + extras; }
+    return switcher + ov.preview + tmTable;
   }
 
   /* ---------------- library ---------------- */
@@ -1765,6 +1775,7 @@ details.info div{margin-top:4px}
     if (!btn) { return; }
     var a = btn.dataset.action;
     if (a === 'cell' || a === 'step' || a === 'log-set' || a === 'clear-set') { setAction(btn, a); return; }
+    if (a === 'prog-view') { state.ui.progView = btn.dataset.view; save(); render(); return; }
     if (a === 'prog-lift') { state.ui.progLift = btn.dataset.lift; state.ui.progReps = null; save(); render(); return; }
     if (a === 'prog-step') {
       var pnames = E.progressingLifts(programme()).filter(function (n) { return E.tracked(n, state.lifts) && nextRealizationFor(n); });
