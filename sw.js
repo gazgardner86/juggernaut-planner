@@ -3,8 +3,8 @@
  * deploy is picked up when there is signal; the cache answers when there
  * isn't (gym basements, no reception).
  */
-var CACHE = 'juggernaut-202610031400';
-var ASSETS = ['./', './index.html', './trainer.html', './juggernaut.html', './manifest.webmanifest'];
+var CACHE = 'juggernaut-202610031412';
+var ASSETS = ['./', './index.html', './juggernaut.html', './manifest.webmanifest'];
 
 self.addEventListener('install', function (e) {
   e.waitUntil(
@@ -44,13 +44,8 @@ self.addEventListener('fetch', function (e) {
           return res;
         })
         .catch(function () {
-          // Fall back to the cached copy of the page that was asked for, so an
-          // offline trainer.html never lands on the v1 app.
-          return caches.match(req, { ignoreSearch: true }).then(function (hit) {
-            if (hit) { return hit; }
-            var path = new URL(req.url).pathname;
-            var page = /trainer\.html$/.test(path) ? './trainer.html' : /juggernaut\.html$/.test(path) ? './juggernaut.html' : './index.html';
-            return caches.match(page);
+          return caches.match(req).then(function (hit) {
+            return hit || caches.match('./index.html');
           });
         })
     );
