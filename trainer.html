@@ -147,6 +147,7 @@ details.info div{margin-top:4px}
 .bars>div{display:flex;flex-direction:column;justify-content:flex-end;gap:4px;height:100%}
 .bar{background:var(--accent);border:1px solid var(--accent)}
 .bar.future{background:transparent;border-style:dashed}
+.bar.na{height:2px;background:var(--line);border:0}
 .bar-label{font-size:11px;color:var(--muted);text-align:center}
 .bar-label b{color:var(--text);font-weight:600}
 .tm-next{font-size:12px;color:var(--muted);margin:10px 0 0}
@@ -1538,10 +1539,14 @@ details.info .row{margin-top:10px}
     var out = [], start = null;
     P0.waveSlots.forEach(function (wave, slot) {
       var k = slot + '|' + name;
+      // A wave the lift is never the main lift in has no result to wait for.
+      if (!testedInWave(slot, name)) { out.push('na'); return; }
       var base = state.trackerBase[k];
       if (base === undefined) { out.push(null); return; }
       if (start === null) { start = base; }
       var reps = state.tracker[k];
+      // Waves applied before the reps were remembered: the log still has them.
+      if (reps === undefined) { var lr = loggedAmrapFor(slot, name); if (lr !== null) { reps = lr; } }
       var nt = E.nextTM(base, reps === undefined ? null : reps, E.standardReps(wave), lift.inc);
       out.push(nt === null ? null : nt);
     });
@@ -1580,11 +1585,14 @@ details.info .row{margin-top:10px}
       var r = waveResultsFor(name);
       var delta = Math.round((lift.tm - r.start) * 100) / 100;
       total += delta;
-      var vals = r.waves.filter(function (v) { return v !== null; }).concat([r.start, lift.tm]);
+      var vals = r.waves.filter(function (v) { return typeof v === 'number'; }).concat([r.start, lift.tm]);
       var lo = Math.min.apply(null, vals) * 0.97, hi = Math.max.apply(null, vals) * 1.02;
       var hpx = function (v) { return Math.max(6, Math.round((v - lo) / (hi - lo || 1) * 60)) + 'px'; };
       var bars = P0.waveSlots.map(function (wave, i) {
         var v = r.waves[i];
+        if (v === 'na') {
+          return '<div><div class="bar na"></div><span class="bar-label" title="' + esc(name) + ' is not the main lift in this wave">' + wave + ' · –</span></div>';
+        }
         return '<div><div class="bar' + (v === null ? ' future' : '') + '" style="height:' + hpx(v === null ? lift.tm : v) + '"></div>' +
           '<span class="bar-label">' + wave + (v === null ? '' : ' · <b>' + fmt(v) + '</b>') + '</span></div>';
       }).join('');
@@ -1661,7 +1669,7 @@ details.info .row{margin-top:10px}
           (fromLog ? '<div class="hint sm">from your week ' + (slot * 4 + 3) + ' log</div>' : '') + '</td>' +
           '<td>' + fmt(lift.inc) + '</td><td class="new-tm"><b>' + (nt === null ? '–' : fmt(nt)) + '</b></td>' +
           '<td class="apply-cell">' + (applied ? '<span class="hint">applied ✓</span>'
-            : (nt === null ? '' : '<button type="button" class="small" data-action="apply-tm" data-lift="' + esc(name) + '" data-tm="' + nt + '" data-k="' + esc(k) + '" data-base="' + base + '">Apply</button>')) + '</td></tr>';
+            : (nt === null ? '' : '<button type="button" class="small" data-action="apply-tm" data-lift="' + esc(name) + '" data-tm="' + nt + '" data-k="' + esc(k) + '" data-base="' + base + '" data-reps="' + reps + '">Apply</button>')) + '</td></tr>';
       });
     });
 
@@ -2185,7 +2193,13 @@ details.info .row{margin-top:10px}
       save(); render(); toast('Saved');
     } else if (a === 'apply-tm') {
       var lname = btn.dataset.lift, tm = Number(btn.dataset.tm);
-      if (btn.dataset.k !== undefined) { state.trackerBase[btn.dataset.k] = Number(btn.dataset.base); }
+      if (btn.dataset.k !== undefined) {
+        state.trackerBase[btn.dataset.k] = Number(btn.dataset.base);
+        // Remember the reps the new TM came from. When they were pre-filled from
+        // the Today log rather than typed into the tracker, nothing else stored
+        // them, and the Climb had no result to draw for a wave that was applied.
+        if (btn.dataset.reps !== undefined && btn.dataset.reps !== '') { state.tracker[btn.dataset.k] = Number(btn.dataset.reps); }
+      }
       state.lifts.forEach(function (l) { if (l.name === lname) { l.tm = tm; } });
       save(); render(); toast(lname + ' TM → ' + fmt(tm));
     } else if (a === 'export') {
@@ -2223,7 +2237,7 @@ details.info .row{margin-top:10px}
     row.querySelector('.new-tm').innerHTML = '<b>' + (nt === null ? '–' : fmt(nt)) + '</b>';
     row.querySelector('.apply-cell').innerHTML = nt === null ? ''
       : (state.trackerBase[k] !== undefined && lift.tm === nt ? '<span class="hint">applied ✓</span>'
-        : '<button type="button" class="small" data-action="apply-tm" data-lift="' + esc(name) + '" data-tm="' + nt + '" data-k="' + esc(k) + '" data-base="' + base + '">Apply</button>');
+        : '<button type="button" class="small" data-action="apply-tm" data-lift="' + esc(name) + '" data-tm="' + nt + '" data-k="' + esc(k) + '" data-base="' + base + '" data-reps="' + v + '">Apply</button>');
   }
 
   document.addEventListener('input', function (e) {
