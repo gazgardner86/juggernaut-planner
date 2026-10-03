@@ -138,6 +138,29 @@ details.info div{margin-top:4px}
 .ed-hint{font-size:12px;color:var(--accent-deep);min-height:16px;margin:10px 0}
 .ed-actions{display:grid;grid-template-columns:1fr 2fr;gap:8px}
 .ed-actions button{min-height:46px}
+.prog-head{font-family:var(--font-h);font-weight:600;font-size:40px;line-height:1;text-transform:uppercase;margin:4px 0 4px}
+.tm-top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+.tm-name{font-size:13px;color:var(--muted)}
+.tm-val{font-family:var(--font-h);font-weight:600;font-size:36px;line-height:1}
+.tm-val small{font-family:var(--font-b);font-weight:400;font-size:13px;margin-left:4px}
+.bars{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;align-items:end;height:84px;margin-top:14px}
+.bars>div{display:flex;flex-direction:column;justify-content:flex-end;gap:4px;height:100%}
+.bar{background:var(--accent);border:1px solid var(--accent)}
+.bar.future{background:transparent;border-style:dashed}
+.bar-label{font-size:11px;color:var(--muted);text-align:center}
+.bar-label b{color:var(--text);font-weight:600}
+.tm-next{font-size:12px;color:var(--muted);margin:10px 0 0}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);border:1px solid var(--line)}
+.seg button{border:0;border-left:1px solid var(--line);min-height:44px;font-size:13px;padding:4px}
+.seg button:first-child{border-left:0}
+.seg button.on{background:var(--accent);color:var(--on-accent);font-weight:600}
+.preview-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px}
+.preview-row .stepper{width:170px}
+.preview-row .stepper span{display:flex;align-items:center;justify-content:center;border-left:1px solid var(--line);border-right:1px solid var(--line);font-family:var(--font-h);font-weight:600;font-size:24px}
+.tm-flow{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.tm-flow .k{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.tm-flow .v{font-family:var(--font-h);font-weight:600;font-size:30px;line-height:1.1}
+.tm-flow .v.new{color:var(--accent-strong)}
 .actionbar{position:sticky;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 10px);z-index:4;display:grid;grid-template-columns:auto 1fr 1.7fr;gap:8px;padding:10px;margin:0 0 16px;background:var(--bg);border:1px solid var(--line)}
 .actionbar button{min-height:48px}
 </style>
@@ -1310,6 +1333,109 @@ details.info div{margin-top:4px}
     return null;
   }
 
+  /* ---------------- progress overview ---------------- */
+
+  // TM after each wave, from what Apply recorded. trackerBase holds the TM the
+  // wave was lifted at; the result is recomputed from it, so it never compounds.
+  function waveResultsFor(name) {
+    var lift = E.tracked(name, state.lifts);
+    var out = [], start = null;
+    P0.waveSlots.forEach(function (wave, slot) {
+      var k = slot + '|' + name;
+      var base = state.trackerBase[k];
+      if (base === undefined) { out.push(null); return; }
+      if (start === null) { start = base; }
+      var reps = state.tracker[k];
+      var nt = E.nextTM(base, reps === undefined ? null : reps, E.standardReps(wave), lift.inc);
+      out.push(nt === null ? null : nt);
+    });
+    return { waves: out, start: start === null ? lift.tm : start };
+  }
+
+  function isMainIn(name, week) {
+    for (var d = 0; d < state.programme.days.length; d++) {
+      var m = E.slotsFor(programme(), week, d).filter(function (s) { return s.id === 'main'; })[0];
+      if (m && m.movement === name) { return true; }
+    }
+    return false;
+  }
+
+  // The next realization week, from where you are, in which this lift is a
+  // main lift and its result hasn't been applied yet.
+  function nextRealizationFor(name) {
+    var lift = E.tracked(name, state.lifts);
+    for (var slot = 0; slot < P0.waveSlots.length; slot++) {
+      var week = slot * 4 + 3;
+      if (week < state.cursor.week || state.trackerBase[slot + '|' + name] !== undefined || !isMainIn(name, week)) { continue; }
+      var wave = P0.waveSlots[slot];
+      var rows = E.WAVES[wave].Realization;
+      var top = rows[rows.length - 1];
+      return { slot: slot, week: week, wave: wave, std: E.standardReps(wave), kg: E.mround(lift.tm * top[0], state.settings.rounding) };
+    }
+    return null;
+  }
+
+  function progressOverview() {
+    var names = E.progressingLifts(programme()).filter(function (n) { return E.tracked(n, state.lifts); });
+    if (!names.length) { return ''; }
+    var u = U(), total = 0;
+    var cards = names.map(function (name) {
+      var lift = E.tracked(name, state.lifts);
+      var r = waveResultsFor(name);
+      var delta = Math.round((lift.tm - r.start) * 100) / 100;
+      total += delta;
+      var vals = r.waves.filter(function (v) { return v !== null; }).concat([r.start, lift.tm]);
+      var lo = Math.min.apply(null, vals) * 0.97, hi = Math.max.apply(null, vals) * 1.02;
+      var hpx = function (v) { return Math.max(6, Math.round((v - lo) / (hi - lo || 1) * 60)) + 'px'; };
+      var bars = P0.waveSlots.map(function (wave, i) {
+        var v = r.waves[i];
+        return '<div><div class="bar' + (v === null ? ' future' : '') + '" style="height:' + hpx(v === null ? lift.tm : v) + '"></div>' +
+          '<span class="bar-label">' + wave + (v === null ? '' : ' · <b>' + fmt(v) + '</b>') + '</span></div>';
+      }).join('');
+      var nx = nextRealizationFor(name);
+      return '<div class="card">' +
+        '<div class="tm-top"><div><div class="tm-name">' + esc(name) + '</div><div class="tm-val">' + fmt(lift.tm) + '<small>' + u + '</small></div></div>' +
+        '<span class="pill' + (delta ? ' accent' : '') + '">' + (delta > 0 ? '+' : '') + fmt(delta) + ' ' + u + '</span></div>' +
+        '<div class="bars" aria-hidden="true">' + bars + '</div>' +
+        '<p class="tm-next">' + (nx ? 'Next AMRAP · week ' + nx.week + ' · ' + fmt(nx.kg) + ' ' + u + ' × ' + nx.std + '+' : 'No AMRAP left for this lift in the block') + '</p>' +
+        '</div>';
+    }).join('');
+
+    var withNext = names.filter(function (n) { return nextRealizationFor(n); });
+    var preview = '';
+    if (withNext.length) {
+      var sel = withNext.indexOf(state.ui.progLift) !== -1 ? state.ui.progLift : withNext[0];
+      var lift = E.tracked(sel, state.lifts);
+      var nx = nextRealizationFor(sel);
+      var reps = state.ui.progReps === undefined || state.ui.progReps === null ? nx.std : state.ui.progReps;
+      var nt = E.nextTM(lift.tm, reps, nx.std, lift.inc);
+      var over = reps - nx.std, capped = Math.min(over, E.REP_CAP_OVER_STANDARD);
+      var note = over > 0
+        ? over + ' over the standard × ' + fmt(lift.inc) + ' = +' + fmt(capped * lift.inc) + ' ' + u + (over > E.REP_CAP_OVER_STANDARD ? ' (capped at ' + E.REP_CAP_OVER_STANDARD + ' reps over)' : '')
+        : over === 0 ? 'Hit the standard: TM holds.' : (-over) + ' under the standard: TM drops ' + fmt(-capped * lift.inc) + ' ' + u + '.';
+      preview = '<div class="card">' +
+        (withNext.length > 1 ? '<div class="seg" role="group" aria-label="Lift">' + withNext.map(function (n) {
+          return '<button type="button" class="' + (n === sel ? 'on' : '') + '" data-action="prog-lift" data-lift="' + esc(n) + '">' + esc(n.replace(' Press', '')) + '</button>';
+        }).join('') + '</div>' : '') +
+        '<div class="sess-kicker" style="margin-top:14px">Week ' + nx.week + ' · ' + nx.wave + ' realization</div>' +
+        '<div class="slot-name" style="font-size:28px">What your AMRAP buys</div>' +
+        '<p class="slot-meta">' + esc(sel) + ' · ' + fmt(nx.kg) + ' ' + u + ' × ' + nx.std + '+ · standard ' + nx.std + '</p>' +
+        '<div class="preview-row"><span>Reps</span><div class="stepper">' +
+        '<button type="button" data-action="prog-step" data-d="-1" aria-label="Fewer reps">−</button><span>' + reps + '</span>' +
+        '<button type="button" data-action="prog-step" data-d="1" aria-label="More reps">+</button></div></div>' +
+        '<div class="tm-flow"><div><div class="k">TM now</div><div class="v">' + fmt(lift.tm) + '</div></div>' +
+        icon('<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>', 20) +
+        '<div style="text-align:right"><div class="k">Next TM</div><div class="v new">' + fmt(nt) + '</div></div></div>' +
+        '<p class="hint">' + note + ' A preview only — log the real set on Today and apply it below.</p>' +
+        '</div>';
+    }
+
+    return '<div class="sess-kicker">Training maxes</div>' +
+      '<div class="prog-head">' + (total > 0 ? '+' : '') + fmt(Math.round(total * 100) / 100) + ' ' + u + ' this block</div>' +
+      '<p class="hint" style="margin-bottom:22px">Solid bars are applied waves; dashed are waves still to come.</p>' +
+      cards + preview;
+  }
+
   function viewProgress() {
     var pr = programme();
     var lifts = E.progressingLifts(pr);
@@ -1388,7 +1514,7 @@ details.info div{margin-top:4px}
       }).join(' &nbsp;|&nbsp; ') + '</td></tr>';
     }).join('');
 
-    return '<section class="card"><h2>Training max</h2>' +
+    return progressOverview() + '<section class="card"><h2>Training max</h2>' +
       '<p class="hint">New TM = old TM + (AMRAP reps − standard) × increment. Rows are the lifts used as a main lift; miss the standard and the TM drops, which is the method working.</p>' +
       '<div class="scroll"><table class="table"><thead><tr><th>Weeks</th><th>Wave</th><th>Lift</th><th>TM</th><th>Std</th><th>AMRAP</th><th>Inc</th><th>New TM</th><th></th></tr></thead><tbody>' +
       rows + '</tbody></table></div></section>' +
@@ -1639,6 +1765,14 @@ details.info div{margin-top:4px}
     if (!btn) { return; }
     var a = btn.dataset.action;
     if (a === 'cell' || a === 'step' || a === 'log-set' || a === 'clear-set') { setAction(btn, a); return; }
+    if (a === 'prog-lift') { state.ui.progLift = btn.dataset.lift; state.ui.progReps = null; save(); render(); return; }
+    if (a === 'prog-step') {
+      var pnames = E.progressingLifts(programme()).filter(function (n) { return E.tracked(n, state.lifts) && nextRealizationFor(n); });
+      var psel = pnames.indexOf(state.ui.progLift) !== -1 ? state.ui.progLift : pnames[0];
+      var pnx = psel ? nextRealizationFor(psel) : null;
+      var pbase = state.ui.progReps === undefined || state.ui.progReps === null ? (pnx ? pnx.std : 0) : state.ui.progReps;
+      state.ui.progReps = Math.max(0, pbase + Number(btn.dataset.d)); render(); return;
+    }
     if (a === 'tab') {
       if (state.ui.tab === 'today') { readSession(); }
       state.ui.tab = btn.dataset.tab; save(); render();
