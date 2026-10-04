@@ -1133,6 +1133,12 @@ details.info .row{margin-top:10px}
         '<button type="button" data-action="step" data-d="' + step + '" aria-label="More ' + label + '">+</button></div></div>';
     }
 
+    // RIR is asked for only where something uses it: a fixed-rep slot, which
+    // progresses on a beaten RIR. A rep range progresses on reps alone and the
+    // main lift on its AMRAP reps, so there the target RIR stays in the set
+    // header as where to stop, and the box is gone. A RIR logged before this
+    // rides along in a hidden input so re-saving an old session keeps it.
+    var askRir = !isMain && !p.repsTop;
     var cells = '', editors = '', amrapSet = null;
     p.sets.forEach(function (s, i) {
       var lg = logged[i] || {};
@@ -1151,8 +1157,10 @@ details.info .row{margin-top:10px}
         '<div class="ed-head"><span class="ed-title">Set ' + s.n + '</span><span class="ed-target">' + esc(target) + '</span></div>' +
         '<div class="ed-fields">' +
         field('Reps', '<input type="number" inputmode="numeric" step="1" min="0" class="in-reps" data-i="' + i + '" value="' + repVal + '" placeholder="' + repsTxt + '">', 1) +
-        field('RIR', '<input type="number" inputmode="numeric" step="1" min="0" class="in-rir" data-i="' + i + '" value="' + rirVal + '" placeholder="' + tRir + '">', 1) +
-        field(U(), '<input type="number" inputmode="decimal" step="0.5" min="0" class="in-kg" data-i="' + i + '" value="' + kgVal + '">', kgStep, true) +
+        (askRir
+          ? field('RIR', '<input type="number" inputmode="numeric" step="1" min="0" class="in-rir" data-i="' + i + '" value="' + rirVal + '" placeholder="' + tRir + '">', 1)
+          : '<input type="hidden" class="in-rir" data-i="' + i + '" value="' + rirVal + '">') +
+        field(U(), '<input type="number" inputmode="decimal" step="0.5" min="0" class="in-kg" data-i="' + i + '" value="' + kgVal + '">', kgStep, askRir) +
         '</div><div class="ed-hint"></div>' +
         '<div class="ed-actions"><button type="button" data-action="clear-set">Clear</button><button type="button" class="primary" data-action="log-set">Log set</button></div>' +
         '</div>';
@@ -1169,7 +1177,7 @@ details.info .row{margin-top:10px}
         (!isMain ? '<div class="row"><button type="button" class="small swap-btn" data-action="swap-open" data-slot="' + esc(p.id) + '">Swap exercise</button></div>' : '') +
         '</details>' + (swapping ? swapPanel(p) : '')
       : '';
-    var setNote = isMain && amrapSet ? 'Tap a set to log reps and RIR. Last set: ' + amrapSet.reps + '+ · ' + (RESERVE_HINT[phase] || '') : '';
+    var setNote = isMain && amrapSet ? 'Tap a set to log it. Last set: ' + amrapSet.reps + '+ · ' + (RESERVE_HINT[phase] || '') : '';
 
     return '<div class="card slot' + (isMain ? ' main' : '') + '" data-slot="' + esc(p.id) + '" data-movement="' + esc(p.movement) + '">' +
       '<div class="slot-head"><div><span class="kindtag ' + p.kind + '">' + p.kind + '</span>' +
