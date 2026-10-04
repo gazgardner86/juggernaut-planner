@@ -122,6 +122,8 @@ details.info div{margin-top:4px}
 .setcell.done.short .c-reps{color:var(--accent-deep)}
 .setcell.open{outline:2px solid var(--accent-strong);outline-offset:1px}
 .set-note{font-size:12px;color:var(--muted);margin:8px 0 0}
+.bump-note{font-size:13px;font-weight:600;color:var(--accent-strong);background:var(--accent-tint);border-radius:6px;padding:6px 10px;margin:8px 0 0}
+.bump-note[hidden]{display:none}
 .editor{margin-top:12px;padding:12px;border:1px solid var(--accent);background:var(--accent-tint)}
 .editor[hidden]{display:none}
 .ed-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:10px}
@@ -624,7 +626,7 @@ details.info .row{margin-top:10px}
       name: 'Day 1',
       slots: [
         { id: 'main', kind: 'main', movement: 'Squat', load: wave() },
-        { id: 'support', kind: 'support', movement: 'Overhead Press', load: pct('Overhead Press', 0.65), sets: 4, reps: 6, rir: 3,
+        { id: 'support', kind: 'support', movement: 'Overhead Press', load: pct('Overhead Press', 0.65), sets: 4, reps: 6, repsTop: 8, rir: 3,
           note: 'Pressed on completely fresh shoulders — its best session of the week' },
         acc('a1', 'Romanian deadlift', 4, [10, 12], 2),
         acc('a2', 'Seated cable row', 3, [12, 15], 2, 'Day 1 had no pulling at all; this balances the week'),
@@ -650,7 +652,7 @@ details.info .row{margin-top:10px}
       name: 'Day 3',
       slots: [
         { id: 'main', kind: 'main', movement: 'Deadlift', load: wave() },
-        { id: 'support', kind: 'support', movement: 'Incline Bench', load: pct('Incline Bench', 0.65), sets: 4, reps: 6, rir: 3 },
+        { id: 'support', kind: 'support', movement: 'Incline Bench', load: pct('Incline Bench', 0.65), sets: 4, reps: 6, repsTop: 8, rir: 3 },
         { id: 'a1', kind: 'accessory', movement: 'Weighted chin-up', load: { kind: 'bodyweight', added: 0 }, sets: 4, reps: 6, repsTop: 8, rir: 1,
           note: 'Your loaded vertical pull — progress the belt weight like a main lift' },
         acc('a2', 'Leg extension', 3, [15, 20], 1, 'Rectus femoris is shortened at the hip in a squat and never trained well by it'),
@@ -735,6 +737,12 @@ details.info .row{margin-top:10px}
   var P0 = window.JG2Programme;
   var KEY = 'gym-coach-jg-v2';
   var V1KEY = 'gym-coach-bulk-block-v1';
+  // Rounds of template rep ranges a saved programme is migrated through
+  // (migrateRepRanges). 1: accessories and the fixed-weight row. 2: the %TM
+  // supports (6-8), when RIR stopped gating ranged progression. Re-running is
+  // safe: a slot that already has a top, or an override already decided, is
+  // left alone.
+  var REP_RANGES = 2;
 
   /* ---------------- state ---------------- */
 
@@ -771,8 +779,8 @@ details.info .row{margin-top:10px}
       // Movement name -> its own progression step, set by hand in Library.
       // Beats the equipment class for that one movement.
       movementIncrements: {},
-      // Set once the saved programme has picked up the template's rep ranges.
-      repRanges: true,
+      // Which round of template rep ranges the saved programme has picked up.
+      repRanges: REP_RANGES,
       ui: { tab: 'today', blockWeek: 1, blockDay: 0 }
     };
   }
@@ -794,7 +802,7 @@ details.info .row{margin-top:10px}
   // Brings a saved state up to date. Shared by load and Import, so a backup
   // taken before a change gets the same migrations as the copy on the phone.
   function upgrade(parsed) {
-    if (!parsed.repRanges) { migrateRepRanges(parsed); }
+    if ((parsed.repRanges || 0) < REP_RANGES) { migrateRepRanges(parsed); }
     var base = defaultState();
     Object.keys(base).forEach(function (k) { if (parsed[k] === undefined) { parsed[k] = base[k]; } });
     // settings gained keys after v2 shipped, so backfill inside it too —
@@ -827,7 +835,7 @@ details.info .row{margin-top:10px}
   // a bottom stretched up to the template's top (an 8 under a 15 is not a
   // range anyone chose). Block can add a range to that week by hand.
   function migrateRepRanges(s) {
-    s.repRanges = true;
+    s.repRanges = REP_RANGES;
     if (!s.programme || !s.programme.days) { return; }
     s.programme.days.forEach(function (day, d) {
       var tpl = P0.days[d];
@@ -1169,6 +1177,7 @@ details.info .row{margin-top:10px}
       videoLink(p.movement) + '</div>' +
       infoHtml + prevLine + warm +
       '<div class="setgrid">' + cells + '</div>' +
+      '<p class="bump-note"' + (bumpNoteText(entry) ? '' : ' hidden') + '>' + esc(bumpNoteText(entry)) + '</p>' +
       (setNote ? '<p class="set-note">' + setNote + '</p>' : '') +
       editors +
       '</div>';
@@ -1191,12 +1200,37 @@ details.info .row{margin-top:10px}
     var hints = [];
     if (done && tReps !== null && reps < tReps) { hints.push((tReps - reps) + ' short of target'); }
     if (done && amrap && tReps !== null && reps > tReps) { hints.push((reps - tReps) + ' over the standard'); }
-    if (done && tTop !== null && reps >= tTop) { hints.push('top of the range'); }
+    if (done && tTop !== null && reps >= tTop) { hints.push('top of the range — stop here'); }
     if (rir !== null && tRir !== null && rir < tRir) { hints.push('harder than planned'); }
     ed.querySelector('.ed-hint').textContent = hints.join(' · ');
   }
 
-  function persistSession() { readSession(); save(); }
+  // Every logged set re-checks progression, so the weight goes up for next
+  // session the moment the last set reaches the top — no Save needed — and a
+  // set corrected back down takes it away again (undoBump).
+  function persistSession() {
+    readSession();
+    progressAccessories(state.cursor.week, state.cursor.day);
+    save();
+    paintBumpNotes();
+  }
+
+  function bumpNoteText(entry) {
+    var b = entry && entry.bump;
+    if (!b) { return ''; }
+    var up = b.kind === 'pctTM' || b.kind === 'open' ? '+' + fmt(b.inc) + ' ' + U()
+      : b.kind === 'bodyweight' ? fmt(b.to) + ' added' : fmt(b.to) + ' ' + U();
+    return 'Top of the range on every set — next session ' + up;
+  }
+  function paintBumpNotes() {
+    var log = state.logs[logKey(state.cursor.week, state.cursor.day)];
+    document.querySelectorAll('#app .card.slot').forEach(function (card) {
+      var el = card.querySelector('.bump-note');
+      if (!el) { return; }
+      var txt = bumpNoteText(log && log.slots[card.dataset.slot]);
+      el.textContent = txt; el.hidden = !txt;
+    });
+  }
 
   function setAction(btn, a) {
     var card = btn.closest('.card.slot');
@@ -1405,7 +1439,7 @@ details.info .row{margin-top:10px}
             return '<option value="' + eq + '"' + (eq === cur ? ' selected' : '') + '>' + esc(equipName(eq)) + '</option>';
           }).join('') + '</select></label>' +
           '<span class="hint">' + (E.repTop(s)
-            ? 'Range: keep the weight and add reps. Once every set reaches ' + E.repTop(s) + ' at RIR ' + (s.rir === undefined ? '?' : s.rir) + ' or easier, the weight goes up and you drop back to ' + s.reps + '.'
+            ? 'Range: keep the weight and add reps. Once every set reaches ' + E.repTop(s) + ', the weight goes up next session and you drop back to ' + s.reps + '. RIR ' + (s.rir === undefined ? '?' : s.rir) + ' is where to stop, not a test.'
             : 'Fixed reps: the weight goes up when every set hits ' + s.reps + ' with a higher RIR than asked. Fill in "to" for a range.') + '</span>';
       } else {
         loadCtl = '<span class="hint">Sets, reps and percentages come from the ' + E.waveFor(week, P0.waveSlots) + ' wave table.</span>';
@@ -1876,9 +1910,10 @@ details.info .row{margin-top:10px}
         // readSession() re-runs on every tab switch away from Today, even
         // after an explicit save — rebuilding the entry from the DOM must not
         // silently drop a progression bump a prior save already earned.
-        var prevBump = (log.slots[id] || {}).suggestBump;
+        var prevEntry = log.slots[id] || {};
         log.slots[id] = { movement: card.dataset.movement, sets: sets };
-        if (prevBump !== undefined) { log.slots[id].suggestBump = prevBump; }
+        if (prevEntry.suggestBump !== undefined) { log.slots[id].suggestBump = prevEntry.suggestBump; }
+        if (prevEntry.bump) { log.slots[id].bump = prevEntry.bump; }
       } else {
         delete log.slots[id];
       }
@@ -2033,14 +2068,15 @@ details.info .row{margin-top:10px}
   // volume work behind the main lift and starts competing with it.
   var MAX_SUPPORT_PCT = 0.85;
 
-  // Exercises where reps were logged on some set but RIR was left blank.
-  // Progression needs a RIR on every set, so these silently never move.
+  // Fixed-rep exercises where reps were logged on some set but RIR was left
+  // blank. Fixed reps progress on a beaten RIR, so these silently never move.
+  // A rep range progresses on reps alone, so its RIR is optional.
   function missingRir(week, day) {
     var log = state.logs[logKey(week, day)];
     if (!log) { return []; }
     var out = [];
     E.prescribeDay(programme(), week, day, ctx()).forEach(function (p) {
-      if (p.slot.load.kind === 'wave') { return; }
+      if (p.slot.load.kind === 'wave' || p.repsTop) { return; }
       var entry = log.slots[p.id];
       if (!entry || !entry.sets) { return; }
       var gap = entry.sets.some(function (x) { return x && x.reps && (x.rir === null || x.rir === undefined); });
@@ -2056,13 +2092,77 @@ details.info .row{margin-top:10px}
     return parts.length ? parts.join(' · ') : fallback;
   }
 
-  function progressAccessories(week, day) {
+  // The plan number a fixed load carries, and the load that puts it back.
+  function loadValue(load) {
+    if (!load) { return null; }
+    if (load.kind === 'weight') { return load.kg; }
+    if (load.kind === 'bodyweight') { return load.added || 0; }
+    if (load.kind === 'pctTM') { return load.pct; }
+    return null;
+  }
+  function loadWith(kind, lift, value) {
+    if (kind === 'weight') { return { kind: 'weight', kg: value }; }
+    if (kind === 'bodyweight') { return { kind: 'bodyweight', added: value }; }
+    return { kind: 'pctTM', lift: lift, pct: value };
+  }
+
+  // Write a bump forward into every remaining week that still holds this
+  // movement — a week reassigned to another exercise keeps its own number.
+  // A percentage only replaces a percentage; a weight also fills in weeks
+  // left at "your call", but never overwrites a percentage of a max.
+  function writeForward(week, day, p, kind, value) {
     var dayName = state.programme.days[day].name;
+    for (var w = week + 1; w <= P0.weeks; w++) {
+      var fs = E.slotsFor(programme(), w, day).filter(function (x) { return x.id === p.id; })[0];
+      if (!fs || fs.movement !== p.movement || !fs.load) { continue; }
+      if (kind === 'pctTM' ? fs.load.kind === 'pctTM' : (fs.load.kind !== 'pctTM' && fs.load.kind !== 'wave')) {
+        setOverride(w, dayName, p.id, { load: loadWith(kind, p.slot.load.lift || p.movement, value) });
+      }
+    }
+  }
+
+  // A session re-saved after a correction no longer qualifies: take back the
+  // bump it wrote. Only weeks still holding the bumped number are reset, so a
+  // later session's own bump, or a number typed in Block since, survives.
+  function undoBump(week, day, p, entry) {
+    var b = entry.bump;
+    delete entry.bump; delete entry.suggestBump;
+    if (!b || b.kind === 'open') { return; }
+    var dayName = state.programme.days[day].name;
+    for (var w = week + 1; w <= P0.weeks; w++) {
+      var fs = E.slotsFor(programme(), w, day).filter(function (x) { return x.id === p.id; })[0];
+      if (fs && fs.movement === p.movement && fs.load && fs.load.kind === b.kind && loadValue(fs.load) === b.to) {
+        setOverride(w, dayName, p.id, { load: loadWith(b.kind, b.lift, b.from) });
+      }
+    }
+  }
+
+  // Whether a logged slot earned its bump. Every prescribed set must be done
+  // at or above the target weight. A rep range then asks only that every set
+  // reached the top — no RIR: the rep count is measured, a RIR is a guess, and
+  // reaching the top of the range is the proof the weight got easier. Fixed
+  // reps have no headroom to show that, so they still need every set at the
+  // target reps with a RIR strictly higher than prescribed.
+  function earnedBump(p, entry, week, day) {
+    if (!entry || !entry.sets || entry.sets.length < p.sets.length) { return false; }
+    return p.sets.every(function (s, i) {
+      var lg = entry.sets[i];
+      if (!lg || lg.reps === null || lg.reps === undefined || lg.reps < (s.top || s.reps)) { return false; }
+      if (lg.kg === null || lg.kg === undefined) { return false; }
+      var target = s.kg === null || s.kg === undefined ? suggestedKgFor(p.movement, week, day, i) : s.kg;
+      // First time on an exercise with no plan number: what you lifted is the baseline.
+      if (target !== null && target !== undefined && lg.kg < target) { return false; }
+      if (s.top) { return true; }
+      if (lg.rir === null || lg.rir === undefined || p.rir === undefined) { return false; }
+      return lg.rir > p.rir;
+    });
+  }
+
+  function progressAccessories(week, day) {
     var log = state.logs[logKey(week, day)];
     if (!log) { return []; }
-    // A deload is meant to leave you fresh, so logged RIR runs high by design —
-    // every honest log would earn a bump, and each one writes forward into
-    // every remaining week.
+    // A deload is meant to leave you fresh — light sets reach the top of any
+    // range easily, and each bump writes forward into every remaining week.
     if (E.phaseFor(week) === 'Deload') { return []; }
     var prescribed = E.prescribeDay(programme(), week, day, ctx());
     var bumped = [];
@@ -2074,23 +2174,17 @@ details.info .row{margin-top:10px}
       // A support lift eases to 60% in Realization by design, so the load that
       // was lifted is not the slot's own percentage and cannot earn a bump.
       if (kind === 'pctTM' && E.phaseFor(week) === 'Realization') { return; }
-
-      var inc = incrementFor(p.movement);
-      if (inc === null) { return; }
+      // A fixed weight left blank has no plan number to raise — carry the
+      // bump on the log like an open load instead.
+      if (kind === 'weight' && (p.slot.load.kg === null || p.slot.load.kg === undefined)) { kind = 'open'; }
 
       var entry = log.slots[p.id];
-      if (!entry || !entry.sets || entry.sets.length < p.sets.length) { return; }
-
-      var hit = p.sets.every(function (s, i) {
-        var lg = entry.sets[i];
-        if (!lg || lg.reps === null || lg.reps === undefined || lg.reps < (s.top || s.reps)) { return false; }
-        var target = s.kg === null || s.kg === undefined ? suggestedKgFor(p.movement, week, day, i) : s.kg;
-        if (target === null || target === undefined) { return false; }
-        if (lg.kg === null || lg.kg === undefined || lg.kg < target) { return false; }
-        if (lg.rir === null || lg.rir === undefined || p.rir === undefined) { return false; }
-        return s.top ? lg.rir >= p.rir : lg.rir > p.rir;
-      });
-      if (!hit) { return; }
+      if (!entry) { return; }
+      var inc = incrementFor(p.movement);
+      if (inc === null || !earnedBump(p, entry, week, day)) {
+        if (entry.bump || entry.suggestBump !== undefined) { undoBump(week, day, p, entry); }
+        return;
+      }
       var reset = p.repsTop ? ', back to ' + p.sets[0].reps + ' reps' : '';
 
       if (kind === 'pctTM') {
@@ -2106,29 +2200,19 @@ details.info .row{margin-top:10px}
         if (nextKg <= cur) { nextKg = cur + rounding; }
         var nextPct = Math.round(nextKg / basis.tm * 10000) / 10000;
         if (nextPct > MAX_SUPPORT_PCT) { return; }
-        for (var wp = week + 1; wp <= P0.weeks; wp++) {
-          var fs = E.slotsFor(programme(), wp, day).filter(function (x) { return x.id === p.id; })[0];
-          if (fs && fs.movement === p.movement && fs.load && fs.load.kind === 'pctTM') {
-            setOverride(wp, dayName, p.id, { load: { kind: 'pctTM', lift: p.slot.load.lift || p.movement, pct: nextPct } });
-          }
-        }
+        writeForward(week, day, p, 'pctTM', nextPct);
+        entry.bump = { kind: 'pctTM', lift: p.slot.load.lift || p.movement, from: p.slot.load.pct, to: nextPct, inc: nextKg - cur };
         bumped.push(p.movement + ' → ' + fmt(nextKg) + U() + ' (' + fmt(nextPct * 100) + '% TM)' + reset);
       } else if (kind === 'weight' || kind === 'bodyweight') {
-        var base = kind === 'weight' ? p.slot.load.kg : (p.slot.load.added || 0);
+        var base = loadValue(p.slot.load);
         var next = Math.round((base + inc) * 100) / 100;
-        for (var w = week + 1; w <= P0.weeks; w++) {
-          // Only follow the movement forward — a future week that has been
-          // manually reassigned to a different exercise in this slot keeps
-          // its own number.
-          var futureSlot = E.slotsFor(programme(), w, day).filter(function (x) { return x.id === p.id; })[0];
-          if (futureSlot && futureSlot.movement === p.movement) {
-            setOverride(w, dayName, p.id, kind === 'weight' ? { load: { kind: 'weight', kg: next } } : { load: { kind: 'bodyweight', added: next } });
-          }
-        }
+        writeForward(week, day, p, kind, next);
+        entry.bump = { kind: kind, from: base, to: next, inc: inc };
         bumped.push(p.movement + ' → ' + fmt(next) + (kind === 'weight' ? U() : ' added') + reset);
       } else {
         entry.suggestBump = inc;
-        bumped.push(p.movement + ' → +' + fmt(inc) + U() + ' suggested next time' + reset);
+        entry.bump = { kind: 'open', inc: inc };
+        bumped.push(p.movement + ' → +' + fmt(inc) + U() + ' next time' + reset);
       }
     });
 
