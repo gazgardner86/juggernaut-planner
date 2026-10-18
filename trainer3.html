@@ -137,6 +137,7 @@ details.info div{margin-top:4px}
 .stepper button{border:0;padding:0;min-height:46px;font-size:20px;line-height:1}
 .stepper input[type=number]{width:100%;min-height:46px;border:0;border-left:1px solid var(--line);border-right:1px solid var(--line);padding:0;text-align:center;font-family:var(--font-h);font-weight:600;font-size:22px;-moz-appearance:textfield;appearance:textfield}
 .stepper input::-webkit-inner-spin-button,.stepper input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.stepper input::placeholder{font-size:15px;font-weight:500}
 .ed-hint{font-size:12px;color:var(--accent-deep);min-height:16px;margin:10px 0}
 .ed-actions{display:grid;grid-template-columns:1fr 2fr;gap:8px}
 .ed-actions button{min-height:46px}
@@ -166,6 +167,7 @@ details.info div{margin-top:4px}
 .tm-flow .v.new{color:var(--accent-strong)}
 .actionbar{position:sticky;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 10px);z-index:4;display:grid;grid-template-columns:auto 1fr 1.7fr;gap:8px;padding:10px;margin:0 0 16px;background:var(--bg);border:1px solid var(--line)}
 .actionbar button{min-height:48px}
+body.editing .actionbar{display:none}
 .backup-dot{position:absolute;top:8px;left:calc(50% + 8px);width:7px;height:7px;background:var(--accent);border-radius:50%}
 .tab{position:relative}
 .swap-panel{border:1px dashed var(--accent);background:var(--accent-tint);padding:12px;margin:12px 0 0}
@@ -800,6 +802,10 @@ details.info .row{margin-top:10px}
   var LEGACY_KEY = CFG.legacyKey || null;
   // v3: a start screen, the test week, results and bringing data across.
   var ONBOARDING = !!CFG.onboarding;
+  // v3's logging changes (v2 is left exactly as it was): the Back / Save / Finish
+  // bar steps out of the way while a set is being entered, and each set's weight
+  // starts from the set before it.
+  var V3_LOGGING = ONBOARDING;
   // Rounds of template rep ranges a saved programme is migrated through
   // (migrateRepRanges). 1: accessories and the fixed-weight row. 2: the %TM
   // supports (6-8), when RIR stopped gating ranged progression. Re-running is
@@ -1216,6 +1222,7 @@ details.info .row{margin-top:10px}
     app.querySelectorAll('.card.slot').forEach(function (card) {
       card.querySelectorAll('.editor').forEach(function (ed) { refreshCell(card, ed.dataset.i); });
     });
+    syncEditing();
   }
 
   /* ---------------- session rendering ---------------- */
@@ -1324,7 +1331,18 @@ details.info .row{margin-top:10px}
     var cells = '', editors = '', amrapSet = null;
     p.sets.forEach(function (s, i) {
       var lg = logged[i] || {};
-      var kgVal = lg.kg !== null && lg.kg !== undefined ? lg.kg : (s.kg === null ? fmtBox(suggestedKgFor(p.movement, week, day, i)) : s.kg);
+      // Each set's weight starts from the set before it, once that one is logged:
+      // a first-time exercise has nothing prefilled, and a weight changed on set 1
+      // should not have to be typed again on sets 2 and 3. Main-lift sets are the
+      // exception — a ramp prescribes a different weight per set.
+      var carried = null;
+      if (V3_LOGGING && !isMain && i > 0) {
+        var before = logged[i - 1];
+        if (before && before.reps && before.kg !== null && before.kg !== undefined) { carried = before.kg; }
+      }
+      var kgVal = lg.kg !== null && lg.kg !== undefined ? lg.kg
+        : carried !== null ? carried
+        : (s.kg === null ? fmtBox(suggestedKgFor(p.movement, week, day, i)) : s.kg);
       var repVal = lg.reps !== null && lg.reps !== undefined ? lg.reps : '';
       var rirVal = lg.rir !== null && lg.rir !== undefined ? lg.rir : '';
       var tRir = isMain ? (s.amrap && MAIN_RIR[phase] !== undefined ? MAIN_RIR[phase] : '') : (p.rir === undefined ? '' : p.rir);
@@ -1435,7 +1453,22 @@ details.info .row{margin-top:10px}
     });
   }
 
+  // v3: while a set's editor is open the Back / Save / Finish bar is hidden. It
+  // floats just above the tab bar, so it can sit right over an editor's Log set
+  // button, and a stray tap on Save or Finish mid-entry re-renders the page or
+  // ends the session. Every logged set saves itself, so nothing is lost by it
+  // being away; it comes back as soon as the editor closes.
+  function syncEditing() {
+    if (!V3_LOGGING) { return; }
+    document.body.classList.toggle('editing', !!document.querySelector('#app .editor:not([hidden])'));
+  }
+
   function setAction(btn, a) {
+    setActionInner(btn, a);
+    syncEditing();
+  }
+
+  function setActionInner(btn, a) {
     var card = btn.closest('.card.slot');
     if (!card) { return; }
     if (a === 'cell') {
@@ -1460,6 +1493,7 @@ details.info .row{margin-top:10px}
         else { cur = 0; }
       }
       input.value = Math.max(0, Math.round((cur + Number(btn.dataset.d)) * 100) / 100);
+      if (input.classList.contains('in-kg')) { input.dataset.touched = '1'; }
       refreshCell(card, i); persistSession();
       return;
     }
@@ -1488,6 +1522,17 @@ details.info .row{margin-top:10px}
     persistSession();
     if (a === 'log-set') {
       var next = card.querySelector('.setcell:not(.done)');
+      // The set that opens next starts from this set's weight — unless you have
+      // already typed a weight for it, or it is a main-lift ramp.
+      if (next && V3_LOGGING && !card.classList.contains('main')) {
+        var ni = next.dataset.i;
+        var nextKg = card.querySelector('.in-kg[data-i="' + ni + '"]');
+        var thisKg = card.querySelector('.in-kg[data-i="' + i + '"]');
+        if (nextKg && thisKg && thisKg.value !== '' && !nextKg.dataset.touched) {
+          nextKg.value = thisKg.value;
+          refreshCell(card, ni);
+        }
+      }
       if (next) { setAction(next, 'cell'); }
     }
   }
@@ -3116,6 +3161,9 @@ details.info .row{margin-top:10px}
     else if (e.target.classList && (e.target.classList.contains('tw-kg') || e.target.classList.contains('tw-reps'))) { twInput(e.target.closest('.testlift')); }
     else if (e.target.classList && e.target.classList.contains('lib-inc')) { libIncInput(e.target); }
     else if (e.target.closest && e.target.closest('.editor')) {
+      // A weight you typed for a set is yours: carrying the previous set's weight
+      // forward must not overwrite it.
+      if (e.target.classList && e.target.classList.contains('in-kg')) { e.target.dataset.touched = '1'; }
       refreshCell(e.target.closest('.card.slot'), e.target.closest('.editor').dataset.i);
     }
   });
