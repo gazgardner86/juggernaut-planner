@@ -3298,5 +3298,370 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
+<!-- ============================================================
+     Juggernaut Trainer — v4 look + one-tap logging
+     Sits on top of the app above: the engine, programme and saved
+     data are untouched. Delete from here to the closing </script>
+     below to revert to the v3 look.
+     ============================================================ -->
+<style id="jg-v4-style">
+/* ---- theme: dark, rounded, no registration marks ---- */
+:root{
+  --bg:#0f1113;--surface:#181b1f;--surface-2:#20242a;--text:#eceef0;--muted:#9aa1aa;--faint:#6b727b;
+  --line:#2a2f36;--line-soft:#23272c;
+  --accent:#7fa8d1;--accent-strong:#b5d3f2;--accent-deep:#d6ebff;--accent-tint:#14202c;--accent-tint-2:#1e3247;
+  --accent-hover:#93b8de;--accent-press:#6b95bf;--on-accent:#0c1622;--danger:#e0806b;--mark:transparent;
+  --r-card:20px;--r-ctl:12px;
+  color-scheme:dark;
+}
+body{background:var(--bg);color:var(--text)}
+header{padding-top:16px;padding-bottom:6px}
+header h1{font-size:13px;color:var(--muted)}
+footer{font-size:11px;color:var(--faint)}
+.card>.corner{display:none}
+.card{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r-card);padding:18px;margin:0 0 12px}
+.card.highlight{box-shadow:none;border-color:var(--accent)}
+button{border-radius:var(--r-ctl);border-color:transparent;background:var(--surface-2);font-weight:500}
+button:hover{background:color-mix(in srgb,var(--text) 10%,var(--surface-2))}
+button.primary{font-weight:700}
+button.danger{background:transparent}
+input[type=number],input[type=text],select{border-radius:10px;background:var(--bg);border-color:var(--line)}
+.banner{border-radius:14px}
+.pill{border-radius:999px;border-color:transparent;background:var(--surface-2)}
+.pill.accent{background:var(--accent-tint-2);color:var(--accent-strong);font-weight:600}
+.kindtag{border-radius:6px}
+.kindtag.main{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:700}
+.chip{border-radius:8px}
+.vidlink{border-radius:10px;border-color:transparent;background:var(--surface-2);min-height:40px}
+.seg{border-radius:var(--r-ctl);overflow:hidden;border-color:var(--line)}
+.seg button{border-radius:0;background:transparent}
+.daytab.active{border-color:transparent;background:var(--accent-tint-2);color:var(--accent-strong)}
+.table th{border-bottom-color:var(--line)}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.toast{border-radius:12px;background:var(--accent-strong);color:var(--on-accent);font-weight:600}
+.bump-note{background:var(--accent-tint-2);color:var(--accent-strong);border-radius:10px}
+.lasttime{color:var(--muted)}
+
+/* session header */
+.card.sess{background:transparent;border:0;padding:6px 4px 4px}
+.sess-title{font-size:34px;margin:4px 0 10px}
+.weekticks{gap:2px}
+.weekticks i{height:4px;border-radius:2px;background:var(--line)}
+.weekticks i.now{height:4px;background:var(--accent-strong)}
+.phase-note{font-size:13px;color:var(--muted);margin-top:10px}
+
+/* bottom nav + action bar */
+.tabs{background:color-mix(in srgb,var(--bg) 90%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-top-color:var(--line-soft)}
+.tab{background:transparent;border-radius:0}
+.tab.active{color:var(--accent-strong)}
+.actionbar{position:static;margin-top:4px;border-radius:18px;border-color:var(--line-soft);background:color-mix(in srgb,var(--surface) 92%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.actionbar button{border-radius:14px}
+
+/* set cells */
+.setgrid{gap:6px}
+.setcell{border-radius:12px;background:var(--surface-2);border:1px solid transparent;min-height:56px}
+.setcell.amrap{border:1.5px dashed var(--accent)}
+.setcell.done{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.setcell.done.short{background:var(--accent-tint-2);border-color:var(--accent-tint-2);color:var(--accent-strong)}
+.setcell.done.short .c-reps{color:var(--accent-strong)}
+.setcell.open{outline:2px solid var(--accent-strong);outline-offset:1px}
+.set-note{display:none}
+
+/* collapsed exercise rows */
+.card.slot{scroll-margin-top:12px}
+.card.slot.jg-collapsed{padding:12px 16px}
+.card.slot.jg-collapsed>:not(.slot-head){display:none}
+.card.slot.jg-collapsed>.editor:not([hidden]){display:block}
+.card.slot.jg-collapsed .slot-head{cursor:pointer;align-items:center}
+.card.slot.jg-collapsed .slot-name,.card.slot.main.jg-collapsed .slot-name{font-size:19px;margin:4px 0 0}
+.card.slot.jg-collapsed .vidlink{display:none}
+.card.slot.jg-collapsed .kindtag{display:none}
+.card.slot.jg-collapsed.jg-complete{opacity:.6}
+.card.slot:not(.jg-collapsed) .slot-head{cursor:pointer}
+.slot-head>div:first-child{min-width:0}
+.jg-count{margin-left:auto;flex:none;font-size:13px;color:var(--muted);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.jg-complete .jg-count{color:var(--accent-strong);font-weight:600}
+.card.slot:not(.jg-collapsed) .jg-count{display:none}
+
+/* next-set panel */
+.jg-next{margin-top:14px;padding-top:14px;border-top:1px solid var(--line-soft)}
+.jg-next-k{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.jg-next-v{font-family:var(--font-h);font-weight:600;font-size:52px;line-height:1;margin:4px 0 2px}
+.jg-next-v small{font-size:20px;color:var(--muted);font-weight:500}
+.jg-next-v .x{color:var(--muted);font-weight:500}
+.jg-next-sub{font-size:13px;color:var(--muted);min-height:18px}
+.jg-next-sub b{color:var(--text);font-weight:600}
+.jg-next-actions{display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:12px}
+.jg-next-actions button{min-height:56px;font-size:16px;border-radius:16px}
+.jg-next-actions .primary{font-size:17px}
+.jg-alldone{color:var(--accent-strong);font-weight:600;font-size:14px;display:flex;align-items:center;gap:8px}
+
+/* set editor as a bottom sheet */
+#jg-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:29}
+body.jg-sheet #jg-backdrop{display:block}
+body.jg-sheet{overflow:hidden}
+#app .editor:not([hidden]){position:fixed;left:0;right:0;bottom:0;z-index:30;max-width:720px;margin:0 auto;
+  background:var(--surface);border:0;border-top:1px solid var(--line);border-radius:26px 26px 0 0;
+  padding:26px 20px calc(20px + env(safe-area-inset-bottom));box-shadow:0 -20px 50px rgba(0,0,0,.45);
+  animation:jg-up .18s ease-out}
+#app .editor::before{content:"";position:absolute;top:9px;left:50%;width:40px;height:5px;margin-left:-20px;border-radius:5px;background:var(--line)}
+@keyframes jg-up{from{transform:translateY(24px);opacity:.4}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){#app .editor:not([hidden]){animation:none}}
+.ed-title{font-family:var(--font-h);font-size:22px;text-transform:uppercase}
+.ed-hint{color:var(--accent-strong)}
+.stepper{border-radius:16px;overflow:hidden;border-color:var(--line);background:var(--bg);grid-template-columns:52px minmax(0,1fr) 52px}
+.stepper button{border-radius:0;background:transparent;min-height:60px;font-size:24px}
+.stepper input[type=number]{min-height:60px;font-size:30px;border-color:var(--line);background:transparent}
+.ed-actions button{min-height:56px;border-radius:16px;font-size:16px}
+.jg-hide{display:none!important}
+.jg-rir{margin-top:12px}
+.jg-rir>span{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.jg-rir-row{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.jg-rir-row button{min-height:48px;font-size:16px;font-weight:600;background:transparent;border:1px solid var(--line)}
+.jg-rir-row button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+</style>
+
+<script id="jg-v4-script">
+(function () {
+  'use strict';
+  var app = document.getElementById('app');
+  if (!app) { return; }
+
+  var PLATES = { kg: [25, 20, 15, 10, 5, 2.5, 1.25], lb: [45, 35, 25, 10, 5, 2.5] };
+  var BAR = { kg: 20, lb: 45 };
+  var CHECK = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 12 10 18 20 6"></polyline></svg>';
+
+  var manual = {};        // slot id -> true (expanded) / false (collapsed), set by tapping a header
+  var dayKey = '';
+  var lastActive = null;
+
+  function n(v) { if (v === '' || v === null || v === undefined) { return null; } var x = Number(v); return isFinite(x) ? x : null; }
+  function f(x) { return String(Math.round(x * 100) / 100); }
+
+  function unitOf(card) {
+    var kg = card.querySelector('.in-kg');
+    var field = kg && kg.closest('.ed-field');
+    var span = field && field.querySelector('span');
+    return span && span.textContent.trim().toLowerCase() === 'lb' ? 'lb' : 'kg';
+  }
+
+  // Plates per side for a barbell load, or null when it can't be made exactly.
+  function plates(total, unit) {
+    var bar = BAR[unit];
+    if (total === null || total <= bar) { return null; }
+    var side = (total - bar) / 2, out = [];
+    PLATES[unit].forEach(function (p) { while (side >= p - 1e-9) { out.push(p); side -= p; } });
+    return side > 0.01 ? null : out;
+  }
+
+  function closeSheet() {
+    var open = app.querySelector('.setcell.open');
+    if (open) { open.click(); }      // the app's own toggle closes the editor
+  }
+
+  function panelHtml(card) {
+    var total = card.querySelectorAll('.setcell').length;
+    var next = card.querySelector('.setcell:not(.done)');
+    if (!next) { return '<div class="jg-next jg-alldone">' + CHECK + 'All ' + total + ' sets logged</div>'; }
+    var i = next.dataset.i;
+    var ed = card.querySelector('.editor[data-i="' + i + '"]');
+    if (!ed) { return ''; }
+    var kg = n(ed.querySelector('.in-kg').value);
+    var tReps = ed.dataset.treps, tTop = ed.dataset.ttop, amrap = ed.dataset.amrap === '1';
+    var reps = (tTop ? tReps + '–' + tTop : tReps) + (amrap ? '+' : '');
+    var target = (ed.querySelector('.ed-target') || {}).textContent || '';
+    var pct = (target.match(/[\d.]+% TM/) || [''])[0];
+    var unit = unitOf(card);
+
+    var sub = '';
+    if (card.classList.contains('main')) {
+      var pl = plates(kg, unit);
+      if (pl) { sub = 'Each side: <b>' + pl.map(f).join(' + ') + '</b> · bar ' + BAR[unit] + ' ' + unit; }
+    }
+    if (!sub && tTop && !amrap) { sub = 'Done logs ' + tReps + ' reps — did more? Tap Adjust.'; }
+    if (amrap) { sub = 'Enter the reps you got — nothing is assumed for this set.'; }
+
+    var quick = !amrap && kg !== null;
+    var doneLabel = quick ? CHECK + ' Done — ' + f(kg) + ' × ' + tReps : (amrap ? 'Log reps' : 'Set weight');
+    return '<div class="jg-next" data-i="' + i + '">' +
+      '<div class="jg-next-k">Next · set ' + (Number(i) + 1) + ' of ' + total + (pct ? ' · ' + pct : '') + '</div>' +
+      '<div class="jg-next-v">' + (kg === null ? '–' : f(kg)) + '<small> ' + unit + '</small> <span class="x">×</span> ' + reps + '</div>' +
+      '<div class="jg-next-sub">' + sub + '</div>' +
+      '<div class="jg-next-actions">' +
+      '<button type="button" class="jg-adjust">Adjust</button>' +
+      '<button type="button" class="primary ' + (quick ? 'jg-done' : 'jg-adjust') + '">' + doneLabel + '</button>' +
+      '</div></div>';
+  }
+
+  function enhanceEditor(card, ed) {
+    var title = ed.querySelector('.ed-title');
+    if (title && !title.dataset.jg) {
+      title.dataset.jg = '1';
+      title.textContent = card.dataset.movement + ' · ' + title.textContent;
+    }
+    // RIR as one-tap chips instead of a stepper (only where the app asks for RIR).
+    var rirIn = ed.querySelector('input.in-rir[type="number"]');
+    if (rirIn && !ed.querySelector('.jg-rir')) {
+      rirIn.closest('.ed-field').classList.add('jg-hide');
+      var kgField = ed.querySelector('.in-kg').closest('.ed-field');
+      if (kgField) { kgField.classList.remove('wide'); }
+      var tr = ed.dataset.trir;
+      ed.querySelector('.ed-fields').insertAdjacentHTML('afterend',
+        '<div class="jg-rir"><span>Reps in reserve' + (tr !== '' ? ' · target ' + tr : '') + '</span><div class="jg-rir-row">' +
+        [0, 1, 2, 3, 4].map(function (v) { return '<button type="button" class="jg-rir-b" data-v="' + v + '">' + (v === 4 ? '4+' : v) + '</button>'; }).join('') +
+        '</div></div>');
+    }
+    if (rirIn) {
+      ed.querySelectorAll('.jg-rir-b').forEach(function (b) {
+        b.setAttribute('aria-pressed', rirIn.value !== '' && Number(rirIn.value) === Number(b.dataset.v) ? 'true' : 'false');
+      });
+    }
+  }
+
+  function enhance() {
+    var kicker = app.querySelector('.sess-kicker');
+    var key = kicker ? kicker.textContent : '';
+    if (key !== dayKey) { manual = {}; dayKey = key; lastActive = null; }
+
+    var cards = Array.prototype.slice.call(app.querySelectorAll('.card.slot'));
+    var active = null;
+    cards.forEach(function (c) {
+      if (!active && !c.dataset.skipped && c.querySelector('.setcell:not(.done)')) { active = c; }
+    });
+
+    var allSets = 0, doneSets = 0;
+    cards.forEach(function (c) {
+      var id = c.dataset.slot;
+      var total = c.querySelectorAll('.setcell').length;
+      var done = c.querySelectorAll('.setcell.done').length;
+      if (!c.dataset.skipped) { allSets += total; doneSets += done; }
+      var complete = !c.dataset.skipped && total > 0 && done === total;
+      var open = Object.prototype.hasOwnProperty.call(manual, id) ? manual[id] : c === active;
+      c.classList.toggle('jg-collapsed', !open);
+      c.classList.toggle('jg-complete', complete);
+
+      var head = c.querySelector('.slot-head');
+      var count = head && head.querySelector('.jg-count');
+      if (head && !count) {
+        count = document.createElement('span');
+        count.className = 'jg-count';
+        head.insertBefore(count, head.querySelector('.vidlink'));
+      }
+      if (count) {
+        count.innerHTML = c.dataset.skipped ? 'Skipped' : complete ? CHECK + done + '/' + total : done + '/' + total;
+      }
+
+      if (!c.dataset.skipped && total) {
+        var html = panelHtml(c);
+        var old = c.querySelector('.jg-next');
+        if (old) { old.outerHTML = html; } else {
+          var grid = c.querySelector('.setgrid');
+          if (grid) { grid.insertAdjacentHTML('beforebegin', html); }
+        }
+      }
+      c.querySelectorAll('.editor').forEach(function (ed) { enhanceEditor(c, ed); });
+    });
+
+    // Sets counter in the session header.
+    var tags = app.querySelector('.card.sess .tags');
+    if (tags && allSets) {
+      var pill = tags.querySelector('.jg-sets');
+      if (!pill) { pill = document.createElement('span'); pill.className = 'pill jg-sets'; tags.appendChild(pill); }
+      pill.textContent = doneSets + ' / ' + allSets + ' sets';
+    }
+
+    // Wide tables scroll inside their card instead of off the screen.
+    app.querySelectorAll('table.table').forEach(function (t) {
+      if (!t.parentNode.classList.contains('scroll')) {
+        var w = document.createElement('div'); w.className = 'scroll';
+        t.parentNode.insertBefore(w, t); w.appendChild(t);
+      }
+    });
+
+    document.body.classList.toggle('jg-sheet', !!app.querySelector('.editor:not([hidden])'));
+
+    var activeId = active ? active.dataset.slot : null;
+    if (activeId && lastActive && activeId !== lastActive && !document.body.classList.contains('jg-sheet')) {
+      active.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    lastActive = activeId;
+  }
+
+  function later() { setTimeout(enhance, 0); }
+
+  // One tap: log the next set exactly as prescribed.
+  function quickLog(card, i) {
+    var cell = card.querySelector('.setcell[data-i="' + i + '"]');
+    var ed = card.querySelector('.editor[data-i="' + i + '"]');
+    if (!cell || !ed) { return; }
+    if (ed.hidden) { cell.click(); }
+    var log = ed.querySelector('[data-action="log-set"]');
+    if (log) { log.click(); }
+    closeSheet();
+    enhance();
+    if (navigator.vibrate) { try { navigator.vibrate(15); } catch (e) { /* ignore */ } }
+  }
+
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    var card = t.closest && t.closest('#app .card.slot');
+
+    if (t.closest('.jg-done')) {
+      quickLog(card, t.closest('.jg-next').dataset.i);
+      return;
+    }
+    if (t.closest('.jg-adjust')) {
+      var cell = card.querySelector('.setcell[data-i="' + t.closest('.jg-next').dataset.i + '"]');
+      if (cell) { cell.click(); }
+      later();
+      return;
+    }
+    var chip = t.closest('.jg-rir-b');
+    if (chip) {
+      var rir = chip.closest('.editor').querySelector('input.in-rir');
+      rir.value = rir.value !== '' && Number(rir.value) === Number(chip.dataset.v) ? '' : chip.dataset.v;
+      rir.dispatchEvent(new Event('change', { bubbles: true }));
+      later();
+      return;
+    }
+    if (t.id === 'jg-backdrop') { closeSheet(); later(); return; }
+
+    var head = t.closest('.slot-head');
+    if (head && card && !t.closest('a, button')) {
+      var id = card.dataset.slot;
+      manual[id] = card.classList.contains('jg-collapsed');
+      enhance();
+      return;
+    }
+    var act = t.closest('[data-action]');
+    if (act && act.dataset.action === 'log-set') {
+      // The app opens the next set straight away; close the sheet instead.
+      setTimeout(function () { closeSheet(); enhance(); }, 0);
+      return;
+    }
+    if (act) { later(); }
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && document.body.classList.contains('jg-sheet')) { closeSheet(); later(); }
+  });
+
+  // Re-apply after every full render of the app.
+  new MutationObserver(later).observe(app, { childList: true });
+
+  var bd = document.createElement('div');
+  bd.id = 'jg-backdrop';
+  document.body.appendChild(bd);
+
+  // Footer: keep the v2 link, drop the paragraph of rules.
+  var foot = document.querySelector('footer');
+  if (foot && foot.firstChild && foot.firstChild.nodeType === 3) { foot.removeChild(foot.firstChild); }
+
+  var meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) { meta.setAttribute('content', '#0f1113'); }
+
+  enhance();
+})();
+</script>
 </body>
 </html>
