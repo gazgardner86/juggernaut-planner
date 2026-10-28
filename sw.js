@@ -3,8 +3,8 @@
  * deploy is picked up when there is signal; the cache answers when there
  * isn't (gym basements, no reception).
  */
-var CACHE = 'juggernaut-202610141747';
-var ASSETS = ['./', './index.html', './trainer.html', './trainer3.html', './juggernaut.html', './manifest.webmanifest', './manifest-trainer.webmanifest', './manifest-trainer3.webmanifest'];
+var CACHE = 'juggernaut-202610281956';
+var ASSETS = ['./', './index.html', './trainer.html', './trainer3.html', './trainer-w.html', './juggernaut.html', './manifest.webmanifest', './manifest-trainer.webmanifest', './manifest-trainer3.webmanifest', './manifest-trainer-w.webmanifest'];
 
 self.addEventListener('install', function (e) {
   e.waitUntil(
@@ -45,11 +45,11 @@ self.addEventListener('fetch', function (e) {
         })
         .catch(function () {
           // Fall back to the cached copy of the page that was asked for, so an
-          // offline trainer.html or trainer3.html never lands on the v1 app.
+          // offline trainer.html, trainer3.html or trainer-w.html never lands on the v1 app.
           return caches.match(req, { ignoreSearch: true }).then(function (hit) {
             if (hit) { return hit; }
             var path = new URL(req.url).pathname;
-            var page = /trainer3\.html$/.test(path) ? './trainer3.html' : /trainer\.html$/.test(path) ? './trainer.html' : /juggernaut\.html$/.test(path) ? './juggernaut.html' : './index.html';
+            var page = /trainer-w\.html$/.test(path) ? './trainer-w.html' : /trainer3\.html$/.test(path) ? './trainer3.html' : /trainer\.html$/.test(path) ? './trainer.html' : /juggernaut\.html$/.test(path) ? './juggernaut.html' : './index.html';
             return caches.match(page);
           });
         })

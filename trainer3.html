@@ -181,6 +181,17 @@ body.editing .actionbar{display:none}
 .skip-reasons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
 .skip-reasons button{min-height:44px}
 .card.slot.skipped{opacity:.7}
+.taken-btn{margin-top:8px}
+.stat{padding:6px 14px 6px 0;font-size:15px}
+.stat b{font-family:var(--font-h);font-size:28px;font-weight:600;margin-right:4px}
+.gain{color:var(--accent);font-weight:600}
+.chip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);padding:8px 10px;margin:0 6px 6px 0}
+.plan-line{margin:0 0 12px 0}
+.ms-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0}
+.ms-grid label{display:flex;flex-direction:column;gap:4px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.ms-grid input{width:100%}
+.ms-table th,.ms-table td{padding-left:6px;padding-right:6px;white-space:nowrap}
+.ms-table .ms-change td{font-weight:600}
 .nc-table th,.nc-table td{padding-left:4px;padding-right:4px}
 .nc-res{display:flex;align-items:center;gap:4px}
 .nc-res input{min-width:0;padding-left:6px;padding-right:6px}
@@ -216,7 +227,7 @@ details.info .row{margin-top:10px}
 </header>
 <div id="app"></div>
 <footer>Main lifts run the wave tables off your training max; the Realization AMRAP sets the next one. Everything else is yours to set. Data stays in this browser — export from Setup to back it up.<p style="margin-top:10px"><a href="./trainer.html" style="color:inherit">v2 trainer (the first block) →</a></p></footer>
-<script>window.JG_CONFIG = {"app":"v3","key":"gym-coach-jg-v3","v1Migration":false,"onboarding":true,"legacyKey":"gym-coach-jg-v2","title":"Juggernaut Trainer","label":"v3"};</script>
+<script>window.JG_CONFIG = {"app":"v3","key":"gym-coach-jg-v3","v1Migration":false,"onboarding":true,"plates":true,"legacyKey":"gym-coach-jg-v2","title":"Juggernaut Trainer","label":"v3"};</script>
 <script>
 /*
  * Juggernaut trainer v2 — engine.
@@ -285,8 +296,11 @@ details.info .row{margin-top:10px}
   function waveFor(week, waveSlots) { return waveSlots[waveSlotFor(week) % waveSlots.length]; }
   function standardReps(wave) { return parseInt(wave, 10); }
 
+  // Exercise names match ignoring case and spacing (see nameKey in app.js), so
+  // "Bench press" and "Bench Press" are the same lift.
+  function nameKey(n) { return String(n === null || n === undefined ? '' : n).trim().replace(/\s+/g, ' ').toLowerCase(); }
   function tracked(name, lifts) {
-    for (var i = 0; i < lifts.length; i++) { if (lifts[i].name === name) { return lifts[i]; } }
+    for (var i = 0; i < lifts.length; i++) { if (nameKey(lifts[i].name) === nameKey(name)) { return lifts[i]; } }
     return null;
   }
 
@@ -368,6 +382,13 @@ details.info .row{margin-top:10px}
   function prescribe(slot, week, ctx) {
     var phase = phaseFor(week);
     var out = { movement: slot.movement, kind: slot.kind, rir: slot.rir, note: slot.note, sets: [], warmups: [] };
+    // A programme can ask for a different stopping point in each block of four
+    // weeks (rirByWave: how many reps to leave in the tank) instead of one number
+    // for the whole plan. Only slots that already name a target are touched.
+    if (ctx.rirByWave && slot.rir !== undefined && !(slot.load && slot.load.kind === 'wave')) {
+      var rw = ctx.rirByWave[waveFor(week, ctx.waveSlots)];
+      if (rw !== undefined) { out.rir = rw; }
+    }
 
     if (slot.load && slot.load.kind === 'wave') {
       var wave = waveFor(week, ctx.waveSlots);
@@ -430,7 +451,7 @@ details.info .row{margin-top:10px}
   function prescribeDay(programme, week, dayIndex, ctx) {
     var c = {
       lifts: ctx.lifts, rounding: ctx.rounding, bodyweight: ctx.bodyweight,
-      waveSlots: ctx.waveSlots || programme.waveSlots, phaseRules: programme.phaseRules
+      waveSlots: ctx.waveSlots || programme.waveSlots, phaseRules: programme.phaseRules, rirByWave: programme.rirByWave
     };
     return slotsFor(programme, week, dayIndex).map(function (s) {
       var p = prescribe(s, week, c);
@@ -477,7 +498,7 @@ details.info .row{margin-top:10px}
     var totals = {};
     for (var d = 0; d < programme.days.length; d++) {
       prescribeDay(programme, week, d, ctx).forEach(function (p) {
-        var m = programme.movements.filter(function (x) { return x.name === p.movement; })[0];
+        var m = programme.movements.filter(function (x) { return nameKey(x.name) === nameKey(p.movement); })[0];
         var group = m ? m.group : 'Other';
         totals[group] = (totals[group] || 0) + p.sets.length;
       });
@@ -485,7 +506,24 @@ details.info .row{margin-top:10px}
     return totals;
   }
 
+  /* ---------------- plates ---------------- */
+
+  // What goes on each end of a bar for a total weight. Plates are taken heaviest
+  // first with as many of each as needed (a gym has plenty). If the total cannot be
+  // made exactly from the plates there are, `off` is how far short it lands, in
+  // total, so the screen can say so instead of quietly loading the wrong weight.
+  function platesPerSide(total, bar, plates) {
+    if (!(total > 0) || !(bar >= 0)) { return null; }
+    if (total < bar) { return { under: true, plates: [], off: 0 }; }
+    var rem = Math.round((total - bar) / 2 * 1000) / 1000, out = [];
+    (plates || []).filter(function (p) { return p > 0; }).sort(function (a, b) { return b - a; }).forEach(function (p) {
+      while (rem + 1e-9 >= p) { out.push(p); rem = Math.round((rem - p) * 1000) / 1000; }
+    });
+    return { under: false, plates: out, off: Math.round(rem * 2 * 1000) / 1000 };
+  }
+
   return {
+    platesPerSide: platesPerSide,
     PHASES: PHASES, WAVES: WAVES,
     mround: mround, phaseFor: phaseFor, waveFor: waveFor, waveSlotFor: waveSlotFor,
     standardReps: standardReps, tracked: tracked,
@@ -537,121 +575,180 @@ details.info .row{margin-top:10px}
     return { name: name, group: group, kit: kit || '', equip: equip, note: note || '' };
   };
 
+  // House style for the text below, enforced by tests/v3-engine.test.mjs.
+  //  - Names never change once an exercise is in use: history, "Last time" and
+  //    saved plans all follow the name. New names are sentence case, with DB for
+  //    dumbbell and KB for kettlebell, and the equipment in the name only where
+  //    a version on other kit exists (Pec fly machine, Cable fly).
+  //  - kit names the one apparatus, then what goes with it: "Barbell + rack",
+  //    "Cable + rope", "Dumbbells + incline bench", "Leg extension machine".
+  //    Capital first letter, no full stop, never two pieces of equipment.
+  //  - note is one or two short sentences saying what the exercise is for or the
+  //    one cue that matters: capital first letter, full stop, British spelling,
+  //    no dashes. Every exercise has one.
   var MOVEMENTS = [
     // Horizontal push
-    M('Bench Press', 'Horizontal_Push', 'Barbell + bench', 'barbell'),
-    M('Incline Bench', 'Horizontal_Push', 'Barbell + incline bench', 'barbell'),
-    M('Close-grip bench press', 'Horizontal_Push', 'Barbell + bench', 'barbell', 'Triceps bias, kinder on the shoulder'),
-    M('Cable fly', 'Horizontal_Push', 'Dual adjustable cable', 'cable', 'Loaded stretch the press does not give you'),
-    M('DB fly', 'Horizontal_Push', 'Dumbbells + flat bench', 'dumbbell', 'Stretch at the bottom, but no tension at the top — the cable and machine versions keep it'),
-    M('Pec fly machine', 'Horizontal_Push', 'Pec deck machine', 'machine', 'Fixed path — same loaded-stretch idea as the cable fly, easier to load hard'),
-    M('DB bench press', 'Horizontal_Push', 'Dumbbells + flat bench', 'dumbbell'),
-    M('Machine chest press', 'Horizontal_Push', 'Selectorised chest press', 'machine'),
-    M('Weighted dip', 'Horizontal_Push', 'Dip station + belt', 'belt'),
-    M('Incline DB press', 'Horizontal_Push', 'Dumbbells + incline bench', 'dumbbell', 'Upper chest without the barbell on your shoulders again'),
-    M('Machine incline press', 'Horizontal_Push', 'Selectorised incline press', 'machine'),
+    M('Bench press', 'Horizontal_Push', 'Barbell + bench', 'barbell', 'The main horizontal press. Pin the shoulder blades back and keep the feet planted.'),
+    M('Incline bench', 'Horizontal_Push', 'Barbell + incline bench', 'barbell', 'More upper chest and front delt than the flat bench, at a lighter load.'),
+    M('Close-grip bench press', 'Horizontal_Push', 'Barbell + bench', 'barbell', 'Triceps bias, and kinder on the shoulders than a wide grip.'),
+    M('Cable fly', 'Horizontal_Push', 'Cable + handles', 'cable', 'A loaded stretch that the press does not give you.'),
+    M('High-to-low cable fly', 'Horizontal_Push', 'Cable + handles', 'cable', 'Cables set high, pulling down and in. Biases the lower chest.'),
+    M('Low-to-high cable fly', 'Horizontal_Push', 'Cable + handles', 'cable', 'Cables set low, pulling up and in. Biases the upper chest.'),
+    M('DB fly', 'Horizontal_Push', 'Dumbbells + flat bench', 'dumbbell', 'Stretch at the bottom but no tension at the top; the cable and machine versions keep it.'),
+    M('Pec fly machine', 'Horizontal_Push', 'Pec deck machine', 'machine', 'Fixed path, so the same loaded stretch as the cable fly and easier to load hard.'),
+    M('DB bench press', 'Horizontal_Push', 'Dumbbells + flat bench', 'dumbbell', 'A longer range than the barbell, and each arm works on its own.'),
+    M('Incline DB press', 'Horizontal_Push', 'Dumbbells + incline bench', 'dumbbell', 'Upper chest without loading the barbell across the shoulders again.'),
+    M('Machine chest press', 'Horizontal_Push', 'Chest press machine', 'machine', 'Fixed path, so you can train close to failure without a spotter.'),
+    M('Machine incline press', 'Horizontal_Push', 'Incline press machine', 'machine', 'Fixed-path upper chest work that is safe to take close to failure.'),
+    M('Cable chest press', 'Horizontal_Push', 'Cable + handles', 'cable', 'A constant-tension press that is easy to load in small steps.'),
+    M('Smith machine bench press', 'Horizontal_Push', 'Smith machine + bench', 'barbell', 'A fixed bar path, so no spotter is needed, but it removes the stabilising work.'),
+    M('Smith machine incline press', 'Horizontal_Push', 'Smith machine + incline bench', 'barbell', 'A fixed path for heavy upper chest work without a spotter.'),
+    M('Push-up', 'Horizontal_Push', 'No equipment', 'bodyweight', 'Chest, triceps and trunk bracing. Add a pause or raise the feet to make it harder.'),
+    M('Weighted dip', 'Horizontal_Push', 'Dip station + belt', 'belt', 'Chest and triceps under load. Lean forward to bias the chest.'),
     // Vertical push
-    M('Overhead Press', 'Vertical_Push', 'Barbell', 'barbell'),
-    M('Seated DB shoulder press', 'Vertical_Push', 'Dumbbells + upright bench', 'dumbbell'),
-    M('Machine shoulder press', 'Vertical_Push', 'Selectorised shoulder press', 'machine'),
-    M('DB lateral raise', 'Vertical_Push', 'Dumbbells', 'dumbbell'),
-    M('Machine lateral raise', 'Vertical_Push', 'Lateral raise machine', 'machine'),
-    M('Cable lateral raise', 'Vertical_Push', 'Cable stack', 'cable', 'Tension held at the top, unlike a dumbbell'),
-    M('Push press', 'Vertical_Push', 'Barbell + rack', 'barbell', 'Leg drive makes it a power movement — heavier than a strict press, so keep it out of the AMRAP weeks'),
+    M('Overhead press', 'Vertical_Push', 'Barbell + rack', 'barbell', 'A strict press from the shoulders. Squeeze the glutes and keep the ribs down.'),
+    M('Push press', 'Vertical_Push', 'Barbell + rack', 'barbell', 'Leg drive lets you move more than a strict press and trains power. Stop before the bar slows.'),
+    M('Seated DB shoulder press', 'Vertical_Push', 'Dumbbells + upright bench', 'dumbbell', 'Back supported, so the shoulders do the work and the lower back does not.'),
+    M('Standing DB shoulder press', 'Vertical_Push', 'Dumbbells', 'dumbbell', 'Standing, so the trunk has to brace as well as press.'),
+    M('Arnold press', 'Vertical_Push', 'Dumbbells + upright bench', 'dumbbell', 'A rotating press that loads the front and side delts through a longer range.'),
+    M('Machine shoulder press', 'Vertical_Push', 'Shoulder press machine', 'machine', 'Fixed path that is safe to take close to failure.'),
+    M('Smith machine shoulder press', 'Vertical_Push', 'Smith machine + upright bench', 'barbell', 'A fixed bar path for heavy pressing without a spotter.'),
+    M('DB lateral raise', 'Vertical_Push', 'Dumbbells', 'dumbbell', 'Side delts. Lead with the elbows and stop at shoulder height.'),
+    M('Machine lateral raise', 'Vertical_Push', 'Lateral raise machine', 'machine', 'Side delts on a fixed path, with steady resistance through the range.'),
+    M('Cable lateral raise', 'Vertical_Push', 'Cable + single handle', 'cable', 'Tension is there from the first inch, unlike a dumbbell.'),
     // Horizontal pull
-    M('Chest-supported row', 'Horizontal_Pull', 'Chest-supported row machine', 'machine', 'Mid-back without any lower-back cost'),
-    M('Seated cable row', 'Horizontal_Pull', 'Cable row station', 'cable'),
-    M('Chest-supported DB row', 'Horizontal_Pull', 'Dumbbells + incline bench', 'dumbbell'),
-    M('T-bar row', 'Horizontal_Pull', 'T-bar', 'barbell', 'Plate-loaded, so it steps like a barbell, not a machine stack. A landmine setup counts'),
-    M('Barbell row', 'Horizontal_Pull', 'Barbell', 'barbell', 'Spinally loaded — costs erector recovery'),
-    M('Machine row', 'Horizontal_Pull', 'Selectorised row', 'machine'),
-    M('Cable face pull', 'Horizontal_Pull', 'Cable + rope', 'cable', 'Rear delt and external rotation against your pressing volume'),
-    M('DB rear delt fly', 'Horizontal_Pull', 'Dumbbells + incline bench', 'dumbbell'),
-    M('Rear delt machine', 'Horizontal_Pull', 'Reverse pec deck machine', 'machine', 'Fixed path for the same rear delt work the face pull does — no rope tension to fight'),
-    M('Pendlay row', 'Horizontal_Pull', 'Barbell', 'barbell', 'Dead stop each rep, so no momentum — but spinally loaded, so it costs erector recovery'),
-    M('Single-arm cable row', 'Horizontal_Pull', 'Cable row station', 'cable', 'Each side on its own, so the weaker lat cannot hide'),
-    M('Reverse cable fly', 'Horizontal_Pull', 'Dual adjustable cable', 'cable', 'Rear delts with tension through the whole range'),
+    M('Chest-supported row', 'Horizontal_Pull', 'Chest-supported row machine', 'machine', 'Mid-back work with no lower-back cost.'),
+    M('Seated cable row', 'Horizontal_Pull', 'Cable + V-handle', 'cable', 'Mid-back and lats. Drive the elbows back and keep the torso still.'),
+    M('Wide-grip cable row', 'Horizontal_Pull', 'Cable + wide bar', 'cable', 'A wide grip moves the work towards the upper back and rear delts.'),
+    M('Single-arm cable row', 'Horizontal_Pull', 'Cable + single handle', 'cable', 'Each side works alone, so the weaker lat cannot hide.'),
+    M('Chest-supported DB row', 'Horizontal_Pull', 'Dumbbells + incline bench', 'dumbbell', 'Mid-back work with the chest supported, so the torso cannot swing.'),
+    M('One-arm DB row', 'Horizontal_Pull', 'Dumbbells + bench', 'dumbbell', 'A long stretch at the bottom, one side at a time. Keep the hips square.'),
+    M('T-bar row', 'Horizontal_Pull', 'T-bar row machine', 'barbell', 'Plate-loaded, so it steps in plates like a barbell. A landmine setup works too.'),
+    M('Barbell row', 'Horizontal_Pull', 'Barbell', 'barbell', 'Spinally loaded, so it costs erector recovery.'),
+    M('Pendlay row', 'Horizontal_Pull', 'Barbell', 'barbell', 'A dead stop on the floor each rep removes momentum, but the lower back pays for it.'),
+    M('Machine row', 'Horizontal_Pull', 'Seated row machine', 'machine', 'Fixed path with a chest pad, so it is easy to load.'),
+    M('Inverted row', 'Horizontal_Pull', 'Barbell + rack', 'bodyweight', 'A bodyweight horizontal pull. Walk the feet forward to make it harder.'),
+    M('Cable face pull', 'Horizontal_Pull', 'Cable + rope', 'cable', 'Rear delts and external rotation, to balance the pressing volume.'),
+    M('DB rear delt fly', 'Horizontal_Pull', 'Dumbbells + incline bench', 'dumbbell', 'Rear delts with the chest supported. Keep the load light.'),
+    M('Rear delt machine', 'Horizontal_Pull', 'Reverse pec deck machine', 'machine', 'Rear delts on a fixed path, with no rope tension to fight.'),
+    M('Reverse cable fly', 'Horizontal_Pull', 'Cable + handles', 'cable', 'Rear delts with tension through the whole range.'),
+    M('Band pull-apart', 'Horizontal_Pull', 'Resistance band', 'band', 'High-rep rear delt and upper-back work that costs almost no recovery.'),
     // Vertical pull
-    M('Weighted chin-up', 'Vertical_Pull', 'Pull-up bar + belt', 'belt', 'Treat it like a main lift: log the added weight every session'),
-    M('Lat pulldown', 'Vertical_Pull', 'Lat pulldown station', 'machine'),
-    M('Neutral-grip pulldown', 'Vertical_Pull', 'Lat pulldown + V bar', 'machine'),
-    M('Straight-arm pulldown', 'Vertical_Pull', 'Cable + straight bar', 'cable'),
-    M('Single-arm lat pulldown', 'Vertical_Pull', 'Cable + single handle', 'cable', 'Each side on its own, with a longer stretch than the two-handed version'),
+    M('Weighted chin-up', 'Vertical_Pull', 'Pull-up bar + belt', 'belt', 'Treat it like a main lift and log the added weight every session.'),
+    M('Weighted pull-up', 'Vertical_Pull', 'Pull-up bar + belt', 'belt', 'Overhand grip with added load. Log the added weight.'),
+    M('Chin-up', 'Vertical_Pull', 'Pull-up bar', 'bodyweight', 'Underhand grip, so the biceps help more than in a pull-up.'),
+    M('Pull-up', 'Vertical_Pull', 'Pull-up bar', 'bodyweight', 'Overhand grip for lats and upper back. Start each rep from a dead hang.'),
+    M('Lat pulldown', 'Vertical_Pull', 'Lat pulldown machine', 'machine', 'Lats with an overhand grip. Pull the elbows down, not the hands.'),
+    M('Wide-grip lat pulldown', 'Vertical_Pull', 'Lat pulldown machine + wide bar', 'machine', 'A wide grip biases the upper lats. Stop the bar at the collarbone.'),
+    M('Underhand lat pulldown', 'Vertical_Pull', 'Lat pulldown machine + straight bar', 'machine', 'Underhand grip with more biceps help, so you can usually lift more.'),
+    M('Neutral-grip pulldown', 'Vertical_Pull', 'Lat pulldown machine + V-handle', 'machine', 'A palms-in grip that is usually kinder on the shoulders and elbows.'),
+    M('Single-arm lat pulldown', 'Vertical_Pull', 'Cable + single handle', 'cable', 'Each side works alone, with a longer stretch than a two-handed pulldown.'),
+    M('Straight-arm pulldown', 'Vertical_Pull', 'Cable + straight bar', 'cable', 'Lats without the biceps helping. Keep the arms straight and the ribs down.'),
     // Quad
-    M('Squat', 'Quad', 'Barbell + rack', 'barbell'),
-    M('Leg press', 'Quad', '45° leg press', 'machine'),
-    M('Hack squat', 'Quad', 'Hack squat machine', 'machine', 'Hardest quad loading available with the torso supported'),
-    M('Leg extension', 'Quad', 'Leg extension machine', 'machine'),
-    M('Bulgarian split squat', 'Quad', 'Dumbbells + bench', 'dumbbell'),
-    M('Walking lunge', 'Quad', 'Dumbbells', 'dumbbell'),
-    M('Step-up', 'Quad', 'Dumbbells + box', 'dumbbell'),
-    M('Smith squat to box', 'Quad', 'Smith machine + box', 'barbell', 'Depth capped by box height'),
-    M('Front squat', 'Quad', 'Barbell + rack', 'barbell', 'More quad and upper back than the back squat, and it forces an upright torso. Lighter by about 20 percent'),
-    // Hinge / hamstring
-    M('Deadlift', 'Hinge_Hamstring', 'Barbell', 'barbell'),
-    M('Romanian deadlift', 'Hinge_Hamstring', 'Barbell', 'barbell', 'Hip extension only — pair it with knee flexion'),
-    M('Seated leg curl', 'Hinge_Hamstring', 'Seated leg curl machine', 'machine', 'The knee flexion an RDL never gives you'),
-    M('Lying leg curl', 'Hinge_Hamstring', 'Lying leg curl machine', 'machine'),
-    M('DB stiff-leg deadlift', 'Hinge_Hamstring', 'Dumbbells', 'dumbbell'),
-    M('45° back extension', 'Hinge_Hamstring', 'Back extension bench', 'belt', 'Only if the lower back limits your squat or pull'),
-    M('Cable pull-through', 'Hinge_Hamstring', 'Cable + rope', 'cable'),
-    M('Nordic curl', 'Hinge_Hamstring', 'Anchored pad', 'bodyweight', 'Eccentric hamstring work and the best protection against a hamstring strain — start with a few reps and lower slowly'),
-    M('Good morning', 'Hinge_Hamstring', 'Barbell + rack', 'barbell', 'Hinge with the bar on your back — go light, it loads the lower back hard'),
+    M('Squat', 'Quad', 'Barbell + rack', 'barbell', 'The main lower-body lift. Brace before the descent and keep the whole foot planted.'),
+    M('Front squat', 'Quad', 'Barbell + rack', 'barbell', 'More quad and upper back than a back squat, and it forces an upright torso.'),
+    M('Pause squat', 'Quad', 'Barbell + rack', 'barbell', 'A pause in the bottom position builds strength out of the hole. Use a lighter load than a normal squat.'),
+    M('Box squat', 'Quad', 'Barbell + box', 'barbell', 'Sitting back to a box trains the hips and sets the depth.'),
+    M('Smith machine squat', 'Quad', 'Smith machine', 'barbell', 'A fixed bar path lets you put the feet forward and load the quads.'),
+    M('Smith squat to box', 'Quad', 'Smith machine + box', 'barbell', 'Depth is set by the box height.'),
+    M('Goblet squat', 'Quad', 'One dumbbell', 'dumbbell', 'A counterbalanced squat that teaches depth and an upright torso.'),
+    M('Leg press', 'Quad', 'Leg press machine', 'machine', 'Heavy quad and glute loading with the back supported. Keep the hips down.'),
+    M('Single-leg leg press', 'Quad', 'Leg press machine', 'machine', 'Each leg works alone, so a weaker side shows up.'),
+    M('Hack squat', 'Quad', 'Hack squat machine', 'machine', 'The hardest quad loading available with the torso supported.'),
+    M('Leg extension', 'Quad', 'Leg extension machine', 'machine', 'Isolates the quads, including the rectus femoris that squats train poorly.'),
+    M('Bulgarian split squat', 'Quad', 'Dumbbells + bench', 'dumbbell', 'Single-leg quad and glute work. Lean forward slightly to bias the glutes.'),
+    M('Split squat', 'Quad', 'Dumbbells', 'dumbbell', 'Single-leg quad and glute work from a fixed stance.'),
+    M('Reverse lunge', 'Quad', 'Dumbbells', 'dumbbell', 'Easier on the knees than a forward lunge, because the shin stays upright.'),
+    M('Walking lunge', 'Quad', 'Dumbbells', 'dumbbell', 'Single-leg work that also trains balance. Take long steps for more glute.'),
+    M('Step-up', 'Quad', 'Dumbbells + box', 'dumbbell', 'Single-leg work through a short range. Drive through the heel of the top foot.'),
+    // Hinge and hamstring
+    M('Deadlift', 'Hinge_Hamstring', 'Barbell', 'barbell', 'The main hinge lift. Take the slack out of the bar before you pull.'),
+    M('Trap bar deadlift', 'Hinge_Hamstring', 'Trap bar', 'barbell', 'A neutral grip and an easier setup, with more quad than a straight bar.'),
+    M('Deficit deadlift', 'Hinge_Hamstring', 'Barbell + plate', 'barbell', 'Standing on a plate lengthens the pull and builds strength off the floor.'),
+    M('Romanian deadlift', 'Hinge_Hamstring', 'Barbell', 'barbell', 'Hip extension only, so pair it with a knee flexion exercise.'),
+    M('DB stiff-leg deadlift', 'Hinge_Hamstring', 'Dumbbells', 'dumbbell', 'A straighter-leg hinge that loads the hamstrings at a long length.'),
+    M('Single-leg RDL', 'Hinge_Hamstring', 'Dumbbells', 'dumbbell', 'A single-leg hinge for the hamstrings and balance. Keep the hips square.'),
+    M('Good morning', 'Hinge_Hamstring', 'Barbell + rack', 'barbell', 'A hinge with the bar on your back. Go light, because it loads the lower back hard.'),
+    M('Seated leg curl', 'Hinge_Hamstring', 'Seated leg curl machine', 'machine', 'The knee flexion that a Romanian deadlift never gives you.'),
+    M('Lying leg curl', 'Hinge_Hamstring', 'Lying leg curl machine', 'machine', 'Knee flexion with the hips open, so the hamstrings are less stretched than in the seated version.'),
+    M('Nordic curl', 'Hinge_Hamstring', 'Anchored pad', 'bodyweight', 'Eccentric hamstring work that protects against strains. Start with a few slow reps.'),
+    M('45° back extension', 'Hinge_Hamstring', 'Back extension bench', 'belt', 'Only needed if the lower back limits your squat or pull.'),
+    M('Cable pull-through', 'Hinge_Hamstring', 'Cable + rope', 'cable', 'A light hinge pattern that keeps tension on the glutes and hamstrings.'),
     // Glute
-    M('Barbell hip thrust', 'Glute', 'Barbell + bench + pad', 'barbell'),
-    M('Hip thrust machine', 'Glute', 'Hip thrust machine', 'machine'),
-    M('Cable glute kickback', 'Glute', 'Cable + ankle strap', 'cable'),
-    M('Abduction machine', 'Glute', 'Hip abduction machine', 'machine'),
-    M('Hip adduction machine', 'Glute', 'Hip adduction machine', 'machine', 'Adductors, which squat depth leans on'),
+    M('Barbell hip thrust', 'Glute', 'Barbell + bench', 'barbell', 'The heaviest glute loading available. Tuck the chin and finish with the ribs down.'),
+    M('Hip thrust machine', 'Glute', 'Hip thrust machine', 'machine', 'The same movement as the barbell version, with an easier setup.'),
+    M('Glute bridge', 'Glute', 'Mat', 'bodyweight', 'A light hip extension that works as a warm-up or a high-rep finisher.'),
+    M('Cable glute kickback', 'Glute', 'Cable + ankle strap', 'cable', 'Glute isolation. Keep the lower back still.'),
+    M('Banded lateral walk', 'Glute', 'Resistance band', 'band', 'Glute medius work that is easy to recover from.'),
+    M('Abduction machine', 'Glute', 'Hip abduction machine', 'machine', 'Glute medius and minimus, which stabilise the hip in a squat.'),
+    M('Hip adduction machine', 'Glute', 'Hip adduction machine', 'machine', 'Adductors, which squat depth leans on.'),
     // Calf
-    M('Standing calf raise', 'Calf', 'Standing calf raise machine', 'machine', 'Full stretch at the bottom, pause at the top'),
-    M('Smith calf raise', 'Calf', 'Smith machine', 'barbell', 'Plate-loaded, so it steps like a barbell'),
-    M('Seated calf raise', 'Calf', 'Seated calf machine', 'machine', 'Soleus bias'),
-    M('Leg press calf raise', 'Calf', '45° leg press', 'machine'),
+    M('Standing calf raise', 'Calf', 'Standing calf raise machine', 'machine', 'A full stretch at the bottom and a pause at the top.'),
+    M('Seated calf raise', 'Calf', 'Seated calf raise machine', 'machine', 'Soleus bias, because the knee is bent.'),
+    M('Smith calf raise', 'Calf', 'Smith machine + step', 'barbell', 'Plate-loaded, so it steps in plates like a barbell.'),
+    M('Leg press calf raise', 'Calf', 'Leg press machine', 'machine', 'Heavy calf work on the leg press you are already using.'),
+    M('DB calf raise', 'Calf', 'Dumbbells + step', 'dumbbell', 'One side at a time with a dumbbell, on a step for the full stretch.'),
+    M('Single-leg calf raise', 'Calf', 'Step', 'bodyweight', 'Bodyweight calf work with a full stretch. Move to a dumbbell once it gets easy.'),
     // Core
-    M('Cable crunch', 'Core', 'Cable + rope', 'cable', 'Load it and progress it like any other lift'),
-    M('Ab crunch machine', 'Core', 'Ab crunch machine', 'machine'),
-    M('Hanging knee raise', 'Core', 'Pull-up bar', 'belt'),
-    M("Captain's chair knee raise", 'Core', "Captain's chair", 'bodyweight', 'Back supported, so easier than hanging — a different exercise, not a regression of the same one'),
-    M('Ab wheel rollout', 'Core', 'Ab wheel', 'bodyweight'),
-    M('Pallof press', 'Core', 'Cable, mid pulley', 'cable'),
-    M('Dead bug', 'Core', 'Mat', 'bodyweight', 'Bracing with the ribs down — the control that heavy lifts need'),
-    M('Front plank', 'Core', 'Mat', 'bodyweight', 'Bracing work, not growth work'),
+    M('Cable crunch', 'Core', 'Cable + rope', 'cable', 'Load it and progress it like any other lift.'),
+    M('Ab crunch machine', 'Core', 'Ab crunch machine', 'machine', 'A loaded crunch on a fixed path that is easy to progress.'),
+    M('Hanging knee raise', 'Core', 'Pull-up bar', 'belt', 'Hanging also works grip and shoulders. Hold a dumbbell between the feet once 15 reps is easy.'),
+    M('Hanging leg raise', 'Core', 'Pull-up bar', 'belt', 'A harder version of the knee raise, with straight legs.'),
+    M("Captain's chair knee raise", 'Core', "Captain's chair", 'bodyweight', 'Back supported, so easier than hanging and a different exercise rather than a regression.'),
+    M('Ab wheel rollout', 'Core', 'Ab wheel', 'bodyweight', 'Anti-extension trunk work. Stop before the lower back sags.'),
+    M('Pallof press', 'Core', 'Cable + single handle', 'cable', 'Anti-rotation bracing. Keep the hips and shoulders square.'),
+    M('Cable woodchop', 'Core', 'Cable + single handle', 'cable', 'Rotational trunk work, high to low or low to high.'),
+    M('Front plank', 'Core', 'Mat', 'bodyweight', 'Bracing work, not growth work.'),
+    M('Side plank', 'Core', 'Mat', 'bodyweight', 'Trains the obliques and the hip stabilisers that keep the trunk level.'),
+    M('Dead bug', 'Core', 'Mat', 'bodyweight', 'Bracing with the ribs down, the control that heavy lifts need.'),
     // Arms
-    M('EZ-bar curl', 'Arms', 'EZ bar', 'barbell'),
-    M('DB curl', 'Arms', 'Dumbbells', 'dumbbell'),
-    M('Preacher curl machine', 'Arms', 'Preacher curl machine', 'machine'),
-    M('DB hammer curl', 'Arms', 'Dumbbells', 'dumbbell', 'Brachialis and brachioradialis bias'),
-    M('Cable curl', 'Arms', 'Cable + bar', 'cable'),
-    M('Incline DB curl', 'Arms', 'Dumbbells + incline bench', 'dumbbell', 'The long head of the biceps at a full stretch'),
-    M('Bayesian cable curl', 'Arms', 'Cable + single handle', 'cable', 'Arm behind the body, so the biceps are stretched under load'),
-    M('Triceps pushdown', 'Arms', 'Cable stack, any attachment', 'cable'),
-    M('Overhead cable extension', 'Arms', 'Cable + rope', 'cable', 'The long head, which pressing never trains under stretch'),
-    M('EZ-bar skull crusher', 'Arms', 'EZ bar + bench', 'barbell'),
-    M('DB overhead extension', 'Arms', 'One dumbbell', 'dumbbell'),
-    M('Cross-body cable extension', 'Arms', 'Cable + single handle', 'cable', 'Long head of the triceps, one side at a time'),
-    M('Triceps extension machine', 'Arms', 'Triceps extension machine', 'machine'),
-    M('DB skull crusher', 'Arms', 'Dumbbells + bench', 'dumbbell'),
+    M('EZ-bar curl', 'Arms', 'EZ bar', 'barbell', 'A semi-supinated grip that is easier on the wrists than a straight bar.'),
+    M('EZ-bar preacher curl', 'Arms', 'EZ bar + preacher bench', 'barbell', 'The upper arm is supported, so there is no swinging. Lower slowly.'),
+    M('Reverse EZ-bar curl', 'Arms', 'EZ bar', 'barbell', 'An overhand grip that trains the forearms and brachioradialis.'),
+    M('DB curl', 'Arms', 'Dumbbells', 'dumbbell', 'Each arm works alone, and the wrist can rotate freely.'),
+    M('Incline DB curl', 'Arms', 'Dumbbells + incline bench', 'dumbbell', 'The long head of the biceps at a full stretch.'),
+    M('DB hammer curl', 'Arms', 'Dumbbells', 'dumbbell', 'Brachialis and brachioradialis bias.'),
+    M('Preacher curl machine', 'Arms', 'Preacher curl machine', 'machine', 'The upper arm is fixed, so there is no swinging.'),
+    M('Cable curl', 'Arms', 'Cable + straight bar', 'cable', 'Constant tension, including at the top where dumbbells go slack.'),
+    M('Cable rope hammer curl', 'Arms', 'Cable + rope', 'cable', 'A hammer grip with constant tension.'),
+    M('Bayesian cable curl', 'Arms', 'Cable + single handle', 'cable', 'The arm is behind the body, so the biceps are stretched under load.'),
+    M('Triceps pushdown', 'Arms', 'Cable + straight bar', 'cable', 'Easy to load in small steps, and any attachment works.'),
+    M('Single-arm triceps pushdown', 'Arms', 'Cable + single handle', 'cable', 'Each side works alone, so the weaker arm gets equal work.'),
+    M('Overhead cable extension', 'Arms', 'Cable + rope', 'cable', 'The long head, which pressing never trains under stretch.'),
+    M('Cross-body cable extension', 'Arms', 'Cable + single handle', 'cable', 'The long head of the triceps, one side at a time.'),
+    M('EZ-bar skull crusher', 'Arms', 'EZ bar + bench', 'barbell', 'Heavy triceps work. Lower to just behind the head for more stretch.'),
+    M('DB skull crusher', 'Arms', 'Dumbbells + bench', 'dumbbell', 'Each arm works alone, which is kinder on the elbows than a bar.'),
+    M('DB overhead extension', 'Arms', 'One dumbbell', 'dumbbell', 'The long head of the triceps under stretch, with two hands on one dumbbell.'),
+    M('Triceps extension machine', 'Arms', 'Triceps extension machine', 'machine', 'A fixed path that is easy to load.'),
+    M('Wrist curl', 'Arms', 'Dumbbells + bench', 'dumbbell', 'Forearm flexors, useful if grip limits your deadlift.'),
     // Conditioning
-    M('Rower intervals', 'Conditioning', 'Rower', 'cardio'),
-    M('Bike intervals', 'Conditioning', 'Exercise bike', 'cardio'),
-    M('Incline treadmill walk', 'Conditioning', 'Treadmill', 'cardio', 'Zero impact, good on a rest day'),
-    M('KB swing', 'Conditioning', 'Kettlebells', 'kettlebell'),
-    M('Farmer carry', 'Conditioning', 'Heavy dumbbells', 'dumbbell'),
-    M('Trap bar carry', 'Conditioning', 'Trap bar', 'barbell'),
-    M('Suitcase carry', 'Conditioning', 'One heavy dumbbell', 'dumbbell', 'One side only: the trunk fights the lean'),
-    M('Ski erg', 'Conditioning', 'Ski erg', 'cardio', 'Easier on the legs than a rower — a good choice before a squat or deadlift day'),
+    M('Rower intervals', 'Conditioning', 'Rower', 'cardio', 'Full-body work with no impact.'),
+    M('Ski erg', 'Conditioning', 'Ski erg', 'cardio', 'Easier on the legs than a rower, so a good choice before a squat or deadlift day.'),
+    M('Bike intervals', 'Conditioning', 'Exercise bike', 'cardio', 'Low impact, so it is easy to recover from.'),
+    M('Cross trainer intervals', 'Conditioning', 'Cross trainer', 'cardio', 'Low-impact conditioning that is easy to recover from.'),
+    M('Stair climber', 'Conditioning', 'Stair climber', 'cardio', 'Steady lower-body conditioning. Stand tall instead of leaning on the rails.'),
+    M('Treadmill intervals', 'Conditioning', 'Treadmill', 'cardio', 'Short hard efforts with walking recoveries.'),
+    M('Incline treadmill walk', 'Conditioning', 'Treadmill', 'cardio', 'Zero impact, and good on a rest day.'),
+    M('Sled push', 'Conditioning', 'Sled', 'barbell', 'Leg drive with almost no eccentric load, so it conditions without much soreness.'),
+    M('Battle rope waves', 'Conditioning', 'Battle rope', 'bodyweight', 'Upper-body and trunk conditioning with no impact.'),
+    M('KB swing', 'Conditioning', 'Kettlebells', 'kettlebell', 'Hip-hinge power that doubles as conditioning.'),
+    M('Farmer carry', 'Conditioning', 'Heavy dumbbells', 'dumbbell', 'Grip, traps and trunk under load. Walk tall.'),
+    M('Suitcase carry', 'Conditioning', 'One heavy dumbbell', 'dumbbell', 'One side only, so the trunk fights the lean.'),
+    M('Trap bar carry', 'Conditioning', 'Trap bar', 'barbell', 'A heavy carry with a neutral grip.'),
     // Power
-    M('Hang power clean', 'Power', 'Barbell', 'barbell', 'Fast and light. Stop while the bar is still moving quickly, and never take it near failure'),
-    M('Box jump', 'Power', 'Plyo box', 'bodyweight', 'Step down, do not jump down. Stop when the jumps get slower')
+    M('Hang power clean', 'Power', 'Barbell', 'barbell', 'Fast and light. Stop while the bar is still moving quickly, and never take it near failure.'),
+    M('Box jump', 'Power', 'Plyo box', 'bodyweight', 'Step down, do not jump down. Stop when the jumps get slower.'),
+    M('Jump squat', 'Power', 'No equipment', 'bodyweight', 'Fast, light jumps from a quarter squat. Stop when the height drops.'),
+    M('Broad jump', 'Power', 'No equipment', 'bodyweight', 'Horizontal power. Stick each landing and reset.'),
+    M('Medicine ball slam', 'Power', 'Medicine ball', 'bodyweight', 'Full-body power with no eccentric load. Slam it hard and catch it on the bounce.')
   ];
 
   // Exercises that were in an earlier library. A saved log or plan that still
   // names one is re-registered from here when it is brought across, so its
   // history keeps working even though it is no longer offered.
   var LEGACY_MOVEMENTS = [
-    M('Assisted pull-up', 'Vertical_Pull', 'Assisted pull-up machine', 'machine', 'Reduce the assistance week to week'),
-    M('Spanish squat', 'Quad', 'Band anchored to a rig', 'band', 'A warm-up, not a growth driver')
+    M('Assisted pull-up', 'Vertical_Pull', 'Assisted pull-up machine', 'machine', 'Reduce the assistance week by week.'),
+    M('Spanish squat', 'Quad', 'Band anchored to a rig', 'band', 'A warm-up, not a growth driver.')
   ];
 
   var GROUPS = ['Horizontal_Push', 'Vertical_Push', 'Horizontal_Pull', 'Vertical_Pull',
@@ -676,7 +773,7 @@ details.info .row{margin-top:10px}
       name: 'Day 1',
       slots: [
         { id: 'main', kind: 'main', movement: 'Squat', load: wave() },
-        { id: 'main2', kind: 'main', movement: 'Overhead Press', load: wave(),
+        { id: 'main2', kind: 'main', movement: 'Overhead press', load: wave(),
           note: 'Second main lift — after the squat, with its own wave and AMRAP' },
         acc('a1', 'Romanian deadlift', 4, [10, 12], 2),
         acc('a2', 'Seated cable row', 3, [12, 15], 2, 'Day 1 has no other pulling; this balances the week'),
@@ -690,7 +787,7 @@ details.info .row{margin-top:10px}
     {
       name: 'Day 2',
       slots: [
-        { id: 'main', kind: 'main', movement: 'Bench Press', load: wave() },
+        { id: 'main', kind: 'main', movement: 'Bench press', load: wave() },
         { id: 'support', kind: 'support', movement: 'Chest-supported row', load: kgs(60), sets: 4, reps: 8, repsTop: 10, rir: 2,
           note: 'A pull in the main work, on fresh tissue, with no erector cost. A fixed weight: it goes up when all four sets reach 10' },
         // The machine in place of the cable fly and the rear delt machine in place
@@ -712,7 +809,7 @@ details.info .row{margin-top:10px}
         { id: 'main', kind: 'main', movement: 'Deadlift', load: wave() },
         // Null until the block starts, when it is filled from what was being
         // lifted; blank means "enter it and it carries forward".
-        { id: 'support', kind: 'support', movement: 'Incline Bench', load: kgs(null), sets: 4, reps: 6, repsTop: 8, rir: 3,
+        { id: 'support', kind: 'support', movement: 'Incline bench', load: kgs(null), sets: 4, reps: 6, repsTop: 8, rir: 3,
           note: 'A fixed weight: it goes up when all four sets reach 8' },
         { id: 'a1', kind: 'accessory', movement: 'Weighted chin-up', load: { kind: 'bodyweight', added: 0 }, sets: 4, reps: 6, repsTop: 8, rir: 1,
           note: 'Your loaded vertical pull — progress the belt weight like a main lift' },
@@ -754,9 +851,9 @@ details.info .row{margin-top:10px}
     defaults: {
       lifts: [
         { name: 'Squat', tm: 100, inc: 2.5 },
-        { name: 'Bench Press', tm: 70, inc: 1.25 },
+        { name: 'Bench press', tm: 70, inc: 1.25 },
         { name: 'Deadlift', tm: 120, inc: 2.5 },
-        { name: 'Overhead Press', tm: 45, inc: 1.25 }
+        { name: 'Overhead press', tm: 45, inc: 1.25 }
       ],
       rounding: 2.5,
       unit: 'kg',
@@ -805,7 +902,12 @@ details.info .row{margin-top:10px}
   // v3's logging changes (v2 is left exactly as it was): the Back / Save / Finish
   // bar steps out of the way while a set is being entered, and each set's weight
   // starts from the set before it.
-  var V3_LOGGING = ONBOARDING;
+  // Plain mode (the machine plan): no main lifts, training maxes, waves or AMRAP
+  // sets. Every slot is a fixed-weight or "your call" exercise on a rep range.
+  var PLAIN = !!CFG.plain;
+  // A plate calculator in the set editor for barbell lifts (v3 only; v2 is as it was).
+  var PLATES = !!CFG.plates;
+  var V3_LOGGING = ONBOARDING || PLAIN;
   // Rounds of template rep ranges a saved programme is migrated through
   // (migrateRepRanges). 1: accessories and the fixed-weight row. 2: the %TM
   // supports (6-8), when RIR stopped gating ranged progression. Re-running is
@@ -825,7 +927,16 @@ details.info .row{margin-top:10px}
       // True while data from the earlier app has been brought across but the
       // new block has not started yet.
       imported: false,
+      // Tape measurements (plain mode), always stored in centimetres whatever the
+      // unit shown: [{date, week, v: {site: cm}}]. The sites are the ones you track.
+      measurements: [],
+      measureSites: ['Waist', 'Hips', 'Thigh', 'Upper arm'],
+      measureDismissed: 0,
+      // Plain mode: when she trains, as an if-then plan {days: [0-6, Monday first], cue}.
+      plan: null,
+      planDismissed: false,
       settings: {
+        lengthUnit: 'cm',
         rounding: P0.defaults.rounding, unit: P0.defaults.unit,
         increments: JSON.parse(JSON.stringify(P0.defaults.increments)),
         bodyweight: P0.defaults.bodyweight,
@@ -948,8 +1059,31 @@ details.info .row{margin-top:10px}
       var to = seen[key(e.movement)];
       if (to !== undefined && to !== e.movement) { rename[e.movement] = to; }
     });
+    // The training maxes and everything keyed by a lift's name follow the library's
+    // spelling too — a lift is found by name, and a backup from the first app
+    // writes "Bench Press" where this library writes "Bench press".
+    (s.lifts || []).forEach(function (l) {
+      var to = seen[key(l.name)];
+      if (to !== undefined && to !== l.name) { rename[l.name] = to; }
+    });
     if (!Object.keys(rename).length) { return; }
     var fix = function (n) { return rename[n] === undefined ? n : rename[n]; };
+    (s.lifts || []).forEach(function (l) { l.name = fix(l.name); });
+    ['tracker', 'trackerBase'].forEach(function (field) {
+      var map = s[field] || {};
+      Object.keys(map).forEach(function (k) {
+        var bar = k.indexOf('|');
+        var nk = k.slice(0, bar + 1) + fix(k.slice(bar + 1));
+        if (nk !== k) { if (map[nk] === undefined) { map[nk] = map[k]; } delete map[k]; }
+      });
+    });
+    (function () {
+      var res = s.cycleResults || {};
+      Object.keys(res).forEach(function (k) {
+        var nk = fix(k);
+        if (nk !== k) { if (res[nk] === undefined) { res[nk] = res[k]; } delete res[k]; }
+      });
+    })();
     eachEntry(function (e) { e.movement = fix(e.movement); });
     ((s.programme || {}).days || []).forEach(function (d) {
       (d.slots || []).forEach(function (sl) { sl.movement = fix(sl.movement); });
@@ -1046,7 +1180,7 @@ details.info .row{margin-top:10px}
     return {
       id: P0.id, name: P0.name, weeks: P0.weeks, waveSlots: P0.waveSlots,
       days: state.programme.days, movements: movements(), groups: P0.groups,
-      weekOverrides: state.programme.weekOverrides, phaseRules: P0.phaseRules
+      weekOverrides: state.programme.weekOverrides, phaseRules: P0.phaseRules, rirByWave: P0.rirByWave
     };
   }
   function movements() {
@@ -1068,14 +1202,49 @@ details.info .row{margin-top:10px}
     return equipIncrementFor(movementName);
   }
 
+  // Bar and plates: what the gym has, per side, heaviest first. Read with a fallback,
+  // so nothing is written to the saved state until they are changed in Setup.
+  function barKg() { var b = state.settings.barWeight; return b > 0 ? b : (state.settings.unit === 'lb' ? 45 : 20); }
+  function plateList() {
+    var l = state.settings.plates;
+    return Array.isArray(l) && l.length ? l : (state.settings.unit === 'lb' ? [45, 35, 25, 10, 5, 2.5] : [25, 20, 15, 10, 5, 2.5, 1.25]);
+  }
+  // The straight barbell only: a Smith machine, EZ bar or trap bar weighs something else.
+  function takesPlates(name) {
+    var m = movementInfo(name);
+    return PLATES && !!m && m.equip === 'barbell' && /^barbell/i.test(m.kit || '');
+  }
+  function platesText(total) {
+    var r = E.platesPerSide(total, barKg(), plateList());
+    if (!r) { return ''; }
+    if (r.under) { return 'Less than the ' + fmt(barKg()) + ' ' + U() + ' bar'; }
+    var light = r.off ? ' · loads ' + fmt(r.off) + ' ' + U() + ' light' : '';
+    return (r.plates.length ? 'Per side: ' + r.plates.map(fmt).join(' + ') : 'Bar only') + light;
+  }
+
   function equipIncrementFor(movementName) {
     var equip = (movementInfo(movementName) || {}).equip;
     if (!equip) { return null; }
     var v = (state.settings.increments || {})[equip];
     return v === undefined || v === null || v <= 0 ? null : v;
   }
-  function movementsIn(group) { return movements().filter(function (m) { return m.group === group; }); }
-  function movementInfo(name) { return movements().filter(function (m) { return m.name === name; })[0] || null; }
+  // The machine plan only offers machines and cables, plus anything she added herself
+  // and the back bench and chair her own plan already uses. Barbell, dumbbell, bar and
+  // kettlebell exercises stay in the library, just not in her lists.
+  // The glute bridge is the fallback her first exercise names if the gym has no hip thrust machine.
+  function planNames() {
+    var seen = { 'glute bridge': true };
+    P0.days.forEach(function (d) { d.slots.forEach(function (sl) { seen[nameKey(sl.movement)] = true; }); });
+    return seen;
+  }
+  function inKit(m) {
+    if (!PLAIN) { return true; }
+    if ((state.customMovements || []).some(function (c) { return c.name === m.name; })) { return true; }
+    if (/barbell|dumbbell|kettlebell|smith|landmine/i.test(m.kit || '')) { return false; }
+    return m.equip === 'machine' || m.equip === 'cable' || planNames()[nameKey(m.name)] === true;
+  }
+  function movementsIn(group) { return movements().filter(function (m) { return m.group === group && inKit(m); }); }
+  function movementInfo(name) { return movements().filter(function (m) { return nameKey(m.name) === nameKey(name); })[0] || null; }
 
   // Exercise names are matched ignoring case and spacing. History, "Last
   // time" and suggested weights all follow the name, so "Pec Fly Machine"
@@ -1195,7 +1364,7 @@ details.info .row{margin-top:10px}
   var CORNERS = '<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>';
 
   function render() {
-    var views = { today: viewToday, block: viewBlock, setup: viewSetup, progress: viewProgress, library: viewLibrary };
+    var views = { today: viewToday, block: viewBlock, setup: viewSetup, progress: PLAIN ? viewProgressPlain : viewProgress, library: viewLibrary };
     var app = document.getElementById('app');
     app.innerHTML =
       (memoryOnly ? '<div class="banner">Browser storage unavailable — this tab only. Export from Setup.</div>' : '') +
@@ -1213,11 +1382,15 @@ details.info .row{margin-top:10px}
       }).join('') + '</nav>';
     var sub = document.querySelector('header .sub');
     if (sub) {
-      sub.textContent = CFG.label
+      sub.textContent = PLAIN ? '16-week plan' : CFG.label
         ? ((state.cycle || 1) > 1 ? 'Cycle ' + state.cycle + ' · ' : '') + '16-week block · ' + CFG.label
         : 'Cycle ' + (state.cycle || 1) + ' · 16-week block';
     }
     if (CFG.title) { document.title = CFG.title + (CFG.label ? ' ' + CFG.label : ''); }
+    var h1 = document.querySelector('header h1');
+    if (h1 && CFG.title) { h1.textContent = CFG.title; }
+    var foot = document.querySelector('footer');
+    if (foot && CFG.footer && !foot.querySelector('a')) { foot.textContent = CFG.footer; }
     app.querySelectorAll('.card').forEach(function (c) { c.insertAdjacentHTML('afterbegin', CORNERS); });
     app.querySelectorAll('.card.slot').forEach(function (card) {
       card.querySelectorAll('.editor').forEach(function (ed) { refreshCell(card, ed.dataset.i); });
@@ -1252,12 +1425,32 @@ details.info .row{margin-top:10px}
   // Target RIR for the last main set, as a number the stepper can start from.
   var MAIN_RIR = { Accumulation: 2, Intensification: 1, Realization: 0 };
 
+  // Plain mode has no waves: four-week blocks, three building weeks then a lighter one.
+  function blockOf(w) { return Math.ceil(w / 4); }
+  function weekInBlock(w) { return ((w - 1) % 4) + 1; }
+  function planLabel(w) { return 'Block ' + blockOf(w) + ' · ' + (weekInBlock(w) === 4 ? 'lighter week' : 'build week ' + weekInBlock(w) + ' of 3'); }
+
   function sessionHeader(week, day) {
     var wave = E.waveFor(week, P0.waveSlots), phase = E.phaseFor(week);
     var d = programme().days[day];
     var mains = mainSlots(week, day);
     var ticks = '';
     for (var w = 1; w <= P0.weeks; w++) { ticks += '<i class="' + (w < week ? 'past' : w === week ? 'now' : '') + '"></i>'; }
+    if (PLAIN) {
+      var light = weekInBlock(week) === 4;
+      var cue = (P0.rirByWave || {})[wave];
+      var plainNote = week === 1
+        ? 'Week 1 is for finding your weights. For each exercise pick a weight you could lift about 15 times, and stop at about 12. Warm up first: five minutes easy on a bike or cross trainer, then one light set of the first exercise.'
+        : light
+          ? 'Lighter week: half the sets at the same weights. A good week for your tape measurements.'
+          : 'Build week: add a rep, or a little weight, where you can. Stop each set about ' + (cue === undefined ? 2 : cue) + ' rep' + (cue === 1 ? '' : 's') + ' short of failure.';
+      return '<div class="card sess">' +
+        '<div class="sess-kicker">Week ' + week + ' of ' + P0.weeks + ' · ' + esc(d.name) + '</div>' +
+        '<div class="sess-title">' + esc(d.title || d.name) + '</div>' +
+        '<div class="tags"><span class="pill accent">Block ' + blockOf(week) + '</span><span class="pill">' + (light ? 'Lighter week' : 'Build week') + '</span></div>' +
+        '<div class="weekticks" style="grid-template-columns:repeat(' + P0.weeks + ',1fr)" aria-hidden="true">' + ticks + '</div>' +
+        '<p class="phase-note">' + plainNote + '</p></div>';
+    }
     var note = {
       Accumulation: 'Last main set: push past the prescribed reps, but stop at RIR 2–3. Not a true AMRAP.',
       Intensification: 'Last main set: push past the prescribed reps, but stop at RIR 1–2.',
@@ -1285,7 +1478,9 @@ details.info .row{margin-top:10px}
     'Deadlift': 'https://www.youtube.com/watch?v=rukd80YXUaE'
   };
   function videoLinkFor(movementName) {
-    return CURATED_VIDEOS[movementName] ||
+    // Looked up ignoring case, so "Bench press" and "Bench Press" share a video.
+    var curated = Object.keys(CURATED_VIDEOS).filter(function (k) { return nameKey(k) === nameKey(movementName); })[0];
+    return (curated && CURATED_VIDEOS[curated]) ||
       ('https://www.youtube.com/results?search_query=' + encodeURIComponent(movementName + ' exercise form'));
   }
   function videoLink(movementName) {
@@ -1353,7 +1548,7 @@ details.info .row{margin-top:10px}
         (isMain ? ' · ' + Math.round(s.pct * 1000) / 10 + '% TM' : '');
       cells += '<button type="button" class="setcell' + (s.amrap ? ' amrap' : '') + '" data-action="cell" data-i="' + i + '" aria-label="Set ' + s.n + '">' +
         '<span class="c-kg"></span><span class="c-reps"></span></button>';
-      editors += '<div class="editor" data-i="' + i + '" data-treps="' + s.reps + '" data-ttop="' + (s.top || '') + '" data-trir="' + tRir + '" data-amrap="' + (s.amrap ? 1 : 0) + '" hidden>' +
+      editors += '<div class="editor" data-i="' + i + '"' + (takesPlates(p.movement) ? ' data-plates="1"' : '') + ' data-treps="' + s.reps + '" data-ttop="' + (s.top || '') + '" data-trir="' + tRir + '" data-amrap="' + (s.amrap ? 1 : 0) + '" hidden>' +
         '<div class="ed-head"><span class="ed-title">Set ' + s.n + '</span><span class="ed-target">' + esc(target) + '</span></div>' +
         '<div class="ed-fields">' +
         field('Reps', '<input type="number" inputmode="numeric" step="1" min="0" class="in-reps" data-i="' + i + '" value="' + repVal + '" placeholder="' + repsTxt + '">', 1) +
@@ -1361,7 +1556,7 @@ details.info .row{margin-top:10px}
           ? field('RIR', '<input type="number" inputmode="numeric" step="1" min="0" class="in-rir" data-i="' + i + '" value="' + rirVal + '" placeholder="' + tRir + '">', 1)
           : '<input type="hidden" class="in-rir" data-i="' + i + '" value="' + rirVal + '">') +
         field(U(), '<input type="number" inputmode="decimal" step="0.5" min="0" class="in-kg" data-i="' + i + '" value="' + kgVal + '">', kgStep, askRir) +
-        '</div><div class="ed-hint"></div>' +
+        '</div><div class="ed-hint"></div>' + (takesPlates(p.movement) ? '<div class="ed-plates hint sm"></div>' : '') +
         '<div class="ed-actions"><button type="button" data-action="clear-set">Clear</button><button type="button" class="primary" data-action="log-set">Log set</button></div>' +
         '</div>';
     });
@@ -1369,9 +1564,11 @@ details.info .row{margin-top:10px}
     var meta = isMain
       ? p.wave + ' wave · TM ' + fmt((E.tracked(p.movement, state.lifts) || {}).tm) + ' ' + U()
       : [p.label ? esc(p.label) : '', p.sets.length + ' × ' + (p.sets[0] ? E.repsLabel(p.sets[0].reps, p.sets[0].top) : ''), p.rir !== undefined ? 'RIR ' + p.rir : ''].filter(Boolean).join(' · ');
-    var head = '<div class="slot-head"><div><span class="kindtag ' + p.kind + '">' + p.kind + '</span>' +
-      '<div class="slot-name">' + esc(p.movement) + '</div><div class="slot-meta">' + meta + '</div></div>' +
-      videoLink(p.movement) + '</div>';
+    var head = '<div class="slot-head"><div><span class="kindtag ' + p.kind + '">' + esc(p.slot.tag || p.kind) + '</span>' +
+      '<div class="slot-name">' + esc(p.movement) + '</div><div class="slot-meta">' + meta + '</div>' +
+      // The machine plan puts the swap where it is needed, not inside More.
+      (PLAIN && !isMain && !entry.skipped ? '<button type="button" class="small taken-btn" data-action="swap-open" data-slot="' + esc(p.id) + '">Machine taken?</button>' : '') +
+      '</div>' + videoLink(p.movement) + '</div>';
     // A skipped exercise folds down to its reason. Sets done before the skip
     // stay logged; it can never earn a progression (earnedBump).
     if (entry.skipped && !isMain) {
@@ -1424,6 +1621,8 @@ details.info .row{margin-top:10px}
     if (done && tTop !== null && reps >= tTop) { hints.push('top of the range — stop here'); }
     if (rir !== null && tRir !== null && rir < tRir) { hints.push('harder than planned'); }
     ed.querySelector('.ed-hint').textContent = hints.join(' · ');
+    var pl = ed.querySelector('.ed-plates');
+    if (pl) { pl.textContent = kg === null ? '' : platesText(kg); }
   }
 
   // Every logged set re-checks progression, so the weight goes up for next
@@ -1551,10 +1750,19 @@ details.info .row{margin-top:10px}
     // something an accessory slot can become.
     var mains = E.progressingLifts(programme());
     var options = movementsIn(group).filter(function (m) { return m.name !== p.movement && mains.indexOf(m.name) === -1; });
-    return '<div class="swap-panel"><label>Swap for <select class="swap-select">' +
-      options.map(function (m) {
-        return '<option value="' + esc(m.name) + '">' + esc(m.name) + ' · ' + esc(equipName(m.equip)) + '</option>';
-      }).join('') +
+    var opt = function (m) { return '<option value="' + esc(m.name) + '">' + esc(m.name) + ' · ' + esc(equipName(m.equip)) + '</option>'; };
+    var list;
+    // The machine plan puts the closest equivalents first (the programme's own list,
+    // which can cross muscle groups where the evidence says it is a fair swap), then
+    // the rest of the group.
+    var near = PLAIN && P0.swaps ? (P0.swaps[p.movement] || []).map(movementInfo).filter(function (m) { return m && m.name !== p.movement; }) : [];
+    if (near.length) {
+      var nearKeys = near.map(function (m) { return nameKey(m.name); });
+      var rest = options.filter(function (m) { return nearKeys.indexOf(nameKey(m.name)) === -1; });
+      list = '<optgroup label="Closest swaps">' + near.map(opt).join('') + '</optgroup>' +
+        (rest.length ? '<optgroup label="Same muscle">' + rest.map(opt).join('') + '</optgroup>' : '');
+    } else { list = options.map(opt).join(''); }
+    return '<div class="swap-panel"><label>' + (PLAIN ? 'Machine taken? Swap for' : 'Swap for') + ' <select class="swap-select">' + list +
       '<option value="__add__">+ Add your own…</option></select></label>' +
       '<div class="swap-add" hidden><input type="text" class="swap-name" placeholder="Exercise name"> ' +
       '<select class="swap-equip"><option value="">Equipment…</option>' +
@@ -1610,14 +1818,27 @@ details.info .row{margin-top:10px}
     var week = state.cursor.week, day = state.cursor.day;
     var prescribed = E.prescribeDay(programme(), week, day, ctx());
     var done = state.logs[logKey(week, day)] && state.logs[logKey(week, day)].date;
+    var measure = PLAIN && measureDue(week)
+      ? '<div class="card"><p class="hint" style="margin:0">Measurement day: a two-minute tape check, only if you would like to.</p>' +
+        '<div class="row"><button type="button" class="small" data-action="tab" data-tab="progress">Open measurements</button>' +
+        '<button type="button" class="small" data-action="dismiss-measure">Not now</button></div></div>'
+      : '';
+    var planBit = !PLAIN ? ''
+      : state.plan ? '<p class="hint plan-line">Your plan: ' + esc(planText()) + '</p>'
+      : state.planDismissed ? ''
+      : '<div class="card plan-nudge"><p class="hint" style="margin:0">Decide when you will train. A plan like "Mon, Wed, Fri, when I finish work" gets followed far more often than "three times a week".</p>' +
+        '<div class="row"><button type="button" class="small" data-action="tab" data-tab="setup">Set my days</button>' +
+        '<button type="button" class="small" data-action="dismiss-plan">Not now</button></div></div>';
     var endNote = week < P0.weeks ? ''
+      : PLAIN
+        ? '<div class="card"><p class="hint" style="margin:0">Last week of the plan. Take your measurements, then export a backup from Setup so nothing is lost.</p></div>'
       : ONBOARDING
         ? '<div class="card"><p class="hint" style="margin:0">Last week of cycle ' + (state.cycle || 1) + '. When the deload is done, start the next cycle from Setup.</p>' +
           '<div class="row"><button type="button" class="small" data-action="tab" data-tab="setup">Go to Setup</button></div></div>'
         // v2 does not roll over: the next block is its own app, which reads a backup.
         : '<div class="card"><p class="hint" style="margin:0">Last week of this block. When the deload is done, export your data from Setup (Export JSON). ' +
           'The next block is <a href="./trainer3.html">the v3 app</a>, which can read that file and set your starting maxes.</p></div>';
-    return sessionHeader(week, day) + endNote +
+    return sessionHeader(week, day) + planBit + measure + endNote +
       prescribed.map(function (p, i) { return renderSlot(p, week, day, i); }).join('') +
       (done ? '<p class="hint">Logged ' + esc(done) + '</p>' : '') +
       '<div class="actionbar">' +
@@ -1648,7 +1869,7 @@ details.info .row{margin-top:10px}
       var dl = daysLogged(w);
       var mark = dl === total ? ' ✓' : dl > 0 ? ' · ' + dl + '/' + total : '';
       opts += '<option value="' + w + '"' + (w === selectedWeek ? ' selected' : '') + '>Week ' + w + ' — ' +
-        E.waveFor(w, P0.waveSlots) + ' · ' + E.phaseFor(w) + mark + '</option>';
+        (PLAIN ? planLabel(w) : E.waveFor(w, P0.waveSlots) + ' · ' + E.phaseFor(w)) + mark + '</option>';
     }
     return opts;
   }
@@ -1711,7 +1932,7 @@ details.info .row{margin-top:10px}
       }
 
       return '<div class="card slotedit" data-slot="' + esc(s.id) + '">' +
-        '<div class="row spread"><b><span class="kindtag ' + s.kind + '">' + s.kind + '</span></b></div>' +
+        '<div class="row spread"><b><span class="kindtag ' + s.kind + '">' + esc(s.tag || s.kind) + '</span></b></div>' +
         '<div class="row wrap">' + groupSel + movSel + '</div>' +
         '<div class="row wrap">' + loadCtl + '</div></div>';
     }).join('');
@@ -1723,7 +1944,8 @@ details.info .row{margin-top:10px}
         var dlog = state.logs[logKey(week, i)];
         return '<button type="button" class="daytab' + (i === day ? ' active' : '') + '" data-action="block-day" data-day="' + i + '">' + esc(d.name) + (dlog && dlog.date ? ' ✓' : '') + '</button>';
       }).join('') + '</div>' +
-      '<p class="hint">Edits apply to <b>this week only</b> unless you push them to the whole block. The main lift\'s sets and percentages always come from the wave table.</p>' +
+      '<p class="hint">Edits apply to <b>this week only</b> unless you push them to the whole ' + (PLAIN ? 'plan' : 'block') + '.' +
+      (PLAIN ? '' : ' The main lift\'s sets and percentages always come from the wave table.') + '</p>' +
       rows +
       '<div class="card"><div class="row">' +
       '<button type="button" class="primary" data-action="save-slots">Save this week</button>' +
@@ -1736,7 +1958,56 @@ details.info .row{margin-top:10px}
 
   /* ---------------- setup ---------------- */
 
+  function viewSetupPlain() {
+    var s = state.settings;
+    // Her three kinds of kit, worded for her plan (the shared labels talk about hack
+    // squats and chin-ups).
+    var PLAIN_STEPS = {
+      machine: { label: 'Machines', note: 'Selectorised stacks and the leg press: the gap between pins or the smallest plate' },
+      cable: { label: 'Cables', note: 'Often the same stack increment as the machines' },
+      belt: { label: 'Back extension', note: 'The plate held against your chest' }
+    };
+    var machines = EQUIP_LABELS.filter(function (e) { return PLAIN_STEPS[e.id]; }).map(function (e) {
+      return { id: e.id, label: PLAIN_STEPS[e.id].label, note: PLAIN_STEPS[e.id].note };
+    });
+    return '<section class="card"><h2>Start / jump to a week</h2>' +
+      '<p class="hint">Currently set to <b>' + esc(programme().days[state.cursor.day].name) + ', Week ' + state.cursor.week + '</b> (' + planLabel(state.cursor.week) + ').</p>' +
+      '<div class="row wrap">' +
+      '<label>Week <select id="start-week">' + weekOptionsHtml(state.cursor.week) + '</select></label>' +
+      '<label>Day <select id="start-day">' + programme().days.map(function (d, i) {
+        return '<option value="' + i + '"' + (i === state.cursor.day ? ' selected' : '') + '>' + esc(d.name) + '</option>';
+      }).join('') + '</select></label>' +
+      '<button type="button" class="primary" data-action="start-week">Start here</button></div></section>' +
+      (PLAIN ? planFormHtml('Your training days', 'Pick your days and what you will do just before, for example "when I finish work". Change them any time.') : '') +
+      '<section class="card"><h2>Units</h2><div class="row wrap">' +
+      '<label>Weights <select id="in-unit">' + ['kg', 'lb'].map(function (u) {
+        return '<option value="' + u + '"' + (u === s.unit ? ' selected' : '') + '>' + u + '</option>';
+      }).join('') + '</select></label>' +
+      '<label>Measurements <select id="in-len">' + ['cm', 'in'].map(function (u) {
+        return '<option value="' + u + '"' + (u === lenUnit() ? ' selected' : '') + '>' + u + '</option>';
+      }).join('') + '</select></label></div>' +
+      '<p class="hint">Switching the weight unit relabels the numbers and does not convert them. Measurements are stored in centimetres, so switching their unit converts them properly.</p>' +
+      '<h2>Weight jumps</h2>' +
+      '<p class="hint">How much heavier the next weight is on each kind of machine. These start as guesses: look at the gap between pins on the machines you use and set it here, or per exercise in Library. It is what an exercise goes up by when every set reaches the top of its rep range.</p>' +
+      '<table class="table"><thead><tr><th>Equipment</th><th>Step (' + U() + ')</th><th></th></tr></thead><tbody>' +
+      machines.map(function (e) {
+        return '<tr><td>' + esc(e.label) + '</td>' +
+          '<td><input type="number" step="0.01" min="0.01" class="in-step" data-equip="' + e.id + '" value="' + (s.increments[e.id] === undefined ? '' : s.increments[e.id]) + '"></td>' +
+          '<td class="hint">' + esc(e.note) + '</td></tr>';
+      }).join('') + '</tbody></table>' +
+      '<button type="button" class="primary" id="save-setup" data-action="save-setup">Save</button></section>' +
+      '<section class="card"><h2>Data</h2><div class="row">' +
+      '<button type="button" data-action="export">Export JSON</button>' +
+      '<button type="button" data-action="import">Import JSON</button>' +
+      '<input type="file" id="import-file" accept=".json" hidden>' +
+      '<button type="button" data-action="export-csv">Export log (CSV)</button>' +
+      '<button type="button" class="danger" data-action="reset">Reset</button></div>' +
+      '<p class="hint">Stored in this browser only. Your measurements are part of the JSON backup. ' +
+      (state.lastExportAt ? 'Last backup: ' + esc(state.lastExportAt) + '.' : 'Never backed up.') + '</p></section>';
+  }
+
   function viewSetup() {
+    if (PLAIN) { return viewSetupPlain(); }
     var s = state.settings;
     // Protein is prescribed per kg of bodyweight; convert when the app is in lb
     // or the maths silently doubles the target.
@@ -1789,6 +2060,12 @@ details.info .row{margin-top:10px}
           '<td><input type="number" step="0.01" min="0.01" class="in-step" data-equip="' + e.id + '" value="' + (s.increments[e.id] === undefined ? '' : s.increments[e.id]) + '"></td>' +
           '<td class="hint">' + esc(e.note) + '</td></tr>';
       }).join('') + '</tbody></table>' +
+      (PLATES
+        ? '<h2>Bar and plates</h2>' +
+          '<p class="hint">Used for the plates shown under the weight on barbell lifts. Set them to what your gym has: the bar, then the plates you can load, heaviest first.</p>' +
+          '<div class="row wrap"><label>Bar (' + U() + ') <input type="number" step="0.5" min="0" id="in-bar" value="' + barKg() + '"></label>' +
+          '<label>Plates, each side <input type="text" id="in-plates" value="' + plateList().join(', ') + '" placeholder="25, 20, 15, 10, 5, 2.5, 1.25"></label></div>'
+        : '') +
       '<h2>Nutrition</h2><div class="row wrap">' +
       '<label>Maintenance (kcal) <input type="number" step="10" id="in-maint" value="' + s.maintenance + '"></label>' +
       '<label>Surplus (kcal) <input type="number" step="10" id="in-surplus" value="' + s.surplus + '"></label>' +
@@ -1821,7 +2098,7 @@ details.info .row{margin-top:10px}
   function testedInWave(slot, name) {
     var week = slot * 4 + 3;
     for (var d = 0; d < state.programme.days.length; d++) {
-      if (E.slotsFor(programme(), week, d).some(function (x) { return x.load && x.load.kind === 'wave' && x.movement === name; })) { return true; }
+      if (E.slotsFor(programme(), week, d).some(function (x) { return x.load && x.load.kind === 'wave' && nameKey(x.movement) === nameKey(name); })) { return true; }
     }
     return false;
   }
@@ -1831,9 +2108,9 @@ details.info .row{margin-top:10px}
     for (var d = 0; d < state.programme.days.length; d++) {
       var log = state.logs[logKey(week, d)];
       if (!log || !log.slots) { continue; }
-      var pres = E.prescribeDay(programme(), week, d, ctx()).filter(function (p) { return isWaveSlot(p.slot) && p.movement === name; })[0];
+      var pres = E.prescribeDay(programme(), week, d, ctx()).filter(function (p) { return isWaveSlot(p.slot) && nameKey(p.movement) === nameKey(name); })[0];
       var entry = pres && log.slots[pres.id];
-      if (!entry || entry.movement !== name) { continue; }
+      if (!entry || nameKey(entry.movement) !== nameKey(name)) { continue; }
       var ai = -1;
       pres.sets.forEach(function (s, i) { if (s.amrap) { ai = i; } });
       var s = ai === -1 ? null : (entry.sets || [])[ai];
@@ -1847,7 +2124,7 @@ details.info .row{margin-top:10px}
   function mainFrom(lift, fromWeek) {
     for (var w = fromWeek; w <= P0.weeks; w++) {
       for (var d = 0; d < state.programme.days.length; d++) {
-        if (E.slotsFor(programme(), w, d).some(function (x) { return x.load && x.load.kind === 'wave' && x.movement === lift; })) { return true; }
+        if (E.slotsFor(programme(), w, d).some(function (x) { return x.load && x.load.kind === 'wave' && nameKey(x.movement) === nameKey(lift); })) { return true; }
       }
     }
     return false;
@@ -1883,11 +2160,11 @@ details.info .row{margin-top:10px}
   // remaining weeks, so what gets prescribed stays the same weight.
   function foldSupport(ds) {
     var d = Number(ds.day), basePct = Number(ds.base), lift = ds.lift;
-    state.lifts.forEach(function (l) { if (l.name === lift) { l.tm = Number(ds.tm); } });
+    state.lifts.forEach(function (l) { if (nameKey(l.name) === nameKey(lift)) { l.tm = Number(ds.tm); } });
     var dayName = state.programme.days[d].name;
     for (var w = state.cursor.week; w <= P0.weeks; w++) {
       var sl = E.slotsFor(programme(), w, d).filter(function (x) { return x.id === ds.id; })[0];
-      if (sl && sl.load && sl.load.kind === 'pctTM' && (sl.load.lift || sl.movement) === lift && sl.load.pct !== basePct) {
+      if (sl && sl.load && sl.load.kind === 'pctTM' && nameKey(sl.load.lift || sl.movement) === nameKey(lift) && sl.load.pct !== basePct) {
         setOverride(w, dayName, ds.id, { load: { kind: 'pctTM', lift: lift, pct: basePct } });
       }
     }
@@ -1918,7 +2195,7 @@ details.info .row{margin-top:10px}
 
   function isMainIn(name, week) {
     for (var d = 0; d < state.programme.days.length; d++) {
-      if (mainSlots(week, d).some(function (m) { return m.movement === name; })) { return true; }
+      if (mainSlots(week, d).some(function (m) { return nameKey(m.movement) === nameKey(name); })) { return true; }
     }
     return false;
   }
@@ -2004,6 +2281,168 @@ details.info .row{margin-top:10px}
     };
   }
 
+  // Per-movement progression, newest first.
+  function historyCardHtml() {
+    var hist = {};
+    Object.keys(state.logs).forEach(function (k) {
+      var l = state.logs[k];
+      Object.keys(l.slots || {}).forEach(function (id) {
+        var s = l.slots[id];
+        if (!s || !s.movement) { return; }
+        var sets = (s.sets || []).filter(function (x) { return x && x.reps; });
+        if (!sets.length) { return; }
+        (hist[s.movement] = hist[s.movement] || []).push({ k: k, week: Number(k.split('|')[0]), sets: sets });
+      });
+    });
+    var histHtml = Object.keys(hist).sort().map(function (m) {
+      var entries = hist[m].sort(function (a, b) { return b.week - a.week; }).slice(0, 4);
+      return '<tr><td>' + esc(m) + '</td><td class="hint">' + entries.map(function (e) {
+        return 'wk' + e.week + ': ' + e.sets.map(function (s) { return (s.kg === null || s.kg === undefined ? '?' : s.kg) + '×' + s.reps; }).join(', ');
+      }).join(' &nbsp;|&nbsp; ') + '</td></tr>';
+    }).join('');
+
+    return '<section class="card"><h2>Movement history</h2>' +
+      (histHtml ? '<div class="scroll"><table class="table"><thead><tr><th>Movement</th><th>Recent sessions</th></tr></thead><tbody>' + histHtml + '</tbody></table></div>'
+        : '<p class="hint">Nothing logged yet.</p>') + '</section>';
+  }
+
+  // Skips by exercise and reason, when there are any.
+  function skipTallyHtml() {
+        var tally = {};
+        Object.keys(state.logs).forEach(function (k) {
+          Object.keys(state.logs[k].slots || {}).forEach(function (id) {
+            var e = state.logs[k].slots[id];
+            if (!e || !e.skipped) { return; }
+            var t = tally[e.movement] = tally[e.movement] || { n: 0, why: {} };
+            t.n++; t.why[e.skipped.reason] = (t.why[e.skipped.reason] || 0) + 1;
+          });
+        });
+        var names = Object.keys(tally).sort(function (x, y) { return tally[y].n - tally[x].n || (x < y ? -1 : 1); });
+        if (!names.length) { return ''; }
+        return '<section class="card skip-tally"><h2>Skipped exercises</h2>' +
+          '<p class="hint">One skipped for time again and again is a candidate to cut or move earlier in the session. A pain skip that keeps coming back needs looking at, not working around.</p>' +
+          '<div class="scroll"><table class="table"><thead><tr><th>Exercise</th><th>Times</th><th>Why</th></tr></thead><tbody>' +
+          names.map(function (m) {
+            return '<tr><td>' + esc(m) + '</td><td>' + tally[m].n + '</td><td class="hint">' +
+              Object.keys(tally[m].why).map(function (r) { return esc(r) + ' ×' + tally[m].why[r]; }).join(', ') + '</td></tr>';
+          }).join('') + '</tbody></table></div></section>';
+  }
+
+  /* ---------------- measurements (plain mode) ---------------- */
+
+  // Tape measurements, stored in centimetres whatever the unit shown, so changing
+  // the unit converts them properly instead of relabelling the numbers.
+  function lenUnit() { return state.settings.lengthUnit === 'in' ? 'in' : 'cm'; }
+  function fromCm(c) { return lenUnit() === 'in' ? c / 2.54 : c; }
+  function toCm(v) { return lenUnit() === 'in' ? v * 2.54 : v; }
+  function round1(n) { return Math.round(n * 10) / 10; }
+  function today() { return new Date().toISOString().slice(0, 10); }
+  function sortedMeasurements() {
+    return (state.measurements || []).slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+  }
+  // A gentle prompt in the first week and each lighter week, once, and only until
+  // it is answered or put off: it never nags.
+  function measureDue(week) {
+    return [1, 4, 8, 12, 16].indexOf(week) !== -1 &&
+      !(state.measurements || []).some(function (m) { return m.week === week; }) &&
+      state.measureDismissed !== week;
+  }
+  function signed(n) { return n > 0 ? '+' + n : n < 0 ? '−' + Math.abs(n) : '0'; }
+
+  function measurementsCard() {
+    var sites = state.measureSites || [], ms = sortedMeasurements(), u = lenUnit();
+    var inputs = sites.map(function (site) {
+      return '<label>' + esc(site) + ' (' + u + ')<input type="number" inputmode="decimal" step="0.1" min="0" class="ms-in" data-site="' + esc(site) + '"></label>';
+    }).join('');
+    var table = '';
+    if (ms.length) {
+      var first = ms[0], last = ms[ms.length - 1];
+      var head = '<tr><th>Date</th>' + sites.map(function (x) { return '<th>' + esc(x) + '</th>'; }).join('') + '<th></th></tr>';
+      var change = ms.length > 1
+        ? '<tr class="ms-change"><td>Change since ' + esc(first.date) + '</td>' + sites.map(function (site) {
+            var a = first.v[site], b = last.v[site];
+            return '<td>' + (a === undefined || b === undefined ? '–' : signed(round1(fromCm(b) - fromCm(a)))) + '</td>';
+          }).join('') + '<td></td></tr>'
+        : '';
+      var rows = ms.slice().reverse().map(function (m) {
+        return '<tr><td>' + esc(m.date) + '</td>' + sites.map(function (site) {
+          return '<td>' + (m.v[site] === undefined ? '–' : fmt(round1(fromCm(m.v[site])))) + '</td>';
+        }).join('') + '<td><button type="button" class="small" data-action="delete-measure" data-date="' + esc(m.date) + '" aria-label="Delete the ' + esc(m.date) + ' measurements">×</button></td></tr>';
+      }).join('');
+      table = '<div class="scroll"><table class="table ms-table"><thead>' + head + '</thead><tbody>' + change + rows + '</tbody></table></div>';
+    }
+    return '<section class="card measurements"><h2>Measurements</h2>' +
+      '<p class="hint">Measure the same way each time, in the same clothes and at about the same time of day, with the tape snug but not tight. ' +
+      'Waist at the narrowest point, hips at the widest, thigh at the top, upper arm halfway between shoulder and elbow, relaxed. Every four weeks is plenty.</p>' +
+      '<div class="ms-grid">' + inputs + '<label>Date<input type="date" id="ms-date" value="' + today() + '"></label></div>' +
+      '<div class="row"><button type="button" class="primary" data-action="save-measure">Save measurements</button></div>' +
+      table +
+      '<div class="row wrap"><label>Measure somewhere else too <input type="text" id="ms-newsite" maxlength="24" placeholder="e.g. Calf"></label>' +
+      '<button type="button" class="small" data-action="add-site">Add</button></div></section>';
+  }
+
+  // Strength, not the scale: sessions done, this plan week's sessions, and what has
+  // gone up. The gain is the heaviest weight in a session, first time against latest.
+  function strengthCardHtml() {
+    var sessions = 0, thisWeek = 0, per = {};
+    Object.keys(state.logs).forEach(function (k) {
+      var l = state.logs[k], parts = k.split('|'), w = Number(parts[0]), d = Number(parts[1]);
+      var any = false;
+      Object.keys(l.slots || {}).forEach(function (id) {
+        var e = l.slots[id];
+        if (!e || !e.movement || e.skipped) { return; }
+        var best = null;
+        (e.sets || []).forEach(function (x) { if (x && x.reps && x.kg !== null && x.kg !== undefined && (best === null || x.kg > best)) { best = x.kg; } });
+        if (best === null) { return; }
+        any = true;
+        (per[e.movement] = per[e.movement] || []).push({ at: w * 10 + d, kg: best });
+      });
+      if (any) { sessions++; if (w === state.cursor.week) { thisWeek++; } }
+    });
+    var gains = Object.keys(per).map(function (m) {
+      var h = per[m].sort(function (a, b) { return a.at - b.at; });
+      return { m: m, from: h[0].kg, to: h[h.length - 1].kg, n: h.length };
+    }).filter(function (g) { return g.to > g.from; })
+      .sort(function (a, b) { return (b.to - b.from) - (a.to - a.from) || (a.m < b.m ? -1 : 1); });
+    var total = P0.weeks * programme().days.length;
+    return '<section class="card strength"><h2>Strength</h2>' +
+      '<div class="row wrap"><div class="stat"><b>' + sessions + '</b> of ' + total + ' sessions</div>' +
+      '<div class="stat"><b>' + thisWeek + '</b> of ' + programme().days.length + ' this week</div>' +
+      '<div class="stat"><b>' + gains.length + '</b> exercise' + (gains.length === 1 ? '' : 's') + ' stronger</div></div>' +
+      (gains.length
+        ? '<div class="scroll"><table class="table"><thead><tr><th>Exercise</th><th>First</th><th>Now</th><th></th></tr></thead><tbody>' +
+          gains.slice(0, 8).map(function (g) {
+            return '<tr><td>' + esc(g.m) + '</td><td>' + fmt(g.from) + ' ' + U() + '</td><td>' + fmt(g.to) + ' ' + U() + '</td><td class="gain">+' + fmt(Math.round((g.to - g.from) * 100) / 100) + '</td></tr>';
+          }).join('') + '</tbody></table></div>'
+        : '<p class="hint">' + (sessions ? 'Nothing heavier than your first session yet. That is normal for the first few weeks: reps come first, then the weight.' : 'Your first session starts this list. The weight you move is the number to watch.') + '</p>') +
+      '</section>';
+  }
+
+  /* ---------------- the if-then plan (plain mode) ---------------- */
+
+  // Deciding in advance when and where you will train ("when I finish work, on Monday,
+  // Wednesday and Friday") makes it far more likely to happen than a plain intention.
+  var DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  function planText() {
+    var pl = state.plan;
+    if (!pl || !pl.days || !pl.days.length) { return ''; }
+    return pl.days.map(function (d) { return DAY_NAMES[d]; }).join(', ') + (pl.cue ? ' · when I ' + pl.cue : '');
+  }
+  function planFormHtml(title, intro) {
+    var pl = state.plan || { days: [], cue: '' };
+    return '<section class="card plan-card"><h2>' + esc(title) + '</h2>' +
+      '<p class="hint">' + esc(intro) + '</p>' +
+      '<div class="row wrap">' + DAY_NAMES.map(function (n, i) {
+        return '<label class="chip"><input type="checkbox" class="plan-day" value="' + i + '"' + (pl.days.indexOf(i) !== -1 ? ' checked' : '') + '> ' + n + '</label>';
+      }).join('') + '</div>' +
+      '<div class="row wrap"><label>When I <input type="text" id="plan-cue" maxlength="60" value="' + esc(pl.cue || '') + '" placeholder="e.g. finish work"></label></div>' +
+      '<div class="row"><button type="button" class="primary small" data-action="save-plan">Save plan</button></div></section>';
+  }
+
+  function viewProgressPlain() {
+    return strengthCardHtml() + measurementsCard() + skipTallyHtml() + historyCardHtml();
+  }
+
   function viewProgress() {
     var pr = programme();
     var lifts = E.progressingLifts(pr);
@@ -2066,25 +2505,6 @@ details.info .row{margin-top:10px}
         }).join(' → ') + '</td></tr>';
     }).join('');
 
-    // per-movement progression, newest first
-    var hist = {};
-    Object.keys(state.logs).forEach(function (k) {
-      var l = state.logs[k];
-      Object.keys(l.slots || {}).forEach(function (id) {
-        var s = l.slots[id];
-        if (!s || !s.movement) { return; }
-        var sets = (s.sets || []).filter(function (x) { return x && x.reps; });
-        if (!sets.length) { return; }
-        (hist[s.movement] = hist[s.movement] || []).push({ k: k, week: Number(k.split('|')[0]), sets: sets });
-      });
-    });
-    var histHtml = Object.keys(hist).sort().map(function (m) {
-      var entries = hist[m].sort(function (a, b) { return b.week - a.week; }).slice(0, 4);
-      return '<tr><td>' + esc(m) + '</td><td class="hint">' + entries.map(function (e) {
-        return 'wk' + e.week + ': ' + e.sets.map(function (s) { return (s.kg === null || s.kg === undefined ? '?' : s.kg) + '×' + s.reps; }).join(', ');
-      }).join(' &nbsp;|&nbsp; ') + '</td></tr>';
-    }).join('');
-
     var full = '<section class="card"><h2>Training max</h2>' +
       '<p class="hint">New TM = old TM + (AMRAP reps − standard) × increment. A lift gets a row only in the waves where it is a main lift and takes a Realization AMRAP. Miss the standard and the TM drops, which is the method working.</p>' +
       '<div class="scroll"><table class="table"><thead><tr><th>Weeks</th><th>Wave</th><th>Lift</th><th>TM</th><th>Std</th><th>AMRAP</th><th>Inc</th><th>New TM</th><th></th></tr></thead><tbody>' +
@@ -2107,29 +2527,8 @@ details.info .row{margin-top:10px}
               '" data-day="' + f.day + '" data-id="' + esc(f.id) + '" data-base="' + f.basePct + '">Apply</button></td></tr>';
           }).join('') + '</tbody></table></div></section>';
       })() +
-      (function () {
-        var tally = {};
-        Object.keys(state.logs).forEach(function (k) {
-          Object.keys(state.logs[k].slots || {}).forEach(function (id) {
-            var e = state.logs[k].slots[id];
-            if (!e || !e.skipped) { return; }
-            var t = tally[e.movement] = tally[e.movement] || { n: 0, why: {} };
-            t.n++; t.why[e.skipped.reason] = (t.why[e.skipped.reason] || 0) + 1;
-          });
-        });
-        var names = Object.keys(tally).sort(function (x, y) { return tally[y].n - tally[x].n || (x < y ? -1 : 1); });
-        if (!names.length) { return ''; }
-        return '<section class="card skip-tally"><h2>Skipped exercises</h2>' +
-          '<p class="hint">One skipped for time again and again is a candidate to cut or move earlier in the session. A pain skip that keeps coming back needs looking at, not working around.</p>' +
-          '<div class="scroll"><table class="table"><thead><tr><th>Exercise</th><th>Times</th><th>Why</th></tr></thead><tbody>' +
-          names.map(function (m) {
-            return '<tr><td>' + esc(m) + '</td><td>' + tally[m].n + '</td><td class="hint">' +
-              Object.keys(tally[m].why).map(function (r) { return esc(r) + ' ×' + tally[m].why[r]; }).join(', ') + '</td></tr>';
-          }).join('') + '</tbody></table></div></section>';
-      })() +
-      '<section class="card"><h2>Movement history</h2>' +
-      (histHtml ? '<div class="scroll"><table class="table"><thead><tr><th>Movement</th><th>Recent sessions</th></tr></thead><tbody>' + histHtml + '</tbody></table></div>'
-        : '<p class="hint">Nothing logged yet.</p>') + '</section>';
+      skipTallyHtml() +
+      historyCardHtml();
     var cut = full.indexOf('</section>') + '</section>'.length;
     var ov = progressOverview();
     var view = state.ui.progView === 'amrap' ? 'amrap' : 'climb';
@@ -2284,7 +2683,7 @@ details.info .row{margin-top:10px}
   // ~91% of a 1RM by Epley). A heavy triple estimates the max within a few
   // percent; a true single costs more recovery and risk for little more.
   function testPlan(name) {
-    var pp = cycleProposals().filter(function (x) { return x.name === name; })[0] || {};
+    var pp = cycleProposals().filter(function (x) { return nameKey(x.name) === nameKey(name); })[0] || {};
     var est = validResult(pp.result) && pp.result.source !== 'test week' ? resultE1RM(pp.result.kg, pp.result.reps)
       : pp.best ? pp.best.e : (pp.tm ? pp.tm / 0.9 : null);
     if (!est) { return { est: null, top: null, ramp: [] }; }
@@ -2395,7 +2794,7 @@ details.info .row{margin-top:10px}
     if (kg > 0 && reps >= 1) { state.cycleResults[name] = { kg: kg, reps: reps, source: 'entered' }; }
     else { delete state.cycleResults[name]; }
     save();
-    var pp = cycleProposals().filter(function (x) { return x.name === name; })[0];
+    var pp = cycleProposals().filter(function (x) { return nameKey(x.name) === nameKey(name); })[0];
     row.querySelector('.nc-tm').value = pp.start === null ? '' : pp.start;
     row.querySelector('.nc-src').textContent = resultSource(pp);
   }
@@ -2448,7 +2847,7 @@ details.info .row{margin-top:10px}
         if (sl.kind === 'accessory' && oldPr.days[d] && oldPr.days[d].name === day.name) {
           var was = E.slotsFor(oldPr, P0.weeks, d).filter(function (x) { return x.id === sl.id; })[0];
           var oldBase = oldPr.days[d].slots.filter(function (x) { return x.id === sl.id; })[0];
-          if (was && oldBase && !isWaveSlot(was) && was.movement !== oldBase.movement && sl.movement === oldBase.movement) {
+          if (was && oldBase && !isWaveSlot(was) && nameKey(was.movement) !== nameKey(oldBase.movement) && nameKey(sl.movement) === nameKey(oldBase.movement)) {
             sl.movement = was.movement;
             sl.load = JSON.parse(JSON.stringify(was.load));
           }
@@ -2470,7 +2869,7 @@ details.info .row{margin-top:10px}
     }]);
     state.cycleResults = {}; state.testWeek = null;
     Object.keys(startTms).forEach(function (name) {
-      state.lifts.forEach(function (l) { if (l.name === name && startTms[name] > 0) { l.tm = startTms[name]; } });
+      state.lifts.forEach(function (l) { if (nameKey(l.name) === nameKey(name) && startTms[name] > 0) { l.tm = startTms[name]; } });
     });
     state.programme = { days: tpl.days, weekOverrides: tpl.weekOverrides };
     state.logs = {}; state.tracker = {}; state.trackerBase = {};
@@ -2484,7 +2883,7 @@ details.info .row{margin-top:10px}
   // First start with nothing to bring across: apply the starting maxes and go.
   function beginBlock(startTms) {
     Object.keys(startTms).forEach(function (name) {
-      state.lifts.forEach(function (l) { if (l.name === name && startTms[name] > 0) { l.tm = startTms[name]; } });
+      state.lifts.forEach(function (l) { if (nameKey(l.name) === nameKey(name) && startTms[name] > 0) { l.tm = startTms[name]; } });
     });
     state.cycleResults = {}; state.testWeek = null;
     state.started = true; state.imported = false;
@@ -2572,7 +2971,7 @@ details.info .row{margin-top:10px}
           '<input type="file" id="legacy-file" accept=".json,application/json" hidden></div>';
     }
     return '<section class="card newcycle"><h2>' + (fresh ? 'Start your block' : 'Start cycle ' + nextN) + '</h2>' +
-      '<p class="hint">' + (fresh ? 'This block' : 'Cycle ' + nextN) + ' runs Squat and Overhead Press as main lifts on Day 1, Bench on Day 2 for all 16 weeks, Deadlift on Day 3. ' +
+      '<p class="hint">' + (fresh ? 'This block' : 'Cycle ' + nextN) + ' runs squat and overhead press as main lifts on Day 1, bench on Day 2 for all 16 weeks, deadlift on Day 3. ' +
       'Supports are fixed weights that go up when every set reaches the top of its range.' +
       (fresh ? '' : ' Weights carry over from what you are lifting now, and so do exercises you swapped in "from now on".') + '</p>' +
       from +
@@ -2666,7 +3065,8 @@ details.info .row{margin-top:10px}
     // The new exercise is a different load, so the old prescription (a fixed
     // 60 kg, or a percentage of a max that has nothing to do with it) is
     // dropped. Its own history supplies the weight from here.
-    var patch = { movement: name, load: { kind: 'open' } };
+    // A note belongs to the exercise it was written for ("reps are per leg"), so it goes too.
+    var patch = { movement: name, load: { kind: 'open' }, note: '' };
     var changed = 0;
     for (var w = week; w <= P0.weeks; w++) {
       if (scope === 'today' && w !== week) { break; }
@@ -2814,7 +3214,7 @@ details.info .row{margin-top:10px}
     var dayName = state.programme.days[day].name;
     for (var w = week + 1; w <= P0.weeks; w++) {
       var fs = E.slotsFor(programme(), w, day).filter(function (x) { return x.id === p.id; })[0];
-      if (!fs || fs.movement !== p.movement || !fs.load) { continue; }
+      if (!fs || nameKey(fs.movement) !== nameKey(p.movement) || !fs.load) { continue; }
       if (kind === 'pctTM' ? fs.load.kind === 'pctTM' : (fs.load.kind !== 'pctTM' && fs.load.kind !== 'wave')) {
         setOverride(w, dayName, p.id, { load: loadWith(kind, p.slot.load.lift || p.movement, value) });
       }
@@ -2831,7 +3231,7 @@ details.info .row{margin-top:10px}
     var dayName = state.programme.days[day].name;
     for (var w = week + 1; w <= P0.weeks; w++) {
       var fs = E.slotsFor(programme(), w, day).filter(function (x) { return x.id === p.id; })[0];
-      if (fs && fs.movement === p.movement && fs.load && fs.load.kind === b.kind && loadValue(fs.load) === b.to) {
+      if (fs && nameKey(fs.movement) === nameKey(p.movement) && fs.load && fs.load.kind === b.kind && loadValue(fs.load) === b.to) {
         setOverride(w, dayName, p.id, { load: loadWith(b.kind, b.lift, b.from) });
       }
     }
@@ -2967,7 +3367,7 @@ details.info .row{margin-top:10px}
         return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
       }).join(',');
     }).join('\n');
-    download(new Blob([csv], { type: 'text/csv' }), 'juggernaut-log.csv');
+    download(new Blob([csv], { type: 'text/csv' }), (CFG.file ? CFG.file + '-log' : 'juggernaut-log') + '.csv');
   }
 
   document.addEventListener('click', function (e) {
@@ -3091,6 +3491,13 @@ details.info .row{margin-top:10px}
       state.ui.tab = 'today'; save(); render();
       toast('Starting at ' + programme().days[startDay].name + ', Week ' + startWeek);
     } else if (a === 'save-setup') {
+      // Checked first, so a bad plate list leaves nothing half-saved.
+      var plBox = document.getElementById('in-plates'), plateNums = null;
+      if (plBox) {
+        var list = plBox.value.split(/[,\s]+/).map(Number).filter(function (x) { return x > 0; });
+        if (!list.length) { toast('Type at least one plate, like 20, 10, 5, 2.5'); return; }
+        plateNums = list.filter(function (x, i) { return list.indexOf(x) === i; }).sort(function (x, y) { return y - x; });
+      }
       document.querySelectorAll('.in-tm').forEach(function (el) {
         var v = num(el.value); if (v !== null) { state.lifts[Number(el.dataset.i)].tm = v; }
       });
@@ -3100,11 +3507,16 @@ details.info .row{margin-top:10px}
       document.querySelectorAll('.in-step').forEach(function (el) {
         var v = num(el.value); if (v !== null && v > 0) { state.settings.increments[el.dataset.equip] = v; }
       });
-      state.settings.unit = document.getElementById('in-unit').value;
-      var r = num(document.getElementById('in-round').value); if (r > 0) { state.settings.rounding = r; }
-      var bw = num(document.getElementById('in-bw').value); if (bw !== null) { state.settings.bodyweight = bw; }
-      var m = num(document.getElementById('in-maint').value); if (m !== null) { state.settings.maintenance = m; }
-      var su = num(document.getElementById('in-surplus').value); if (su !== null) { state.settings.surplus = su; }
+      // Not every screen has every field (the machine plan has no maxes, bodyweight or nutrition).
+      var fieldValue = function (id) { var el = document.getElementById(id); return el ? el.value : null; };
+      state.settings.unit = fieldValue('in-unit') || state.settings.unit;
+      var len = fieldValue('in-len'); if (len === 'cm' || len === 'in') { state.settings.lengthUnit = len; }
+      var r = num(fieldValue('in-round')); if (r > 0) { state.settings.rounding = r; }
+      var bw = num(fieldValue('in-bw')); if (bw !== null) { state.settings.bodyweight = bw; }
+      var m = num(fieldValue('in-maint')); if (m !== null) { state.settings.maintenance = m; }
+      var su = num(fieldValue('in-surplus')); if (su !== null) { state.settings.surplus = su; }
+      var bar = num(fieldValue('in-bar')); if (bar !== null && bar >= 0) { state.settings.barWeight = bar; }
+      if (plateNums) { state.settings.plates = plateNums; }
       save(); render(); toast('Saved');
     } else if (a === 'apply-tm') {
       var lname = btn.dataset.lift, tm = Number(btn.dataset.tm);
@@ -3115,15 +3527,48 @@ details.info .row{margin-top:10px}
         // them, and the Climb had no result to draw for a wave that was applied.
         if (btn.dataset.reps !== undefined && btn.dataset.reps !== '') { state.tracker[btn.dataset.k] = Number(btn.dataset.reps); }
       }
-      state.lifts.forEach(function (l) { if (l.name === lname) { l.tm = tm; } });
+      state.lifts.forEach(function (l) { if (nameKey(l.name) === nameKey(lname)) { l.tm = tm; } });
       save(); render(); toast(lname + ' TM → ' + fmt(tm));
     } else if (a === 'export') {
       state.backupThrough = maxLoggedWeek();
       state.lastExportAt = new Date().toISOString().slice(0, 10);
       save();
       download(new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }),
-        'juggernaut-v2-' + state.lastExportAt + '.json');
+        (CFG.file || 'juggernaut-v2') + '-' + state.lastExportAt + '.json');
       render(); toast('Backup exported');
+    } else if (a === 'save-measure') {
+      var vals = {};
+      document.querySelectorAll('.ms-in').forEach(function (el) {
+        var v = num(el.value);
+        if (v !== null && v > 0) { vals[el.dataset.site] = Math.round(toCm(v) * 100) / 100; }
+      });
+      if (!Object.keys(vals).length) { toast('Enter at least one measurement'); return; }
+      var when = (document.getElementById('ms-date') || {}).value || today();
+      var existing = (state.measurements || []).filter(function (m) { return m.date === when; })[0];
+      if (existing) { Object.keys(vals).forEach(function (k) { existing.v[k] = vals[k]; }); }
+      else { state.measurements.push({ date: when, week: state.cursor.week, v: vals }); }
+      save(); render(); toast('Measurements saved');
+    } else if (a === 'add-site') {
+      var nm = ((document.getElementById('ms-newsite') || {}).value || '').trim().replace(/\s+/g, ' ');
+      if (!nm) { return; }
+      if ((state.measureSites || []).some(function (x) { return nameKey(x) === nameKey(nm); })) { toast(nm + ' is already there'); return; }
+      if ((state.measureSites || []).length >= 8) { toast('That is plenty of places to measure'); return; }
+      state.measureSites.push(nm.charAt(0).toUpperCase() + nm.slice(1)); save(); render();
+    } else if (a === 'delete-measure') {
+      if (confirm('Delete the measurements from ' + btn.dataset.date + '?')) {
+        state.measurements = state.measurements.filter(function (m) { return m.date !== btn.dataset.date; });
+        save(); render();
+      }
+    } else if (a === 'save-plan') {
+      var days = [];
+      document.querySelectorAll('.plan-day').forEach(function (el) { if (el.checked) { days.push(Number(el.value)); } });
+      if (!days.length) { toast('Pick at least one day'); return; }
+      state.plan = { days: days.sort(function (x, y) { return x - y; }), cue: ((document.getElementById('plan-cue') || {}).value || '').trim().replace(/^when i\s+/i, '').slice(0, 60) };
+      save(); render(); toast('Plan saved');
+    } else if (a === 'dismiss-plan') {
+      state.planDismissed = true; save(); render();
+    } else if (a === 'dismiss-measure') {
+      state.measureDismissed = state.cursor.week; save(); render();
     } else if (a === 'dismiss-backup') {
       state.backupDismissedThrough = unbackedRealization();
       save(); render();
@@ -3297,371 +3742,6 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(function () {});
   });
 }
-</script>
-<!-- ============================================================
-     Juggernaut Trainer — v4 look + one-tap logging
-     Sits on top of the app above: the engine, programme and saved
-     data are untouched. Delete from here to the closing </script>
-     below to revert to the v3 look.
-     ============================================================ -->
-<style id="jg-v4-style">
-/* ---- theme: dark, rounded, no registration marks ---- */
-:root{
-  --bg:#0f1113;--surface:#181b1f;--surface-2:#20242a;--text:#eceef0;--muted:#9aa1aa;--faint:#6b727b;
-  --line:#2a2f36;--line-soft:#23272c;
-  --accent:#7fa8d1;--accent-strong:#b5d3f2;--accent-deep:#d6ebff;--accent-tint:#14202c;--accent-tint-2:#1e3247;
-  --accent-hover:#93b8de;--accent-press:#6b95bf;--on-accent:#0c1622;--danger:#e0806b;--mark:transparent;
-  --r-card:20px;--r-ctl:12px;
-  color-scheme:dark;
-}
-body{background:var(--bg);color:var(--text)}
-header{padding-top:16px;padding-bottom:6px}
-header h1{font-size:13px;color:var(--muted)}
-footer{font-size:11px;color:var(--faint)}
-.card>.corner{display:none}
-.card{background:var(--surface);border:1px solid var(--line-soft);border-radius:var(--r-card);padding:18px;margin:0 0 12px}
-.card.highlight{box-shadow:none;border-color:var(--accent)}
-button{border-radius:var(--r-ctl);border-color:transparent;background:var(--surface-2);font-weight:500}
-button:hover{background:color-mix(in srgb,var(--text) 10%,var(--surface-2))}
-button.primary{font-weight:700}
-button.danger{background:transparent}
-input[type=number],input[type=text],select{border-radius:10px;background:var(--bg);border-color:var(--line)}
-.banner{border-radius:14px}
-.pill{border-radius:999px;border-color:transparent;background:var(--surface-2)}
-.pill.accent{background:var(--accent-tint-2);color:var(--accent-strong);font-weight:600}
-.kindtag{border-radius:6px}
-.kindtag.main{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:700}
-.chip{border-radius:8px}
-.vidlink{border-radius:10px;border-color:transparent;background:var(--surface-2);min-height:40px}
-.seg{border-radius:var(--r-ctl);overflow:hidden;border-color:var(--line)}
-.seg button{border-radius:0;background:transparent}
-.daytab.active{border-color:transparent;background:var(--accent-tint-2);color:var(--accent-strong)}
-.table th{border-bottom-color:var(--line)}
-.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
-.toast{border-radius:12px;background:var(--accent-strong);color:var(--on-accent);font-weight:600}
-.bump-note{background:var(--accent-tint-2);color:var(--accent-strong);border-radius:10px}
-.lasttime{color:var(--muted)}
-
-/* session header */
-.card.sess{background:transparent;border:0;padding:6px 4px 4px}
-.sess-title{font-size:34px;margin:4px 0 10px}
-.weekticks{gap:2px}
-.weekticks i{height:4px;border-radius:2px;background:var(--line)}
-.weekticks i.now{height:4px;background:var(--accent-strong)}
-.phase-note{font-size:13px;color:var(--muted);margin-top:10px}
-
-/* bottom nav + action bar */
-.tabs{background:color-mix(in srgb,var(--bg) 90%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-top-color:var(--line-soft)}
-.tab{background:transparent;border-radius:0}
-.tab.active{color:var(--accent-strong)}
-.actionbar{position:static;margin-top:4px;border-radius:18px;border-color:var(--line-soft);background:color-mix(in srgb,var(--surface) 92%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
-.actionbar button{border-radius:14px}
-
-/* set cells */
-.setgrid{gap:6px}
-.setcell{border-radius:12px;background:var(--surface-2);border:1px solid transparent;min-height:56px}
-.setcell.amrap{border:1.5px dashed var(--accent)}
-.setcell.done{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
-.setcell.done.short{background:var(--accent-tint-2);border-color:var(--accent-tint-2);color:var(--accent-strong)}
-.setcell.done.short .c-reps{color:var(--accent-strong)}
-.setcell.open{outline:2px solid var(--accent-strong);outline-offset:1px}
-.set-note{display:none}
-
-/* collapsed exercise rows */
-.card.slot{scroll-margin-top:12px}
-.card.slot.jg-collapsed{padding:12px 16px}
-.card.slot.jg-collapsed>:not(.slot-head){display:none}
-.card.slot.jg-collapsed>.editor:not([hidden]){display:block}
-.card.slot.jg-collapsed .slot-head{cursor:pointer;align-items:center}
-.card.slot.jg-collapsed .slot-name,.card.slot.main.jg-collapsed .slot-name{font-size:19px;margin:4px 0 0}
-.card.slot.jg-collapsed .vidlink{display:none}
-.card.slot.jg-collapsed .kindtag{display:none}
-.card.slot.jg-collapsed.jg-complete{opacity:.6}
-.card.slot:not(.jg-collapsed) .slot-head{cursor:pointer}
-.slot-head>div:first-child{min-width:0}
-.jg-count{margin-left:auto;flex:none;font-size:13px;color:var(--muted);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
-.jg-complete .jg-count{color:var(--accent-strong);font-weight:600}
-.card.slot:not(.jg-collapsed) .jg-count{display:none}
-
-/* next-set panel */
-.jg-next{margin-top:14px;padding-top:14px;border-top:1px solid var(--line-soft)}
-.jg-next-k{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-.jg-next-v{font-family:var(--font-h);font-weight:600;font-size:52px;line-height:1;margin:4px 0 2px}
-.jg-next-v small{font-size:20px;color:var(--muted);font-weight:500}
-.jg-next-v .x{color:var(--muted);font-weight:500}
-.jg-next-sub{font-size:13px;color:var(--muted);min-height:18px}
-.jg-next-sub b{color:var(--text);font-weight:600}
-.jg-next-actions{display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:12px}
-.jg-next-actions button{min-height:56px;font-size:16px;border-radius:16px}
-.jg-next-actions .primary{font-size:17px}
-.jg-alldone{color:var(--accent-strong);font-weight:600;font-size:14px;display:flex;align-items:center;gap:8px}
-
-/* set editor as a bottom sheet */
-#jg-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:29}
-body.jg-sheet #jg-backdrop{display:block}
-body.jg-sheet{overflow:hidden}
-#app .editor:not([hidden]){position:fixed;left:0;right:0;bottom:0;z-index:30;max-width:720px;margin:0 auto;
-  background:var(--surface);border:0;border-top:1px solid var(--line);border-radius:26px 26px 0 0;
-  padding:26px 20px calc(20px + env(safe-area-inset-bottom));box-shadow:0 -20px 50px rgba(0,0,0,.45);
-  animation:jg-up .18s ease-out}
-#app .editor::before{content:"";position:absolute;top:9px;left:50%;width:40px;height:5px;margin-left:-20px;border-radius:5px;background:var(--line)}
-@keyframes jg-up{from{transform:translateY(24px);opacity:.4}to{transform:none;opacity:1}}
-@media (prefers-reduced-motion:reduce){#app .editor:not([hidden]){animation:none}}
-.ed-title{font-family:var(--font-h);font-size:22px;text-transform:uppercase}
-.ed-hint{color:var(--accent-strong)}
-.stepper{border-radius:16px;overflow:hidden;border-color:var(--line);background:var(--bg);grid-template-columns:52px minmax(0,1fr) 52px}
-.stepper button{border-radius:0;background:transparent;min-height:60px;font-size:24px}
-.stepper input[type=number]{min-height:60px;font-size:30px;border-color:var(--line);background:transparent}
-.ed-actions button{min-height:56px;border-radius:16px;font-size:16px}
-.jg-hide{display:none!important}
-.jg-rir{margin-top:12px}
-.jg-rir>span{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
-.jg-rir-row{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
-.jg-rir-row button{min-height:48px;font-size:16px;font-weight:600;background:transparent;border:1px solid var(--line)}
-.jg-rir-row button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
-</style>
-
-<script id="jg-v4-script">
-(function () {
-  'use strict';
-  var app = document.getElementById('app');
-  if (!app) { return; }
-
-  var PLATES = { kg: [25, 20, 15, 10, 5, 2.5, 1.25], lb: [45, 35, 25, 10, 5, 2.5] };
-  var BAR = { kg: 20, lb: 45 };
-  var CHECK = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 12 10 18 20 6"></polyline></svg>';
-
-  var manual = {};        // slot id -> true (expanded) / false (collapsed), set by tapping a header
-  var dayKey = '';
-  var lastActive = null;
-
-  function n(v) { if (v === '' || v === null || v === undefined) { return null; } var x = Number(v); return isFinite(x) ? x : null; }
-  function f(x) { return String(Math.round(x * 100) / 100); }
-
-  function unitOf(card) {
-    var kg = card.querySelector('.in-kg');
-    var field = kg && kg.closest('.ed-field');
-    var span = field && field.querySelector('span');
-    return span && span.textContent.trim().toLowerCase() === 'lb' ? 'lb' : 'kg';
-  }
-
-  // Plates per side for a barbell load, or null when it can't be made exactly.
-  function plates(total, unit) {
-    var bar = BAR[unit];
-    if (total === null || total <= bar) { return null; }
-    var side = (total - bar) / 2, out = [];
-    PLATES[unit].forEach(function (p) { while (side >= p - 1e-9) { out.push(p); side -= p; } });
-    return side > 0.01 ? null : out;
-  }
-
-  function closeSheet() {
-    var open = app.querySelector('.setcell.open');
-    if (open) { open.click(); }      // the app's own toggle closes the editor
-  }
-
-  function panelHtml(card) {
-    var total = card.querySelectorAll('.setcell').length;
-    var next = card.querySelector('.setcell:not(.done)');
-    if (!next) { return '<div class="jg-next jg-alldone">' + CHECK + 'All ' + total + ' sets logged</div>'; }
-    var i = next.dataset.i;
-    var ed = card.querySelector('.editor[data-i="' + i + '"]');
-    if (!ed) { return ''; }
-    var kg = n(ed.querySelector('.in-kg').value);
-    var tReps = ed.dataset.treps, tTop = ed.dataset.ttop, amrap = ed.dataset.amrap === '1';
-    var reps = (tTop ? tReps + '–' + tTop : tReps) + (amrap ? '+' : '');
-    var target = (ed.querySelector('.ed-target') || {}).textContent || '';
-    var pct = (target.match(/[\d.]+% TM/) || [''])[0];
-    var unit = unitOf(card);
-
-    var sub = '';
-    if (card.classList.contains('main')) {
-      var pl = plates(kg, unit);
-      if (pl) { sub = 'Each side: <b>' + pl.map(f).join(' + ') + '</b> · bar ' + BAR[unit] + ' ' + unit; }
-    }
-    if (!sub && tTop && !amrap) { sub = 'Done logs ' + tReps + ' reps — did more? Tap Adjust.'; }
-    if (amrap) { sub = 'Enter the reps you got — nothing is assumed for this set.'; }
-
-    var quick = !amrap && kg !== null;
-    var doneLabel = quick ? CHECK + ' Done — ' + f(kg) + ' × ' + tReps : (amrap ? 'Log reps' : 'Set weight');
-    return '<div class="jg-next" data-i="' + i + '">' +
-      '<div class="jg-next-k">Next · set ' + (Number(i) + 1) + ' of ' + total + (pct ? ' · ' + pct : '') + '</div>' +
-      '<div class="jg-next-v">' + (kg === null ? '–' : f(kg)) + '<small> ' + unit + '</small> <span class="x">×</span> ' + reps + '</div>' +
-      '<div class="jg-next-sub">' + sub + '</div>' +
-      '<div class="jg-next-actions">' +
-      '<button type="button" class="jg-adjust">Adjust</button>' +
-      '<button type="button" class="primary ' + (quick ? 'jg-done' : 'jg-adjust') + '">' + doneLabel + '</button>' +
-      '</div></div>';
-  }
-
-  function enhanceEditor(card, ed) {
-    var title = ed.querySelector('.ed-title');
-    if (title && !title.dataset.jg) {
-      title.dataset.jg = '1';
-      title.textContent = card.dataset.movement + ' · ' + title.textContent;
-    }
-    // RIR as one-tap chips instead of a stepper (only where the app asks for RIR).
-    var rirIn = ed.querySelector('input.in-rir[type="number"]');
-    if (rirIn && !ed.querySelector('.jg-rir')) {
-      rirIn.closest('.ed-field').classList.add('jg-hide');
-      var kgField = ed.querySelector('.in-kg').closest('.ed-field');
-      if (kgField) { kgField.classList.remove('wide'); }
-      var tr = ed.dataset.trir;
-      ed.querySelector('.ed-fields').insertAdjacentHTML('afterend',
-        '<div class="jg-rir"><span>Reps in reserve' + (tr !== '' ? ' · target ' + tr : '') + '</span><div class="jg-rir-row">' +
-        [0, 1, 2, 3, 4].map(function (v) { return '<button type="button" class="jg-rir-b" data-v="' + v + '">' + (v === 4 ? '4+' : v) + '</button>'; }).join('') +
-        '</div></div>');
-    }
-    if (rirIn) {
-      ed.querySelectorAll('.jg-rir-b').forEach(function (b) {
-        b.setAttribute('aria-pressed', rirIn.value !== '' && Number(rirIn.value) === Number(b.dataset.v) ? 'true' : 'false');
-      });
-    }
-  }
-
-  function enhance() {
-    var kicker = app.querySelector('.sess-kicker');
-    var key = kicker ? kicker.textContent : '';
-    if (key !== dayKey) { manual = {}; dayKey = key; lastActive = null; }
-
-    var cards = Array.prototype.slice.call(app.querySelectorAll('.card.slot'));
-    var active = null;
-    cards.forEach(function (c) {
-      if (!active && !c.dataset.skipped && c.querySelector('.setcell:not(.done)')) { active = c; }
-    });
-
-    var allSets = 0, doneSets = 0;
-    cards.forEach(function (c) {
-      var id = c.dataset.slot;
-      var total = c.querySelectorAll('.setcell').length;
-      var done = c.querySelectorAll('.setcell.done').length;
-      if (!c.dataset.skipped) { allSets += total; doneSets += done; }
-      var complete = !c.dataset.skipped && total > 0 && done === total;
-      var open = Object.prototype.hasOwnProperty.call(manual, id) ? manual[id] : c === active;
-      c.classList.toggle('jg-collapsed', !open);
-      c.classList.toggle('jg-complete', complete);
-
-      var head = c.querySelector('.slot-head');
-      var count = head && head.querySelector('.jg-count');
-      if (head && !count) {
-        count = document.createElement('span');
-        count.className = 'jg-count';
-        head.insertBefore(count, head.querySelector('.vidlink'));
-      }
-      if (count) {
-        count.innerHTML = c.dataset.skipped ? 'Skipped' : complete ? CHECK + done + '/' + total : done + '/' + total;
-      }
-
-      if (!c.dataset.skipped && total) {
-        var html = panelHtml(c);
-        var old = c.querySelector('.jg-next');
-        if (old) { old.outerHTML = html; } else {
-          var grid = c.querySelector('.setgrid');
-          if (grid) { grid.insertAdjacentHTML('beforebegin', html); }
-        }
-      }
-      c.querySelectorAll('.editor').forEach(function (ed) { enhanceEditor(c, ed); });
-    });
-
-    // Sets counter in the session header.
-    var tags = app.querySelector('.card.sess .tags');
-    if (tags && allSets) {
-      var pill = tags.querySelector('.jg-sets');
-      if (!pill) { pill = document.createElement('span'); pill.className = 'pill jg-sets'; tags.appendChild(pill); }
-      pill.textContent = doneSets + ' / ' + allSets + ' sets';
-    }
-
-    // Wide tables scroll inside their card instead of off the screen.
-    app.querySelectorAll('table.table').forEach(function (t) {
-      if (!t.parentNode.classList.contains('scroll')) {
-        var w = document.createElement('div'); w.className = 'scroll';
-        t.parentNode.insertBefore(w, t); w.appendChild(t);
-      }
-    });
-
-    document.body.classList.toggle('jg-sheet', !!app.querySelector('.editor:not([hidden])'));
-
-    var activeId = active ? active.dataset.slot : null;
-    if (activeId && lastActive && activeId !== lastActive && !document.body.classList.contains('jg-sheet')) {
-      active.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-    lastActive = activeId;
-  }
-
-  function later() { setTimeout(enhance, 0); }
-
-  // One tap: log the next set exactly as prescribed.
-  function quickLog(card, i) {
-    var cell = card.querySelector('.setcell[data-i="' + i + '"]');
-    var ed = card.querySelector('.editor[data-i="' + i + '"]');
-    if (!cell || !ed) { return; }
-    if (ed.hidden) { cell.click(); }
-    var log = ed.querySelector('[data-action="log-set"]');
-    if (log) { log.click(); }
-    closeSheet();
-    enhance();
-    if (navigator.vibrate) { try { navigator.vibrate(15); } catch (e) { /* ignore */ } }
-  }
-
-  document.addEventListener('click', function (e) {
-    var t = e.target;
-    var card = t.closest && t.closest('#app .card.slot');
-
-    if (t.closest('.jg-done')) {
-      quickLog(card, t.closest('.jg-next').dataset.i);
-      return;
-    }
-    if (t.closest('.jg-adjust')) {
-      var cell = card.querySelector('.setcell[data-i="' + t.closest('.jg-next').dataset.i + '"]');
-      if (cell) { cell.click(); }
-      later();
-      return;
-    }
-    var chip = t.closest('.jg-rir-b');
-    if (chip) {
-      var rir = chip.closest('.editor').querySelector('input.in-rir');
-      rir.value = rir.value !== '' && Number(rir.value) === Number(chip.dataset.v) ? '' : chip.dataset.v;
-      rir.dispatchEvent(new Event('change', { bubbles: true }));
-      later();
-      return;
-    }
-    if (t.id === 'jg-backdrop') { closeSheet(); later(); return; }
-
-    var head = t.closest('.slot-head');
-    if (head && card && !t.closest('a, button')) {
-      var id = card.dataset.slot;
-      manual[id] = card.classList.contains('jg-collapsed');
-      enhance();
-      return;
-    }
-    var act = t.closest('[data-action]');
-    if (act && act.dataset.action === 'log-set') {
-      // The app opens the next set straight away; close the sheet instead.
-      setTimeout(function () { closeSheet(); enhance(); }, 0);
-      return;
-    }
-    if (act) { later(); }
-  });
-
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && document.body.classList.contains('jg-sheet')) { closeSheet(); later(); }
-  });
-
-  // Re-apply after every full render of the app.
-  new MutationObserver(later).observe(app, { childList: true });
-
-  var bd = document.createElement('div');
-  bd.id = 'jg-backdrop';
-  document.body.appendChild(bd);
-
-  // Footer: keep the v2 link, drop the paragraph of rules.
-  var foot = document.querySelector('footer');
-  if (foot && foot.firstChild && foot.firstChild.nodeType === 3) { foot.removeChild(foot.firstChild); }
-
-  var meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) { meta.setAttribute('content', '#0f1113'); }
-
-  enhance();
-})();
 </script>
 </body>
 </html>
