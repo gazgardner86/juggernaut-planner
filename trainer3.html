@@ -4132,6 +4132,9 @@ input[type=number],input[type=text],select{border-radius:10px;background:var(--b
 .jg-next-v .x{color:var(--muted);font-weight:500}
 .jg-next-sub{font-size:13px;color:var(--muted);min-height:18px}
 .jg-next-sub b{color:var(--text);font-weight:600}
+.jg-next-sub:empty{display:none}
+.jg-next-plates{font-size:16px;font-weight:600;color:var(--accent-strong);margin:2px 0 4px}
+.jg-next-plates b{color:var(--text)}
 .jg-next-actions{display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:12px}
 .jg-next-actions button{min-height:56px;font-size:16px;border-radius:16px}
 .jg-next-actions .primary{font-size:17px}
@@ -4223,6 +4226,9 @@ body.jg-sheet{overflow:hidden}
       var pl = plates(kg, unit);
       if (pl) { sub = 'Each side: <b>' + pl.map(f).join(' + ') + '</b> · bar ' + BAR[unit] + ' ' + unit; }
     }
+    // The plate line is kept apart from the hint under it: the AMRAP message used to replace
+    // it, so the last set of a main lift never showed the plates.
+    var plateLine = sub;
     if (!sub && tTop && !amrap) { sub = 'Done logs ' + tReps + ' reps — did more? Tap Adjust.'; }
     if (amrap) { sub = 'Enter the reps you got — nothing is assumed for this set.'; }
 
@@ -4231,7 +4237,8 @@ body.jg-sheet{overflow:hidden}
     return '<div class="jg-next" data-i="' + i + '">' +
       '<div class="jg-next-k">Next · set ' + (Number(i) + 1) + ' of ' + total + (pct ? ' · ' + pct : '') + '</div>' +
       '<div class="jg-next-v">' + (kg === null ? '–' : f(kg)) + '<small> ' + unit + '</small> <span class="x">×</span> ' + reps + '</div>' +
-      '<div class="jg-next-sub">' + sub + '</div>' +
+      (plateLine ? '<div class="jg-next-plates">' + plateLine + '</div>' : '') +
+      '<div class="jg-next-sub">' + (sub === plateLine ? '' : sub) + '</div>' +
       '<div class="jg-next-actions">' +
       '<button type="button" class="jg-adjust">Adjust</button>' +
       '<button type="button" class="primary ' + (quick ? 'jg-done' : 'jg-adjust') + '">' + doneLabel + '</button>' +
