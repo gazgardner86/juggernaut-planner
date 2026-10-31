@@ -757,12 +757,17 @@ details.info .row{margin-top:10px}
   var wave = function () { return { kind: 'wave' }; };
   var pct = function (lift, p) { return { kind: 'pctTM', lift: lift, pct: p }; };
   var kgs = function (n) { return { kind: 'weight', kg: n }; };
-  var open = function () { return { kind: 'open' }; };
 
   // reps is a [bottom, top] range: the weight goes up only once every set
   // reaches the top at the target RIR (double progression, see app.js).
+  //
+  // Every accessory is a fixed weight, blank in the template. A blank weight is
+  // filled when a block is brought across from v2 (from what was last lifted),
+  // or from the first full session of an exercise that has no history; after that
+  // it is a number in the plan, which goes up by itself and can be typed over in
+  // Block. There is no "your call".
   function acc(id, movement, sets, reps, rir, note) {
-    return { id: id, kind: 'accessory', movement: movement, load: open(), sets: sets, reps: reps[0], repsTop: reps[1], rir: rir, note: note || '' };
+    return { id: id, kind: 'accessory', movement: movement, load: kgs(null), sets: sets, reps: reps[0], repsTop: reps[1], rir: rir, note: note || '' };
   }
 
   // The block. Day 1 is the squat and overhead press day; Day 2 is bench with
@@ -1053,6 +1058,8 @@ details.info .row{margin-top:10px}
   var PLAIN = !!CFG.plain;
   // A plate calculator in the set editor for barbell lifts (v3 only; v2 is as it was).
   var PLATES = !!CFG.plates;
+  // v3 keeps every exercise on a fixed weight: no "your call", and a blank weight adopts what was lifted.
+  var FIXED_WEIGHTS = ONBOARDING;
   var V3_LOGGING = ONBOARDING || PLAIN;
   // Rounds of template rep ranges a saved programme is migrated through
   // (migrateRepRanges). 1: accessories and the fixed-weight row. 2: the %TM
@@ -1783,7 +1790,7 @@ details.info .row{margin-top:10px}
 
   function bumpNoteText(entry) {
     var b = entry && entry.bump;
-    if (!b) { return ''; }
+    if (!b || b.baseline) { return ''; }
     var up = b.kind === 'pctTM' || b.kind === 'open' ? '+' + fmt(b.inc) + ' ' + U()
       : b.kind === 'bodyweight' ? fmt(b.to) + ' added' : fmt(b.to) + ' ' + U();
     return 'Top of the range on every set — next session ' + up;
@@ -2998,6 +3005,7 @@ details.info .row{margin-top:10px}
             sl.load = JSON.parse(JSON.stringify(was.load));
           }
         }
+        if (FIXED_WEIGHTS && sl.kind === 'accessory' && sl.load.kind === 'open') { sl.load = { kind: 'weight', kg: null }; }
         if (sl.load.kind === 'weight' || sl.load.kind === 'bodyweight') {
           var n = carriedNumber(sl.movement, sl.load.kind);
           if (n !== null && n !== undefined) {
@@ -3212,7 +3220,7 @@ details.info .row{margin-top:10px}
     // 60 kg, or a percentage of a max that has nothing to do with it) is
     // dropped. Its own history supplies the weight from here.
     // A note belongs to the exercise it was written for ("reps are per leg"), so it goes too.
-    var patch = { movement: name, load: { kind: 'open' }, note: '' };
+    var patch = { movement: name, load: FIXED_WEIGHTS ? { kind: 'weight', kg: null } : { kind: 'open' }, note: '' };
     var changed = 0;
     for (var w = week; w <= P0.weeks; w++) {
       if (scope === 'today' && w !== week) { break; }
@@ -3404,6 +3412,8 @@ details.info .row{margin-top:10px}
     });
   }
 
+  function reset0(p) { return p.repsTop ? ', back to ' + p.sets[0].reps + ' reps' : ''; }
+
   function progressAccessories(week, day) {
     var log = state.logs[logKey(week, day)];
     if (!log) { return []; }
@@ -3420,13 +3430,37 @@ details.info .row{margin-top:10px}
       // A support lift eases to 60% in Realization by design, so the load that
       // was lifted is not the slot's own percentage and cannot earn a bump.
       if (kind === 'pctTM' && E.phaseFor(week) === 'Realization') { return; }
-      // A fixed weight left blank has no plan number to raise — carry the
-      // bump on the log like an open load instead.
-      if (kind === 'weight' && (p.slot.load.kg === null || p.slot.load.kg === undefined)) { kind = 'open'; }
-
+      var blankFixed = kind === 'weight' && (p.slot.load.kg === null || p.slot.load.kg === undefined);
       var entry = log.slots[p.id];
       if (!entry) { return; }
       var inc = incrementFor(p.movement);
+      // v3: a fixed weight with no number yet takes what was lifted, once every set
+      // is done (or one step more if the sets reached the top of the range), and
+      // writes it into the weeks to come, so the exercise is a plain fixed weight
+      // from then on. It is reversible like any bump: undoBump puts the blank back.
+      if (blankFixed && FIXED_WEIGHTS) {
+        var lifted = null, whole = !entry.skipped && entry.sets && entry.sets.length >= p.sets.length;
+        if (whole) {
+          p.sets.forEach(function (s, i) {
+            var lg = entry.sets[i];
+            if (!lg || !lg.reps || lg.kg === null || lg.kg === undefined) { whole = false; }
+            else if (lifted === null || lg.kg > lifted) { lifted = lg.kg; }
+          });
+        }
+        var gets = whole && lifted !== null ? (inc !== null && earnedBump(p, entry, week, day) ? Math.round((lifted + inc) * 100) / 100 : lifted) : null;
+        var had = entry.bump && entry.bump.kind === 'weight' && entry.bump.from === null ? entry.bump.to : null;
+        if (had !== null && had !== gets) { undoBump(week, day, p, entry); }
+        if (gets !== null && had !== gets) {
+          var rose = gets > lifted;
+          writeForward(week, day, p, 'weight', gets);
+          entry.bump = { kind: 'weight', from: null, to: gets, inc: rose ? inc : 0, baseline: !rose };
+          if (rose) { bumped.push(p.movement + ' → ' + fmt(gets) + U() + reset0(p)); }
+        }
+        return;
+      }
+      // A fixed weight left blank has no plan number to raise — carry the
+      // bump on the log like an open load instead.
+      if (blankFixed) { kind = 'open'; }
       if (inc === null || !earnedBump(p, entry, week, day)) {
         if (entry.bump || entry.suggestBump !== undefined) { undoBump(week, day, p, entry); }
         return;
