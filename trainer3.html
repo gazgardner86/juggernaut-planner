@@ -194,6 +194,7 @@ body.editing .actionbar{display:none}
 .ms-table .ms-change td{font-weight:600}
 .nc-table th,.nc-table td{padding-left:4px;padding-right:4px}
 .rm-mode button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.rm-manual{margin-top:12px}.rm-manual summary{cursor:pointer;color:var(--accent);font-size:14px}
 .rm-ladder{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:4px}
 .rm-card .rm-row .rm-kg{width:6em}.rm-card .rm-row .rm-reps{width:4em}
 .nc-res{display:flex;align-items:center;gap:4px}
@@ -2705,7 +2706,7 @@ details.info .row{margin-top:10px}
         return '<span>' + Math.round(p * 100) + '% ' + fmt(E.mround(r.e1rm * p, state.settings.rounding)) + '</span>';
       }).join('') + '</div>';
   }
-  function rmCalculatorCard() {
+  function rmManualHtml() {
     var mode = rmMode(), start = startCardShown();
     var rows = E.progressingLifts(nextProgramme()).map(function (name) {
       var lift = E.tracked(name, state.lifts);
@@ -2715,16 +2716,102 @@ details.info .row{margin-top:10px}
         '<div class="hint sm rm-out"></div></td>' +
         '<td><button type="button" class="small" data-action="rm-use" data-lift="' + esc(name) + '">' + (start ? 'Use as start' : 'Set TM') + '</button></td></tr>';
     }).join('');
-    return '<section class="card rm-card"><h2>1RM calculator</h2>' +
-      '<p class="hint">No test week? Give a 1RM and the training max is 90% of it, the book\'s rule. ' +
-      (start ? 'Use it and it goes into the start card as that lift\'s result.'
-        : 'Your block is running, so this changes the training max now: the waves and the supports follow it from the next session.') + '</p>' +
+    return '' +
       '<div class="row rm-mode"><button type="button" class="small" data-action="rm-mode" data-mode="known" aria-pressed="' + (mode === 'known') + '">I know my 1RM</button>' +
       '<button type="button" class="small" data-action="rm-mode" data-mode="set" aria-pressed="' + (mode === 'set') + '">Estimate from a set</button></div>' +
       '<div class="scroll"><table class="table nc-table"><thead><tr><th>Lift</th><th>' + (mode === 'known' ? '1RM (' + U() + ')' : 'Heavy set (' + U() + ' × reps)') + '</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
       (mode === 'set' ? '<p class="hint sm">Ten reps or fewer: the estimate gets looser as the reps climb, so a heavy triple or five is better than a set of ten.</p>' : '') +
-      '</section>';
+      '';
   }
+
+  // The most recent all-out effort at a lift, so nobody has to type one in: a test
+  // result, or the AMRAP set of a Realization week, whichever came last. Looks through
+  // the running cycle (or a v2 block that has been brought across but not started) and
+  // then each finished cycle, newest first.
+  function programmeOf(sp) {
+    return { id: P0.id, name: P0.name, weeks: P0.weeks, waveSlots: P0.waveSlots, days: sp.days, movements: movements(),
+      groups: P0.groups, weekOverrides: sp.weekOverrides, phaseRules: P0.phaseRules, rirByWave: P0.rirByWave };
+  }
+  function amrapEfforts(name, sp, logs, cycleNo) {
+    var out = [], pr = programmeOf(sp);
+    P0.waveSlots.forEach(function (w, slot) {
+      var week = slot * 4 + 3;                       // the Realization week of each wave
+      for (var d = 0; d < sp.days.length; d++) {
+        var log = (logs || {})[logKey(week, d)];
+        if (!log || !log.slots) { continue; }
+        var pres = E.prescribeDay(pr, week, d, ctx()).filter(function (p) { return isWaveSlot(p.slot) && nameKey(p.movement) === nameKey(name); })[0];
+        var entry = pres && log.slots[pres.id];
+        if (!entry || nameKey(entry.movement) !== nameKey(name)) { continue; }
+        var ai = -1;
+        pres.sets.forEach(function (st, i) { if (st.amrap) { ai = i; } });
+        var x = ai === -1 ? null : (entry.sets || [])[ai];
+        if (x && x.kg > 0 && x.reps >= 1) { out.push({ cycle: cycleNo, week: week, kg: x.kg, reps: x.reps, label: 'AMRAP' }); }
+      }
+    });
+    return out;
+  }
+  function lastMaxEffort(name) {
+    var cur = state.cycle || 1, found = [];
+    var typed = (state.cycleResults || {})[name];
+    if (typed && typed.kg > 0 && typed.reps >= 1) { found.push({ cycle: 1e9, week: 0, kg: typed.kg, reps: typed.reps, label: typed.source, inStart: true }); }
+    found = found.concat(amrapEfforts(name, state.programme, state.logs, cur));
+    (state.archive || []).forEach(function (a) {
+      var ar = (a.results || {})[name];
+      if (ar && ar.kg > 0 && ar.reps >= 1) { found.push({ cycle: a.cycle, week: 17, kg: ar.kg, reps: ar.reps, label: ar.source }); }
+      found = found.concat(amrapEfforts(name, a.programme, a.logs, a.cycle));
+    });
+    found.sort(function (x, y) { return y.cycle - x.cycle || y.week - x.week; });
+    var pick = null, loose = null;
+    found.forEach(function (c) {
+      if (pick) { return; }
+      if (c.reps <= 10) { pick = c; } else if (!loose) { loose = c; }
+    });
+    if (pick) {
+      var seasons = (state.archive || []).length > 0 || cur > 1;
+      pick.where = pick.inStart ? pick.label + ', in the start card'
+        : pick.label + (pick.week && pick.week <= P0.weeks ? ', week ' + pick.week : ', end of cycle ' + pick.cycle) + (seasons && pick.week && pick.week <= P0.weeks ? ' of cycle ' + pick.cycle : '');
+    }
+    return pick ? { effort: pick, loose: loose } : { effort: null, loose: loose };
+  }
+  function looseNote(c) {
+    return '<div class="hint sm">Your last ' + esc(c.label) + ' was ' + fmt(c.kg) + ' × ' + c.reps + ' (week ' + c.week + '): over 10 reps is too loose to set a max from.</div>';
+  }
+
+  // Apply one lift's result: into the start card while one is showing, otherwise
+  // straight onto the training max. Returns the training max it gives.
+  function rmApply(name, kg, reps, source) {
+    var tm = tmFromResult({ kg: kg, reps: reps });
+    if (startCardShown()) {
+      state.cycleResults = state.cycleResults || {};
+      state.cycleResults[name] = { kg: kg, reps: reps, source: source };
+    } else {
+      state.lifts.forEach(function (l) { if (nameKey(l.name) === nameKey(name)) { l.tm = tm; } });
+    }
+    return tm;
+  }
+
+  function rmCalculatorCard() {
+    var start = startCardShown();
+    var rows = E.progressingLifts(nextProgramme()).map(function (name) {
+      var lift = E.tracked(name, state.lifts), f = lastMaxEffort(name), e = f.effort;
+      return '<tr class="rm-auto" data-lift="' + esc(name) + '"><td>' + esc(name) + '<div class="hint sm">TM now ' + (lift ? fmt(lift.tm) : '–') + '</div></td><td>' +
+        (e ? '<div><b>' + fmt(e.kg) + ' × ' + e.reps + '</b> <span class="hint sm">' + esc(e.where) + '</span></div><div class="hint sm rm-auto-out">' + rmOutHtml(e.kg, e.reps) + '</div>'
+           : '<div class="hint">No test or AMRAP set logged yet</div>') +
+        (f.loose && (!e || f.loose.cycle * 100 + f.loose.week > e.cycle * 100 + e.week) ? looseNote(f.loose) : '') + '</td>' +
+        '<td>' + (e && !e.inStart ? '<button type="button" class="small" data-action="rm-auto-use" data-lift="' + esc(name) + '">' + (start ? 'Use as start' : 'Set TM') + '</button>'
+                  : (e ? '<span class="hint sm">in the start card</span>' : '')) + '</td></tr>';
+    }).join('');
+    var anyUsable = E.progressingLifts(nextProgramme()).some(function (n) { var e = lastMaxEffort(n).effort; return e && !e.inStart; });
+    return '<section class="card rm-card"><h2>1RM calculator</h2>' +
+      '<p class="hint">Your training max is 90% of a recent 1RM, the book\'s rule. This reads your last test set or AMRAP, whichever came last, so there is nothing to type. ' +
+      (start ? 'Use it and it goes into the start card as that lift\'s result.'
+        : 'Your block is running, so using one changes that lift\'s training max now: the waves and the supports follow it from the next session.') + '</p>' +
+      '<div class="scroll"><table class="table nc-table"><thead><tr><th>Lift</th><th>Last test or AMRAP</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      (anyUsable ? '<div class="row"><button type="button" class="primary small" data-action="rm-auto-all">' + (start ? 'Use all as starting maxes' : 'Set all training maxes') + '</button></div>' : '') +
+      '<details class="rm-manual"' + (state.ui.rmManual ? ' open' : '') + '><summary data-action="rm-manual-toggle">No test or AMRAP yet? Enter a 1RM or a set by hand</summary>' +
+      rmManualHtml() + '</details></section>';
+  }
+
   // Patched in place, not re-rendered, so the box keeps focus.
   function rmInput(el) {
     var row = el.closest('.rm-row');
@@ -3653,6 +3740,26 @@ details.info .row{margin-top:10px}
         state.measurements = state.measurements.filter(function (m) { return m.date !== btn.dataset.date; });
         save(); render();
       }
+    } else if (a === 'rm-manual-toggle') {
+      state.ui.rmManual = !btn.parentNode.open; save();
+    } else if (a === 'rm-auto-use') {
+      var aname = btn.dataset.lift, ae = lastMaxEffort(aname).effort;
+      if (!ae || ae.inStart) { return; }
+      if (!startCardShown()) {
+        var al = state.lifts.filter(function (l) { return nameKey(l.name) === nameKey(aname); })[0];
+        if (!al || !window.confirm('Set the ' + aname + ' training max to ' + fmt(tmFromResult(ae)) + ' ' + U() + ' (it is ' + fmt(al.tm) + ' now), from your ' + fmt(ae.kg) + ' × ' + ae.reps + '? The waves and supports follow it from your next session.')) { return; }
+      }
+      var atm = rmApply(aname, ae.kg, ae.reps, ae.label === 'AMRAP' ? 'last AMRAP' : ae.label);
+      save(); render(); toast(aname + (startCardShown() ? ': start at ' : ' training max → ') + fmt(atm) + ' ' + U());
+    } else if (a === 'rm-auto-all') {
+      var todo = E.progressingLifts(nextProgramme()).map(function (n) { return { n: n, e: lastMaxEffort(n).effort }; }).filter(function (x) { return x.e && !x.e.inStart; });
+      if (!todo.length) { return; }
+      if (!startCardShown() && !window.confirm('Set ' + todo.map(function (x) {
+        var l = state.lifts.filter(function (q) { return nameKey(q.name) === nameKey(x.n); })[0];
+        return x.n + ' ' + fmt(l ? l.tm : 0) + ' → ' + fmt(tmFromResult(x.e));
+      }).join(', ') + '? The waves and supports follow them from your next session.')) { return; }
+      todo.forEach(function (x) { rmApply(x.n, x.e.kg, x.e.reps, x.e.label === 'AMRAP' ? 'last AMRAP' : x.e.label); });
+      save(); render(); toast(todo.length + ' training max' + (todo.length === 1 ? '' : 'es') + (startCardShown() ? ' set in the start card' : ' updated'));
     } else if (a === 'rm-mode') {
       state.ui.rmMode = btn.dataset.mode; save(); render();
     } else if (a === 'rm-use') {
