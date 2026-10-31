@@ -193,6 +193,14 @@ body.editing .actionbar{display:none}
 .ms-table th,.ms-table td{padding-left:6px;padding-right:6px;white-space:nowrap}
 .ms-table .ms-change td{font-weight:600}
 .nc-table th,.nc-table td{padding-left:4px;padding-right:4px}
+.ed-plates{font-weight:700;font-size:14px}
+.plate{display:inline-block;min-width:2.2em;padding:0 7px;border-radius:6px;font-weight:700;text-align:center;line-height:1.5;background:var(--surface-2,#e5e7ea);color:inherit;border:1px solid rgba(0,0,0,.28)}
+.plate.pc-red{background:#d52b2b;color:#fff;border-color:#a31d1d}
+.plate.pc-blue{background:#1f5fbf;color:#fff;border-color:#164a96}
+.plate.pc-yellow{background:#f0c20a;color:#1a1a1a;border-color:#b8940a}
+.plate.pc-green{background:#1f9a4a;color:#fff;border-color:#167838}
+.plate.pc-white{background:#f4f4f4;color:#1a1a1a;border-color:#9aa0a6}
+.plate.pc-chrome{background:linear-gradient(#d9dce0,#a9aeb5);color:#1a1a1a;border-color:#7d838b}
 .rm-mode button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .rm-manual{margin-top:12px}.rm-manual summary{cursor:pointer;color:var(--accent);font-size:14px}
 .rm-ladder{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:4px}
@@ -1239,22 +1247,39 @@ details.info .row{margin-top:10px}
   }
   var BAR_NAMES = { bar: 'bar', ez: 'EZ bar', trap: 'trap bar' };
   function barFor(kind) { return kind === 'ez' ? ezKg() : kind === 'trap' ? trapKg() : barKg(); }
-  function platesText(total, kind) {
-    var u = ' ' + U();
+  // The standard (IWF / IPF) plate colours, by kilogram weight. Pound plates have no one
+  // standard, and a plate size you typed that is not on this list has no colour: both are
+  // left plain.
+  var PLATE_COLOURS = { 25: 'red', 20: 'blue', 15: 'yellow', 10: 'green', 5: 'white', 2.5: 'red', 2: 'blue', 1.5: 'yellow', 1.25: 'chrome', 1: 'green', 0.5: 'white' };
+  function plateChip(w) {
+    var c = state.settings.unit === 'lb' ? null : PLATE_COLOURS[w];
+    return '<span class="plate' + (c ? ' pc-' + c : '') + '">' + esc(fmt(w)) + '</span>';
+  }
+  function plateChips(list) { return list.map(plateChip).join(' + '); }
+
+  // The line under the weight, as text and as HTML (the HTML has each plate as a coloured
+  // chip; its text is exactly the plain text, which tests and the hosted overlay rely on).
+  function platesLine(total, kind) {
+    var u = ' ' + U(), t, h;
     if (kind === 'belt') {
       // The box holds bodyweight plus what hangs from the belt.
       var added = Math.round((total - (state.settings.bodyweight || 0)) * 100) / 100;
-      if (added <= 0) { return 'No added weight (bodyweight ' + fmt(state.settings.bodyweight) + u + ')'; }
+      if (added <= 0) { t = 'No added weight (bodyweight ' + fmt(state.settings.bodyweight) + u + ')'; return { text: t, html: esc(t) }; }
       var b = E.platesPerSide(added * 2, 0, plateList());
-      if (!b || !b.plates.length) { return 'Too light for the plates: ' + fmt(added) + u + ' added'; }
-      return 'On the belt: ' + b.plates.map(fmt).join(' + ') + (b.off ? ' · loads ' + fmt(b.off / 2) + u + ' light' : '');
+      if (!b || !b.plates.length) { t = 'Too light for the plates: ' + fmt(added) + u + ' added'; return { text: t, html: esc(t) }; }
+      var bl = b.off ? ' · loads ' + fmt(b.off / 2) + u + ' light' : '';
+      return { text: 'On the belt: ' + b.plates.map(fmt).join(' + ') + bl, html: 'On the belt: ' + plateChips(b.plates) + esc(bl) };
     }
     var bar = barFor(kind);
     var r = E.platesPerSide(total, bar, plateList());
-    if (!r) { return ''; }
-    if (r.under) { return 'Less than the ' + fmt(bar) + u + ' ' + BAR_NAMES[kind]; }
+    if (!r) { return { text: '', html: '' }; }
+    if (r.under) { t = 'Less than the ' + fmt(bar) + u + ' ' + BAR_NAMES[kind]; return { text: t, html: esc(t) }; }
     var light = r.off ? ' · loads ' + fmt(r.off) + u + ' light' : '';
-    return (r.plates.length ? 'Per side: ' + r.plates.map(fmt).join(' + ') : (kind === 'bar' ? 'Bar only' : BAR_NAMES[kind].replace(/^./, function (c) { return c.toUpperCase(); }) + ' only')) + light;
+    if (!r.plates.length) {
+      t = (kind === 'bar' ? 'Bar only' : BAR_NAMES[kind].replace(/^./, function (c) { return c.toUpperCase(); }) + ' only') + light;
+      return { text: t, html: esc(t) };
+    }
+    return { text: 'Per side: ' + r.plates.map(fmt).join(' + ') + light, html: 'Per side: ' + plateChips(r.plates) + esc(light) };
   }
 
   function equipIncrementFor(movementName) {
@@ -1657,7 +1682,7 @@ details.info .row{margin-top:10px}
     if (rir !== null && tRir !== null && rir < tRir) { hints.push('harder than planned'); }
     ed.querySelector('.ed-hint').textContent = hints.join(' · ');
     var pl = ed.querySelector('.ed-plates');
-    if (pl) { pl.textContent = kg === null ? 'Set a weight to see the plates.' : platesText(kg, ed.dataset.plates); }
+    if (pl) { pl.innerHTML = kg === null ? 'Set a weight to see the plates.' : platesLine(kg, ed.dataset.plates).html; }
   }
 
   // Every logged set re-checks progression, so the weight goes up for next
@@ -3745,6 +3770,9 @@ details.info .row{margin-top:10px}
       state.ui.tab = 'today'; save(); render();
       toast('Starting at ' + programme().days[startDay].name + ', Week ' + startWeek);
     } else if (a === 'save-setup') {
+      // What the bar and plate boxes showed, taken before the unit can change: a value is
+      // stored only if it was edited, so switching kg to lb does not save the kg bar as pounds.
+      var shown = { bar: barKg(), ez: ezKg(), trap: trapKg(), plates: plateList().join(',') };
       // Checked first, so a bad plate list leaves nothing half-saved.
       var plBox = document.getElementById('in-plates'), plateNums = null;
       if (plBox) {
@@ -3769,10 +3797,10 @@ details.info .row{margin-top:10px}
       var bw = num(fieldValue('in-bw')); if (bw !== null) { state.settings.bodyweight = bw; }
       var m = num(fieldValue('in-maint')); if (m !== null) { state.settings.maintenance = m; }
       var su = num(fieldValue('in-surplus')); if (su !== null) { state.settings.surplus = su; }
-      var bar = num(fieldValue('in-bar')); if (bar !== null && bar >= 0) { state.settings.barWeight = bar; }
-      if (plateNums) { state.settings.plates = plateNums; }
-      var ez = num(fieldValue('in-ez')); if (ez !== null && ez >= 0) { state.settings.ezBarWeight = ez; }
-      var trap = num(fieldValue('in-trap')); if (trap !== null && trap >= 0) { state.settings.trapBarWeight = trap; }
+      var bar = num(fieldValue('in-bar')); if (bar !== null && bar >= 0 && bar !== shown.bar) { state.settings.barWeight = bar; }
+      if (plateNums && plateNums.join(',') !== shown.plates) { state.settings.plates = plateNums; }
+      var ez = num(fieldValue('in-ez')); if (ez !== null && ez >= 0 && ez !== shown.ez) { state.settings.ezBarWeight = ez; }
+      var trap = num(fieldValue('in-trap')); if (trap !== null && trap >= 0 && trap !== shown.trap) { state.settings.trapBarWeight = trap; }
       save(); render(); toast('Saved');
     } else if (a === 'apply-tm') {
       var lname = btn.dataset.lift, tm = Number(btn.dataset.tm);
@@ -4133,8 +4161,9 @@ input[type=number],input[type=text],select{border-radius:10px;background:var(--b
 .jg-next-sub{font-size:13px;color:var(--muted);min-height:18px}
 .jg-next-sub b{color:var(--text);font-weight:600}
 .jg-next-sub:empty{display:none}
-.jg-next-plates{font-size:16px;font-weight:600;color:var(--accent-strong);margin:2px 0 4px}
+.jg-next-plates{font-size:17px;font-weight:700;color:var(--accent-strong);margin:4px 0 6px}
 .jg-next-plates b{color:var(--text)}
+.jg-next-plates .plate{font-size:17px;padding:1px 9px}
 .jg-next-actions{display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:12px}
 .jg-next-actions button{min-height:56px;font-size:16px;border-radius:16px}
 .jg-next-actions .primary{font-size:17px}
@@ -4221,7 +4250,8 @@ body.jg-sheet{overflow:hidden}
     // Prefer the app's own plate calculator (uses the bar and plates set in Setup).
     var own = ed.querySelector('.ed-plates');
     if (own) {
-      if (own.textContent) { sub = own.textContent.replace(/[&<>"]/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]; }); }
+      // The app's own markup: each plate is a coloured chip, and its text is plain numbers.
+      if (own.textContent) { sub = own.innerHTML; }
     } else if (card.classList.contains('main')) {
       var pl = plates(kg, unit);
       if (pl) { sub = 'Each side: <b>' + pl.map(f).join(' + ') + '</b> · bar ' + BAR[unit] + ' ' + unit; }
