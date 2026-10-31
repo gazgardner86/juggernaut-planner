@@ -2751,52 +2751,75 @@ details.info .row{margin-top:10px}
         var x = ai === -1 ? null : (entry.sets || [])[ai];
         if (x && x.kg > 0 && x.reps >= 1) {
           var phase = E.phaseFor(week);
-          out.push({ cycle: cycleNo, week: week, kg: x.kg, reps: x.reps, label: 'AMRAP', phase: phase, short: phase !== 'Realization' });
+          // The session notes say RIR 2-3 in Accumulation and 1-2 in Intensification, and
+          // MAIN_RIR holds the lower number of each: what the set is taken to have left.
+          var rir = MAIN_RIR[phase] || 0;
+          out.push({ cycle: cycleNo, week: week, kg: x.kg, reps: x.reps, rir: rir, eff: x.reps + rir, label: 'AMRAP', phase: phase, short: phase !== 'Realization' });
         }
       }
      });
     });
     return out;
   }
+  // Where one effort sits in time, for comparing across cycles (a cycle is 16 weeks; 20 leaves a gap).
+  function effortAt(c) { return c.cycle * 20 + c.week; }
   function lastMaxEffort(name) {
     var cur = state.cycle || 1, found = [];
     var typed = (state.cycleResults || {})[name];
-    if (typed && typed.kg > 0 && typed.reps >= 1) { found.push({ cycle: 1e9, week: 0, kg: typed.kg, reps: typed.reps, label: typed.source, inStart: true }); }
+    if (typed && typed.kg > 0 && typed.reps >= 1) { found.push({ cycle: 1e9, week: 0, kg: typed.kg, reps: typed.reps, rir: 0, eff: typed.reps, label: typed.source, inStart: true }); }
     found = found.concat(amrapEfforts(name, state.programme, state.logs, cur));
     (state.archive || []).forEach(function (a) {
       var ar = (a.results || {})[name];
-      if (ar && ar.kg > 0 && ar.reps >= 1) { found.push({ cycle: a.cycle, week: 17, kg: ar.kg, reps: ar.reps, label: ar.source }); }
+      if (ar && ar.kg > 0 && ar.reps >= 1) { found.push({ cycle: a.cycle, week: 17, kg: ar.kg, reps: ar.reps, rir: 0, eff: ar.reps, label: ar.source }); }
       found = found.concat(amrapEfforts(name, a.programme, a.logs, a.cycle));
     });
-    found.sort(function (x, y) { return y.cycle - x.cycle || y.week - x.week; });
-    var pick = null, loose = null;
-    found.forEach(function (c) {
-      if (pick) { return; }
-      if (c.reps <= 10) { pick = c; } else if (!loose) { loose = c; }
-    });
+    found.sort(function (x, y) { return effortAt(y) - effortAt(x); });
+    // A set counts when it is ten reps or fewer including the reserve it is taken to have
+    // had: past that the estimate is too loose to set a max from.
+    var valid = found.filter(function (c) { return c.eff <= 10; });
+    var pick = null, pool = [];
+    var typedValid = valid.filter(function (c) { return c.inStart; })[0];
+    if (typedValid) { pick = typedValid; pool = [typedValid]; }
+    else if (valid.length) {
+      // The best of the last six weeks, not just the newest: an Accumulation set is
+      // stopped further short than a Realization one, so the newest is often the lowest.
+      var newest = effortAt(valid[0]);
+      pool = valid.filter(function (c) { return effortAt(c) > newest - 6; });
+      pool.forEach(function (c) {
+        var better = !pick || resultE1RM(c.kg, c.eff) > resultE1RM(pick.kg, pick.eff);
+        if (better) { pick = c; }
+      });
+    }
+    // The newest set that was left out for being over ten reps, if it is newer than the one used.
+    var loose = found.filter(function (c) { return c.eff > 10 && (!pick || effortAt(c) > effortAt(pick)); })[0] || null;
     if (pick) {
       var seasons = (state.archive || []).length > 0 || cur > 1;
       pick.where = pick.inStart ? pick.label + ', in the start card'
         : pick.label + (pick.week && pick.week <= P0.weeks ? ', week ' + pick.week : ', end of cycle ' + pick.cycle) + (seasons && pick.week && pick.week <= P0.weeks ? ' of cycle ' + pick.cycle : '');
-    }
-    if (pick && pick.short) {
-      pick.where = pick.phase + ' ' + pick.where;
-      pick.note = 'An ' + pick.phase + ' set is stopped 1–3 reps short of failure, so this reads a little low.';
+      if (pick.short) {
+        pick.where = pick.phase + ' ' + pick.where;
+        pick.note = 'The session notes say ' + RESERVE_TAG[pick.phase] + ' for ' + pick.phase + ', so this counts the lower number: ' +
+          pick.rir + ' rep' + (pick.rir === 1 ? '' : 's') + ' in reserve (' + pick.reps + ' + ' + pick.rir + ').';
+      }
+      if (pool.length > 1) { pick.where += ' · best of your last six weeks'; }
     }
     // No test and no AMRAP to read (a lift that was only ever a support, say): the best
     // heavy set in the last six weeks, the same one the start card's suggestion uses.
     if (!pick) {
       var pp = cycleProposals().filter(function (x) { return nameKey(x.name) === nameKey(name); })[0];
       if (pp && pp.best) {
-        pick = { cycle: cur, week: pp.best.week, kg: pp.best.kg, reps: pp.best.reps, label: 'best set', short: true,
+        pick = { cycle: cur, week: pp.best.week, kg: pp.best.kg, reps: pp.best.reps, rir: 0, eff: pp.best.reps, label: 'best set', short: true,
           where: 'best set in your last six weeks, week ' + pp.best.week,
           note: 'Not an all-out set, so this reads low. A test week or an AMRAP gives a truer number.' };
       }
     }
-    return pick ? { effort: pick, loose: loose } : { effort: null, loose: loose };
+    return { effort: pick, loose: loose };
   }
+  // What goes into the start card or the training max: the reps include the reserve.
+  function effortResult(e) { return { kg: e.kg, reps: e.eff }; }
+  function effortSource(e) { return (e.label === 'AMRAP' ? 'last AMRAP' : e.label) + (e.rir ? ' + ' + e.rir + ' RIR' : ''); }
   function looseNote(c) {
-    return '<div class="hint sm">Your last ' + esc(c.label) + ' was ' + fmt(c.kg) + ' × ' + c.reps + ' (week ' + c.week + '): over 10 reps is too loose to set a max from.</div>';
+    return '<div class="hint sm">Your last ' + esc(c.label) + ' was ' + fmt(c.kg) + ' × ' + c.reps + (c.rir ? ' + ' + c.rir : '') + ' (week ' + c.week + '): over 10 reps is too loose to set a max from.</div>';
   }
 
   // Apply one lift's result: into the start card while one is showing, otherwise
@@ -2817,10 +2840,10 @@ details.info .row{margin-top:10px}
     var rows = E.progressingLifts(nextProgramme()).map(function (name) {
       var lift = E.tracked(name, state.lifts), f = lastMaxEffort(name), e = f.effort;
       return '<tr class="rm-auto" data-lift="' + esc(name) + '"><td>' + esc(name) + '<div class="hint sm">TM now ' + (lift ? fmt(lift.tm) : '–') + '</div></td><td>' +
-        (e ? '<div><b>' + fmt(e.kg) + ' × ' + e.reps + '</b> <span class="hint sm">' + esc(e.where) + '</span></div><div class="hint sm rm-auto-out">' + rmOutHtml(e.kg, e.reps) + '</div>' +
+        (e ? '<div><b>' + fmt(e.kg) + ' × ' + e.reps + '</b>' + (e.rir ? ' + ' + e.rir + ' in reserve' : '') + ' <span class="hint sm">' + esc(e.where) + '</span></div><div class="hint sm rm-auto-out">' + rmOutHtml(e.kg, e.eff) + '</div>' +
              (e.note ? '<div class="hint sm">' + esc(e.note) + '</div>' : '')
            : '<div class="hint">No test or AMRAP set logged yet</div>') +
-        (f.loose && (!e || f.loose.cycle * 100 + f.loose.week > e.cycle * 100 + e.week) ? looseNote(f.loose) : '') + '</td>' +
+        (f.loose && (!e || e.label === 'best set' || effortAt(f.loose) > effortAt(e)) ? looseNote(f.loose) : '') + '</td>' +
         '<td>' + (e && !e.inStart ? '<button type="button" class="small" data-action="rm-auto-use" data-lift="' + esc(name) + '">' + (start ? 'Use as start' : 'Set TM') + '</button>'
                   : (e ? '<span class="hint sm">in the start card</span>' : '')) + '</td></tr>';
     }).join('');
@@ -3770,18 +3793,18 @@ details.info .row{margin-top:10px}
       if (!ae || ae.inStart) { return; }
       if (!startCardShown()) {
         var al = state.lifts.filter(function (l) { return nameKey(l.name) === nameKey(aname); })[0];
-        if (!al || !window.confirm('Set the ' + aname + ' training max to ' + fmt(tmFromResult(ae)) + ' ' + U() + ' (it is ' + fmt(al.tm) + ' now), from your ' + fmt(ae.kg) + ' × ' + ae.reps + '? The waves and supports follow it from your next session.')) { return; }
+        if (!al || !window.confirm('Set the ' + aname + ' training max to ' + fmt(tmFromResult(effortResult(ae))) + ' ' + U() + ' (it is ' + fmt(al.tm) + ' now), from your ' + fmt(ae.kg) + ' × ' + ae.reps + (ae.rir ? ' + ' + ae.rir : '') + '? The waves and supports follow it from your next session.')) { return; }
       }
-      var atm = rmApply(aname, ae.kg, ae.reps, ae.label === 'AMRAP' ? 'last AMRAP' : ae.label);
+      var atm = rmApply(aname, ae.kg, ae.eff, effortSource(ae));
       save(); render(); toast(aname + (startCardShown() ? ': start at ' : ' training max → ') + fmt(atm) + ' ' + U());
     } else if (a === 'rm-auto-all') {
       var todo = E.progressingLifts(nextProgramme()).map(function (n) { return { n: n, e: lastMaxEffort(n).effort }; }).filter(function (x) { return x.e && !x.e.inStart; });
       if (!todo.length) { return; }
       if (!startCardShown() && !window.confirm('Set ' + todo.map(function (x) {
         var l = state.lifts.filter(function (q) { return nameKey(q.name) === nameKey(x.n); })[0];
-        return x.n + ' ' + fmt(l ? l.tm : 0) + ' → ' + fmt(tmFromResult(x.e));
+        return x.n + ' ' + fmt(l ? l.tm : 0) + ' → ' + fmt(tmFromResult(effortResult(x.e)));
       }).join(', ') + '? The waves and supports follow them from your next session.')) { return; }
-      todo.forEach(function (x) { rmApply(x.n, x.e.kg, x.e.reps, x.e.label === 'AMRAP' ? 'last AMRAP' : x.e.label); });
+      todo.forEach(function (x) { rmApply(x.n, x.e.kg, x.e.eff, effortSource(x.e)); });
       save(); render(); toast(todo.length + ' training max' + (todo.length === 1 ? '' : 'es') + (startCardShown() ? ' set in the start card' : ' updated'));
     } else if (a === 'rm-mode') {
       state.ui.rmMode = btn.dataset.mode; save(); render();
