@@ -193,6 +193,9 @@ body.editing .actionbar{display:none}
 .ms-table th,.ms-table td{padding-left:6px;padding-right:6px;white-space:nowrap}
 .ms-table .ms-change td{font-weight:600}
 .nc-table th,.nc-table td{padding-left:4px;padding-right:4px}
+.rm-mode button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.rm-ladder{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:4px}
+.rm-card .rm-row .rm-kg{width:6em}.rm-card .rm-row .rm-reps{width:4em}
 .nc-res{display:flex;align-items:center;gap:4px}
 .nc-res input{min-width:0;padding-left:6px;padding-right:6px}
 .nc-res .nc-kg{width:5em}.nc-res .nc-reps{width:3.2em}
@@ -2037,8 +2040,8 @@ details.info .row{margin-top:10px}
       '</div></section>';
     // The start card (v3 only): until the block has started, during a test
     // week, and in the last week of a block.
-    var showStart = ONBOARDING && (!started() || !!state.testWeek || state.cursor.week >= P0.weeks);
-    return (showStart ? newCycleCard() : '') + (started() ? startCard : '') +
+    var showStart = startCardShown();
+    return (showStart ? newCycleCard() : '') + (started() ? startCard : '') + (ONBOARDING ? rmCalculatorCard() : '') +
       '<section class="card"><h2>Training maxes</h2>' +
       '<p class="hint">Every lift here can be used as a percentage-based load. Only lifts used as a <b>main</b> lift take an AMRAP and progress automatically — see Progress.</p>' +
       '<table class="table"><thead><tr><th>Lift</th><th>TM (' + U() + ')</th><th>Per-rep increment</th><th></th></tr></thead><tbody>' +
@@ -2676,6 +2679,62 @@ details.info .row{margin-top:10px}
   function validResult(r) { return !!(r && r.kg > 0 && r.reps >= 1 && r.reps <= 10); }
   function tmFromResult(r) { return Math.round(resultE1RM(r.kg, r.reps) * 0.9 * 2) / 2; }
 
+  /* ---------------- 1RM calculator (v3) ---------------- */
+
+  // The start card is on screen: before the block starts, during a test week, and in
+  // the last week of a block.
+  function startCardShown() { return ONBOARDING && (!started() || !!state.testWeek || state.cursor.week >= P0.weeks); }
+
+  // For anyone who would rather give a 1RM than run the test week. Two ways in: a 1RM
+  // already known, or a heavy set (10 reps or fewer) to estimate it from. Either way
+  // the training max is 90% of the 1RM, the book's rule, and it is shown before it is used.
+  function rmMode() { return state.ui.rmMode === 'set' ? 'set' : 'known'; }
+  var RM_LADDER = [0.95, 0.9, 0.85, 0.8, 0.75, 0.7];
+  function rmCompute(kg, reps) {
+    if (!(kg > 0)) { return { ok: false, msg: 'Enter the weight' }; }
+    if (!(reps >= 1) || reps !== Math.round(reps)) { return { ok: false, msg: 'Enter the reps as a whole number (1 if it was your 1RM)' }; }
+    if (reps > 10) { return { ok: false, msg: 'Over 10 reps is too loose to set a max from. Use a heavier set.' }; }
+    var e = resultE1RM(kg, reps);
+    return { ok: true, e1rm: Math.round(e * 10) / 10, tm: tmFromResult({ kg: kg, reps: reps }) };
+  }
+  function rmOutHtml(kg, reps) {
+    var r = rmCompute(kg, reps);
+    if (!r.ok) { return esc(r.msg); }
+    return '1RM <b>' + fmt(r.e1rm) + ' ' + U() + '</b> · training max <b>' + fmt(r.tm) + ' ' + U() + '</b>' +
+      '<div class="rm-ladder">' + RM_LADDER.map(function (p) {
+        return '<span>' + Math.round(p * 100) + '% ' + fmt(E.mround(r.e1rm * p, state.settings.rounding)) + '</span>';
+      }).join('') + '</div>';
+  }
+  function rmCalculatorCard() {
+    var mode = rmMode(), start = startCardShown();
+    var rows = E.progressingLifts(nextProgramme()).map(function (name) {
+      var lift = E.tracked(name, state.lifts);
+      return '<tr class="rm-row" data-lift="' + esc(name) + '"><td>' + esc(name) + '<div class="hint sm">TM now ' + (lift ? fmt(lift.tm) : '–') + '</div></td>' +
+        '<td><div class="nc-res"><input type="number" inputmode="decimal" step="0.5" min="0" class="rm-kg" placeholder="' + (mode === 'known' ? '1RM ' : '') + U() + '">' +
+        (mode === 'set' ? '<span>×</span><input type="number" inputmode="numeric" step="1" min="1" class="rm-reps" placeholder="reps">' : '') + '</div>' +
+        '<div class="hint sm rm-out"></div></td>' +
+        '<td><button type="button" class="small" data-action="rm-use" data-lift="' + esc(name) + '">' + (start ? 'Use as start' : 'Set TM') + '</button></td></tr>';
+    }).join('');
+    return '<section class="card rm-card"><h2>1RM calculator</h2>' +
+      '<p class="hint">No test week? Give a 1RM and the training max is 90% of it, the book\'s rule. ' +
+      (start ? 'Use it and it goes into the start card as that lift\'s result.'
+        : 'Your block is running, so this changes the training max now: the waves and the supports follow it from the next session.') + '</p>' +
+      '<div class="row rm-mode"><button type="button" class="small" data-action="rm-mode" data-mode="known" aria-pressed="' + (mode === 'known') + '">I know my 1RM</button>' +
+      '<button type="button" class="small" data-action="rm-mode" data-mode="set" aria-pressed="' + (mode === 'set') + '">Estimate from a set</button></div>' +
+      '<div class="scroll"><table class="table nc-table"><thead><tr><th>Lift</th><th>' + (mode === 'known' ? '1RM (' + U() + ')' : 'Heavy set (' + U() + ' × reps)') + '</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      (mode === 'set' ? '<p class="hint sm">Ten reps or fewer: the estimate gets looser as the reps climb, so a heavy triple or five is better than a set of ten.</p>' : '') +
+      '</section>';
+  }
+  // Patched in place, not re-rendered, so the box keeps focus.
+  function rmInput(el) {
+    var row = el.closest('.rm-row');
+    var kg = num(row.querySelector('.rm-kg').value);
+    var repsEl = row.querySelector('.rm-reps');
+    var reps = repsEl ? num(repsEl.value) : 1;
+    var out = row.querySelector('.rm-out');
+    out.innerHTML = kg === null && (!repsEl || reps === null) ? '' : rmOutHtml(kg, reps);
+  }
+
   /* ---------------- test week ---------------- */
 
   // The main lifts of the next cycle, grouped by the day they are trained:
@@ -2983,7 +3042,7 @@ details.info .row{margin-top:10px}
       'Supports are fixed weights that go up when every set reaches the top of its range.' +
       (fresh ? '' : ' Weights carry over from what you are lifting now, and so do exercises you swapped in "from now on".') + '</p>' +
       from +
-      '<p class="hint">Starting training max is 90% of a recent 1RM — the book\'s rule. Give each lift a result: run the <b>test week</b>, <b>upload</b> an exported log, or type a heavy set you did recently (10 reps or fewer). ' +
+      '<p class="hint">Starting training max is 90% of a recent 1RM — the book\'s rule. Give each lift a result: run the <b>test week</b>, <b>upload</b> an exported log, type a heavy set you did recently (10 reps or fewer), or give a 1RM in the <b>1RM calculator</b> in Setup. ' +
       (fresh ? 'Without one it starts from the maxes shown.' : 'Without one, it suggests the lower of your current TM and 90% of your best set from the last six logged weeks.') +
       ' You can still change any number before you start.</p>' +
       (tw ? '<p class="hint"><b>Test week in progress</b> — day ' + (Math.min(tw.day || 0, testDays().length - 1) + 1) + ' of ' + testDays().length + '.</p>' : '') +
@@ -3000,6 +3059,7 @@ details.info .row{margin-top:10px}
         ? '<button type="button" data-action="tw-back">Back to the test week</button><button type="button" data-action="tw-cancel">Cancel test week</button>'
         : '<button type="button" data-action="test-week">Run a test week first</button>') +
       '<button type="button" data-action="upload-results">Upload results (CSV)</button>' +
+      (state.ui.tab !== 'setup' ? '<button type="button" data-action="tab" data-tab="setup">1RM calculator</button>' : '') +
       '<input type="file" id="results-file" accept=".csv,text/csv" hidden></div>' +
       '<div class="row"><button type="button" class="primary" data-action="' + (fresh ? 'begin-block' : 'start-cycle') + '">' + (fresh ? 'Start block' : 'Start cycle ' + nextN) + '</button></div></section>';
   }
@@ -3593,6 +3653,25 @@ details.info .row{margin-top:10px}
         state.measurements = state.measurements.filter(function (m) { return m.date !== btn.dataset.date; });
         save(); render();
       }
+    } else if (a === 'rm-mode') {
+      state.ui.rmMode = btn.dataset.mode; save(); render();
+    } else if (a === 'rm-use') {
+      var rrow = btn.closest('.rm-row'), rname = btn.dataset.lift;
+      var rkg = num(rrow.querySelector('.rm-kg').value);
+      var rrepsEl = rrow.querySelector('.rm-reps');
+      var rreps = rrepsEl ? num(rrepsEl.value) : 1;
+      var rr = rmCompute(rkg, rreps);
+      if (!rr.ok) { toast(rr.msg); return; }
+      if (startCardShown()) {
+        state.cycleResults = state.cycleResults || {};
+        state.cycleResults[rname] = { kg: rkg, reps: rreps, source: rrepsEl ? 'calculator' : 'your 1RM' };
+        save(); render(); toast(rname + ': start at ' + fmt(rr.tm) + ' ' + U() + ' (in the start card)');
+      } else {
+        var rl = state.lifts.filter(function (l) { return nameKey(l.name) === nameKey(rname); })[0];
+        if (!rl) { return; }
+        if (!window.confirm('Set the ' + rname + ' training max to ' + fmt(rr.tm) + ' ' + U() + ' (it is ' + fmt(rl.tm) + ' now)? The waves and supports follow it from your next session.')) { return; }
+        rl.tm = rr.tm; save(); render(); toast(rname + ' training max → ' + fmt(rr.tm) + ' ' + U());
+      }
     } else if (a === 'save-plan') {
       var days = [];
       document.querySelectorAll('.plan-day').forEach(function (el) { if (el.checked) { days.push(Number(el.value)); } });
@@ -3638,6 +3717,7 @@ details.info .row{margin-top:10px}
     if (e.target.classList && e.target.classList.contains('tr-reps')) { trackerInput(e.target); }
     else if (e.target.classList && (e.target.classList.contains('nc-kg') || e.target.classList.contains('nc-reps'))) { ncResultInput(e.target); }
     else if (e.target.classList && (e.target.classList.contains('tw-kg') || e.target.classList.contains('tw-reps'))) { twInput(e.target.closest('.testlift')); }
+    else if (e.target.classList && (e.target.classList.contains('rm-kg') || e.target.classList.contains('rm-reps'))) { rmInput(e.target); }
     else if (e.target.classList && e.target.classList.contains('lib-inc')) { libIncInput(e.target); }
     else if (e.target.closest && e.target.closest('.editor')) {
       // A weight you typed for a set is yours: carrying the previous set's weight
