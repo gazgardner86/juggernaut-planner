@@ -3,7 +3,7 @@
  * deploy is picked up when there is signal; the cache answers when there
  * isn't (gym basements, no reception).
  */
-var CACHE = 'juggernaut-202610311702';
+var CACHE = 'juggernaut-202610311733';
 var ASSETS = ['./', './index.html', './trainer.html', './trainer3.html', './trainer-w.html', './juggernaut.html', './manifest.webmanifest', './manifest-trainer.webmanifest', './manifest-trainer3.webmanifest', './manifest-trainer-w.webmanifest'];
 
 self.addEventListener('install', function (e) {

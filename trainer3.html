@@ -1220,17 +1220,41 @@ details.info .row{margin-top:10px}
     var l = state.settings.plates;
     return Array.isArray(l) && l.length ? l : (state.settings.unit === 'lb' ? [45, 35, 25, 10, 5, 2.5] : [25, 20, 15, 10, 5, 2.5, 1.25]);
   }
-  // The straight barbell only: a Smith machine, EZ bar or trap bar weighs something else.
-  function takesPlates(name) {
+  // What a movement's plates go on, or null where the calculator would only be guessing.
+  // A straight barbell, an EZ bar and a trap bar each have a weight, set in Setup; a dip or
+  // chin-up belt takes plates (one stack, not a pair) on top of bodyweight. A Smith machine,
+  // a T-bar machine and a sled have an empty weight that varies from machine to machine, so
+  // they show nothing rather than a wrong number.
+  function ezKg() { var b = state.settings.ezBarWeight; return b > 0 ? b : (state.settings.unit === 'lb' ? 20 : 10); }
+  function trapKg() { var b = state.settings.trapBarWeight; return b > 0 ? b : (state.settings.unit === 'lb' ? 55 : 25); }
+  function plateKind(name, loadKind) {
     var m = movementInfo(name);
-    return PLATES && !!m && m.equip === 'barbell' && /^barbell/i.test(m.kit || '');
+    if (!PLATES || !m) { return null; }
+    if (m.equip === 'belt') { return loadKind === 'bodyweight' ? 'belt' : null; }
+    if (m.equip !== 'barbell') { return null; }
+    if (/^barbell/i.test(m.kit || '')) { return 'bar'; }
+    if (/^ez bar/i.test(m.kit || '')) { return 'ez'; }
+    if (/^trap bar/i.test(m.kit || '')) { return 'trap'; }
+    return null;
   }
-  function platesText(total) {
-    var r = E.platesPerSide(total, barKg(), plateList());
+  var BAR_NAMES = { bar: 'bar', ez: 'EZ bar', trap: 'trap bar' };
+  function barFor(kind) { return kind === 'ez' ? ezKg() : kind === 'trap' ? trapKg() : barKg(); }
+  function platesText(total, kind) {
+    var u = ' ' + U();
+    if (kind === 'belt') {
+      // The box holds bodyweight plus what hangs from the belt.
+      var added = Math.round((total - (state.settings.bodyweight || 0)) * 100) / 100;
+      if (added <= 0) { return 'No added weight (bodyweight ' + fmt(state.settings.bodyweight) + u + ')'; }
+      var b = E.platesPerSide(added * 2, 0, plateList());
+      if (!b || !b.plates.length) { return 'Too light for the plates: ' + fmt(added) + u + ' added'; }
+      return 'On the belt: ' + b.plates.map(fmt).join(' + ') + (b.off ? ' · loads ' + fmt(b.off / 2) + u + ' light' : '');
+    }
+    var bar = barFor(kind);
+    var r = E.platesPerSide(total, bar, plateList());
     if (!r) { return ''; }
-    if (r.under) { return 'Less than the ' + fmt(barKg()) + ' ' + U() + ' bar'; }
-    var light = r.off ? ' · loads ' + fmt(r.off) + ' ' + U() + ' light' : '';
-    return (r.plates.length ? 'Per side: ' + r.plates.map(fmt).join(' + ') : 'Bar only') + light;
+    if (r.under) { return 'Less than the ' + fmt(bar) + u + ' ' + BAR_NAMES[kind]; }
+    var light = r.off ? ' · loads ' + fmt(r.off) + u + ' light' : '';
+    return (r.plates.length ? 'Per side: ' + r.plates.map(fmt).join(' + ') : (kind === 'bar' ? 'Bar only' : BAR_NAMES[kind].replace(/^./, function (c) { return c.toUpperCase(); }) + ' only')) + light;
   }
 
   function equipIncrementFor(movementName) {
@@ -1559,7 +1583,7 @@ details.info .row{margin-top:10px}
         (isMain ? ' · ' + Math.round(s.pct * 1000) / 10 + '% TM' : '');
       cells += '<button type="button" class="setcell' + (s.amrap ? ' amrap' : '') + '" data-action="cell" data-i="' + i + '" aria-label="Set ' + s.n + '">' +
         '<span class="c-kg"></span><span class="c-reps"></span></button>';
-      editors += '<div class="editor" data-i="' + i + '"' + (takesPlates(p.movement) ? ' data-plates="1"' : '') + ' data-treps="' + s.reps + '" data-ttop="' + (s.top || '') + '" data-trir="' + tRir + '" data-amrap="' + (s.amrap ? 1 : 0) + '" hidden>' +
+      editors += '<div class="editor" data-i="' + i + '"' + (plateKind(p.movement, p.slot.load.kind) ? ' data-plates="' + plateKind(p.movement, p.slot.load.kind) + '"' : '') + ' data-treps="' + s.reps + '" data-ttop="' + (s.top || '') + '" data-trir="' + tRir + '" data-amrap="' + (s.amrap ? 1 : 0) + '" hidden>' +
         '<div class="ed-head"><span class="ed-title">Set ' + s.n + '</span><span class="ed-target">' + esc(target) + '</span></div>' +
         '<div class="ed-fields">' +
         field('Reps', '<input type="number" inputmode="numeric" step="1" min="0" class="in-reps" data-i="' + i + '" value="' + repVal + '" placeholder="' + repsTxt + '">', 1) +
@@ -1567,7 +1591,7 @@ details.info .row{margin-top:10px}
           ? field('RIR', '<input type="number" inputmode="numeric" step="1" min="0" class="in-rir" data-i="' + i + '" value="' + rirVal + '" placeholder="' + tRir + '">', 1)
           : '<input type="hidden" class="in-rir" data-i="' + i + '" value="' + rirVal + '">') +
         field(U(), '<input type="number" inputmode="decimal" step="0.5" min="0" class="in-kg" data-i="' + i + '" value="' + kgVal + '">', kgStep, askRir) +
-        '</div><div class="ed-hint"></div>' + (takesPlates(p.movement) ? '<div class="ed-plates hint sm"></div>' : '') +
+        '</div><div class="ed-hint"></div>' + (plateKind(p.movement, p.slot.load.kind) ? '<div class="ed-plates hint sm"></div>' : '') +
         '<div class="ed-actions"><button type="button" data-action="clear-set">Clear</button><button type="button" class="primary" data-action="log-set">Log set</button></div>' +
         '</div>';
     });
@@ -1633,7 +1657,7 @@ details.info .row{margin-top:10px}
     if (rir !== null && tRir !== null && rir < tRir) { hints.push('harder than planned'); }
     ed.querySelector('.ed-hint').textContent = hints.join(' · ');
     var pl = ed.querySelector('.ed-plates');
-    if (pl) { pl.textContent = kg === null ? '' : platesText(kg); }
+    if (pl) { pl.textContent = kg === null ? 'Set a weight to see the plates.' : platesText(kg, ed.dataset.plates); }
   }
 
   // Every logged set re-checks progression, so the weight goes up for next
@@ -2075,7 +2099,10 @@ details.info .row{margin-top:10px}
         ? '<h2>Bar and plates</h2>' +
           '<p class="hint">Used for the plates shown under the weight on barbell lifts. Set them to what your gym has: the bar, then the plates you can load, heaviest first.</p>' +
           '<div class="row wrap"><label>Bar (' + U() + ') <input type="number" step="0.5" min="0" id="in-bar" value="' + barKg() + '"></label>' +
-          '<label>Plates, each side <input type="text" id="in-plates" value="' + plateList().join(', ') + '" placeholder="25, 20, 15, 10, 5, 2.5, 1.25"></label></div>'
+          '<label>Plates, each side <input type="text" id="in-plates" value="' + plateList().join(', ') + '" placeholder="25, 20, 15, 10, 5, 2.5, 1.25"></label></div>' +
+          '<div class="row wrap"><label>EZ bar (' + U() + ') <input type="number" step="0.5" min="0" id="in-ez" value="' + ezKg() + '"></label>' +
+          '<label>Trap bar (' + U() + ') <input type="number" step="0.5" min="0" id="in-trap" value="' + trapKg() + '"></label></div>' +
+          '<p class="hint sm">The EZ and trap bar weights are guesses: weigh yours, or read it off the bar. A weighted chin-up or dip shows the plates to hang on the belt, from your bodyweight below. A Smith machine, T-bar machine or sled shows nothing, because their empty weight varies.</p>'
         : '') +
       '<h2>Nutrition</h2><div class="row wrap">' +
       '<label>Maintenance (kcal) <input type="number" step="10" id="in-maint" value="' + s.maintenance + '"></label>' +
@@ -3744,6 +3771,8 @@ details.info .row{margin-top:10px}
       var su = num(fieldValue('in-surplus')); if (su !== null) { state.settings.surplus = su; }
       var bar = num(fieldValue('in-bar')); if (bar !== null && bar >= 0) { state.settings.barWeight = bar; }
       if (plateNums) { state.settings.plates = plateNums; }
+      var ez = num(fieldValue('in-ez')); if (ez !== null && ez >= 0) { state.settings.ezBarWeight = ez; }
+      var trap = num(fieldValue('in-trap')); if (trap !== null && trap >= 0) { state.settings.trapBarWeight = trap; }
       save(); render(); toast('Saved');
     } else if (a === 'apply-tm') {
       var lname = btn.dataset.lift, tm = Number(btn.dataset.tm);
