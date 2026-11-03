@@ -193,6 +193,18 @@ body.editing .actionbar{display:none}
 .ms-table th,.ms-table td{padding-left:6px;padding-right:6px;white-space:nowrap}
 .ms-table .ms-change td{font-weight:600}
 .nc-table th,.nc-table td{padding-left:4px;padding-right:4px}
+.ed-plates{font-weight:700;font-size:14px}
+.plate{display:inline-block;min-width:2.2em;padding:0 7px;border-radius:6px;font-weight:700;text-align:center;line-height:1.5;background:var(--surface-2,#e5e7ea);color:inherit;border:1px solid rgba(0,0,0,.28)}
+.plate.pc-red{background:#d52b2b;color:#fff;border-color:#a31d1d}
+.plate.pc-blue{background:#1f5fbf;color:#fff;border-color:#164a96}
+.plate.pc-yellow{background:#f0c20a;color:#1a1a1a;border-color:#b8940a}
+.plate.pc-green{background:#1f9a4a;color:#fff;border-color:#167838}
+.plate.pc-white{background:#f4f4f4;color:#1a1a1a;border-color:#9aa0a6}
+.plate.pc-chrome{background:linear-gradient(#d9dce0,#a9aeb5);color:#1a1a1a;border-color:#7d838b}
+.rm-mode button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.rm-manual{margin-top:12px}.rm-manual summary{cursor:pointer;color:var(--accent);font-size:14px}
+.rm-ladder{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:4px}
+.rm-card .rm-row .rm-kg{width:6em}.rm-card .rm-row .rm-reps{width:4em}
 .nc-res{display:flex;align-items:center;gap:4px}
 .nc-res input{min-width:0;padding-left:6px;padding-right:6px}
 .nc-res .nc-kg{width:5em}.nc-res .nc-reps{width:3.2em}
@@ -1141,6 +1153,8 @@ details.info .row{margin-top:10px}
   var swapOpen = null;
   // Slot id whose Skip panel is open on Today. View state, like swapOpen.
   var skipOpen = null;
+  // Slot id just moved on Today, so its More panel stays open for another tap.
+  var moveOpen = null;
   // Why an exercise was skipped. Kept short so it is one tap mid-session;
   // the reasons are what the Progress tally groups by.
   var SKIP_REASONS = ['Out of time', 'Too tired', 'Pain or niggle', 'Kit busy', 'Other'];
@@ -1362,17 +1376,58 @@ details.info .row{margin-top:10px}
     var l = state.settings.plates;
     return Array.isArray(l) && l.length ? l : (state.settings.unit === 'lb' ? [45, 35, 25, 10, 5, 2.5] : [25, 20, 15, 10, 5, 2.5, 1.25]);
   }
-  // The straight barbell only: a Smith machine, EZ bar or trap bar weighs something else.
-  function takesPlates(name) {
+  // What a movement's plates go on, or null where the calculator would only be guessing.
+  // A straight barbell, an EZ bar and a trap bar each have a weight, set in Setup; a dip or
+  // chin-up belt takes plates (one stack, not a pair) on top of bodyweight. A Smith machine,
+  // a T-bar machine and a sled have an empty weight that varies from machine to machine, so
+  // they show nothing rather than a wrong number.
+  function ezKg() { var b = state.settings.ezBarWeight; return b > 0 ? b : (state.settings.unit === 'lb' ? 20 : 9); }
+  function trapKg() { var b = state.settings.trapBarWeight; return b > 0 ? b : (state.settings.unit === 'lb' ? 55 : 25); }
+  function plateKind(name, loadKind) {
     var m = movementInfo(name);
-    return PLATES && !!m && m.equip === 'barbell' && /^barbell/i.test(m.kit || '');
+    if (!PLATES || !m) { return null; }
+    if (m.equip === 'belt') { return loadKind === 'bodyweight' ? 'belt' : null; }
+    if (m.equip !== 'barbell') { return null; }
+    if (/^barbell/i.test(m.kit || '')) { return 'bar'; }
+    if (/^ez bar/i.test(m.kit || '')) { return 'ez'; }
+    if (/^trap bar/i.test(m.kit || '')) { return 'trap'; }
+    return null;
   }
-  function platesText(total) {
-    var r = E.platesPerSide(total, barKg(), plateList());
-    if (!r) { return ''; }
-    if (r.under) { return 'Less than the ' + fmt(barKg()) + ' ' + U() + ' bar'; }
-    var light = r.off ? ' · loads ' + fmt(r.off) + ' ' + U() + ' light' : '';
-    return (r.plates.length ? 'Per side: ' + r.plates.map(fmt).join(' + ') : 'Bar only') + light;
+  var BAR_NAMES = { bar: 'bar', ez: 'EZ bar', trap: 'trap bar' };
+  function barFor(kind) { return kind === 'ez' ? ezKg() : kind === 'trap' ? trapKg() : barKg(); }
+  // The standard (IWF / IPF) plate colours, by kilogram weight. Pound plates have no one
+  // standard, and a plate size you typed that is not on this list has no colour: both are
+  // left plain.
+  var PLATE_COLOURS = { 25: 'red', 20: 'blue', 15: 'yellow', 10: 'green', 5: 'white', 2.5: 'red', 2: 'blue', 1.5: 'yellow', 1.25: 'chrome', 1: 'green', 0.5: 'white' };
+  function plateChip(w) {
+    var c = state.settings.unit === 'lb' ? null : PLATE_COLOURS[w];
+    return '<span class="plate' + (c ? ' pc-' + c : '') + '">' + esc(fmt(w)) + '</span>';
+  }
+  function plateChips(list) { return list.map(plateChip).join(' + '); }
+
+  // The line under the weight, as text and as HTML (the HTML has each plate as a coloured
+  // chip; its text is exactly the plain text, which tests and the hosted overlay rely on).
+  function platesLine(total, kind) {
+    var u = ' ' + U(), t, h;
+    if (kind === 'belt') {
+      // The box holds bodyweight plus what hangs from the belt.
+      var added = Math.round((total - (state.settings.bodyweight || 0)) * 100) / 100;
+      if (added <= 0) { t = 'No added weight (bodyweight ' + fmt(state.settings.bodyweight) + u + ')'; return { text: t, html: esc(t) }; }
+      var b = E.platesPerSide(added * 2, 0, plateList());
+      if (!b || !b.plates.length) { t = 'Too light for the plates: ' + fmt(added) + u + ' added'; return { text: t, html: esc(t) }; }
+      var bl = b.off ? ' · loads ' + fmt(b.off / 2) + u + ' light' : '';
+      return { text: 'On the belt: ' + b.plates.map(fmt).join(' + ') + bl, html: 'On the belt: ' + plateChips(b.plates) + esc(bl) };
+    }
+    var bar = barFor(kind);
+    var r = E.platesPerSide(total, bar, plateList());
+    if (!r) { return { text: '', html: '' }; }
+    if (r.under) { t = 'Less than the ' + fmt(bar) + u + ' ' + BAR_NAMES[kind]; return { text: t, html: esc(t) }; }
+    var light = r.off ? ' · loads ' + fmt(r.off) + u + ' light' : '';
+    if (!r.plates.length) {
+      t = (kind === 'bar' ? 'Bar only' : BAR_NAMES[kind].replace(/^./, function (c) { return c.toUpperCase(); }) + ' only') + light;
+      return { text: t, html: esc(t) };
+    }
+    return { text: 'Per side: ' + r.plates.map(fmt).join(' + ') + light, html: 'Per side: ' + plateChips(r.plates) + esc(light) };
   }
 
   function equipIncrementFor(movementName) {
@@ -1412,6 +1467,33 @@ details.info .row{margin-top:10px}
 
   function started() { return !ONBOARDING || state.started !== false; }
   function isWaveSlot(sl) { return !!(sl && sl.load && sl.load.kind === 'wave'); }
+
+  // Changing the order of a day's exercises. The order is the order of the day's base
+  // slots, and every log, override and bump is keyed by slot id, so moving a slot
+  // loses nothing. Main lifts stay pinned where they are: only a non-main slot
+  // moves, and only past another non-main slot. Returns whether anything moved.
+  function moveSlot(dayIndex, id, dir) {
+    var day = state.programme.days[dayIndex];
+    var at = -1;
+    day.slots.forEach(function (sl, i) { if (sl.id === id) { at = i; } });
+    var to = at + dir;
+    if (at < 0 || isWaveSlot(day.slots[at]) || to < 0 || to >= day.slots.length || isWaveSlot(day.slots[to])) { return false; }
+    var tmp = day.slots[at]; day.slots[at] = day.slots[to]; day.slots[to] = tmp;
+    // Remembered so a following block keeps the order the user chose.
+    day.userOrder = true;
+    return true;
+  }
+  // Whether a slot can move up (-1) or down (1) without passing a main lift or the end.
+  function canMoveSlot(dayIndex, id, dir) {
+    var slots = state.programme.days[dayIndex].slots;
+    for (var i = 0; i < slots.length; i++) {
+      if (slots[i].id === id) {
+        var to = i + dir;
+        return !isWaveSlot(slots[i]) && to >= 0 && to < slots.length && !isWaveSlot(slots[to]);
+      }
+    }
+    return false;
+  }
   // The main-lift slots of a session — Day 1 has two from cycle 2 on.
   function mainSlots(week, day) { return E.slotsFor(programme(), week, day).filter(isWaveSlot); }
 
@@ -1701,7 +1783,7 @@ details.info .row{margin-top:10px}
         (isMain ? ' · ' + Math.round(s.pct * 1000) / 10 + '% TM' : '');
       cells += '<button type="button" class="setcell' + (s.amrap ? ' amrap' : '') + '" data-action="cell" data-i="' + i + '" aria-label="Set ' + s.n + '">' +
         '<span class="c-kg"></span><span class="c-reps"></span></button>';
-      editors += '<div class="editor" data-i="' + i + '"' + (takesPlates(p.movement) ? ' data-plates="1"' : '') + ' data-treps="' + s.reps + '" data-ttop="' + (s.top || '') + '" data-trir="' + tRir + '" data-amrap="' + (s.amrap ? 1 : 0) + '" hidden>' +
+      editors += '<div class="editor" data-i="' + i + '"' + (plateKind(p.movement, p.slot.load.kind) ? ' data-plates="' + plateKind(p.movement, p.slot.load.kind) + '"' : '') + ' data-treps="' + s.reps + '" data-ttop="' + (s.top || '') + '" data-trir="' + tRir + '" data-amrap="' + (s.amrap ? 1 : 0) + '" hidden>' +
         '<div class="ed-head"><span class="ed-title">Set ' + s.n + '</span><span class="ed-target">' + esc(target) + '</span></div>' +
         '<div class="ed-fields">' +
         field('Reps', '<input type="number" inputmode="numeric" step="1" min="0" class="in-reps" data-i="' + i + '" value="' + repVal + '" placeholder="' + repsTxt + '">', 1) +
@@ -1709,7 +1791,7 @@ details.info .row{margin-top:10px}
           ? field('RIR', '<input type="number" inputmode="numeric" step="1" min="0" class="in-rir" data-i="' + i + '" value="' + rirVal + '" placeholder="' + tRir + '">', 1)
           : '<input type="hidden" class="in-rir" data-i="' + i + '" value="' + rirVal + '">') +
         field(U(), '<input type="number" inputmode="decimal" step="0.5" min="0" class="in-kg" data-i="' + i + '" value="' + kgVal + '">', kgStep, askRir) +
-        '</div><div class="ed-hint"></div>' + (takesPlates(p.movement) ? '<div class="ed-plates hint sm"></div>' : '') +
+        '</div><div class="ed-hint"></div>' + (plateKind(p.movement, p.slot.load.kind) ? '<div class="ed-plates hint sm"></div>' : '') +
         '<div class="ed-actions"><button type="button" data-action="clear-set">Clear</button><button type="button" class="primary" data-action="log-set">Log set</button></div>' +
         '</div>';
     });
@@ -1734,13 +1816,15 @@ details.info .row{margin-top:10px}
     var swapping = swapOpen === p.id && !isMain;
     var skipping = skipOpen === p.id && !isMain;
     var infoHtml = ((info && info.kit) || p.note || !isMain)
-      ? '<details class="info"' + (swapping || skipping ? ' open' : '') + '><summary>More</summary>' +
+      ? '<details class="info"' + (swapping || skipping || moveOpen === p.id ? ' open' : '') + '><summary>More</summary>' +
         (info && info.kit ? '<div>' + esc(info.kit) + (info.note ? ' — ' + esc(info.note) : '') + '</div>' : '') +
         (p.note ? '<div>' + esc(p.note) + '</div>' : '') +
         // The main lift has neither: its wave and AMRAP belong to the lift, and
         // skipping it is a decision about the session, not one exercise.
         (!isMain ? '<div class="row"><button type="button" class="small swap-btn" data-action="swap-open" data-slot="' + esc(p.id) + '">Swap exercise</button>' +
-          '<button type="button" class="small skip-btn" data-action="skip-open" data-slot="' + esc(p.id) + '">Skip exercise</button></div>' : '') +
+          '<button type="button" class="small skip-btn" data-action="skip-open" data-slot="' + esc(p.id) + '">Skip exercise</button></div>' +
+          '<div class="row"><button type="button" class="small move-btn" data-action="move-slot" data-dir="-1" data-slot="' + esc(p.id) + '"' + (canMoveSlot(day, p.id, -1) ? '' : ' disabled') + '>▲ Move up</button>' +
+          '<button type="button" class="small move-btn" data-action="move-slot" data-dir="1" data-slot="' + esc(p.id) + '"' + (canMoveSlot(day, p.id, 1) ? '' : ' disabled') + '>▼ Move down</button></div>' : '') +
         '</details>' + (swapping ? swapPanel(p) : '') + (skipping ? skipPanel(p) : '')
       : '';
     var setNote = isMain && amrapSet ? 'Tap a set to log it. Last set: ' + amrapSet.reps + '+ · ' + (RESERVE_HINT[phase] || '') : '';
@@ -1775,7 +1859,7 @@ details.info .row{margin-top:10px}
     if (rir !== null && tRir !== null && rir < tRir) { hints.push('harder than planned'); }
     ed.querySelector('.ed-hint').textContent = hints.join(' · ');
     var pl = ed.querySelector('.ed-plates');
-    if (pl) { pl.textContent = kg === null ? '' : platesText(kg); }
+    if (pl) { pl.innerHTML = kg === null ? 'Set a weight to see the plates.' : platesLine(kg, ed.dataset.plates).html; }
   }
 
   // Every logged set re-checks progression, so the weight goes up for next
@@ -2085,7 +2169,9 @@ details.info .row{margin-top:10px}
       }
 
       return '<div class="card slotedit" data-slot="' + esc(s.id) + '">' +
-        '<div class="row spread"><b><span class="kindtag ' + s.kind + '">' + esc(s.tag || s.kind) + '</span></b></div>' +
+        '<div class="row spread"><b><span class="kindtag ' + s.kind + '">' + esc(s.tag || s.kind) + '</span></b>' +
+        (isMain ? '' : '<span class="row"><button type="button" class="small move-btn" data-action="block-move" data-dir="-1" data-slot="' + esc(s.id) + '" aria-label="Move up"' + (canMoveSlot(day, s.id, -1) ? '' : ' disabled') + '>▲</button>' +
+          '<button type="button" class="small move-btn" data-action="block-move" data-dir="1" data-slot="' + esc(s.id) + '" aria-label="Move down"' + (canMoveSlot(day, s.id, 1) ? '' : ' disabled') + '>▼</button></span>') + '</div>' +
         '<div class="row wrap">' + groupSel + movSel + '</div>' +
         '<div class="row wrap">' + loadCtl + '</div></div>';
     }).join('');
@@ -2183,8 +2269,8 @@ details.info .row{margin-top:10px}
       '</div></section>';
     // The start card (v3 only): until the block has started, during a test
     // week, and in the last week of a block.
-    var showStart = ONBOARDING && (!started() || !!state.testWeek || state.cursor.week >= P0.weeks);
-    return (showStart ? newCycleCard() : '') + (started() ? startCard : '') +
+    var showStart = startCardShown();
+    return (showStart ? newCycleCard() : '') + (started() ? startCard : '') + (ONBOARDING ? rmCalculatorCard() : '') +
       '<section class="card"><h2>Training maxes</h2>' +
       '<p class="hint">Every lift here can be used as a percentage-based load. Only lifts used as a <b>main</b> lift take an AMRAP and progress automatically — see Progress.</p>' +
       '<table class="table"><thead><tr><th>Lift</th><th>TM (' + U() + ')</th><th>Per-rep increment</th><th></th></tr></thead><tbody>' +
@@ -2217,7 +2303,10 @@ details.info .row{margin-top:10px}
         ? '<h2>Bar and plates</h2>' +
           '<p class="hint">Used for the plates shown under the weight on barbell lifts. Set them to what your gym has: the bar, then the plates you can load, heaviest first.</p>' +
           '<div class="row wrap"><label>Bar (' + U() + ') <input type="number" step="0.5" min="0" id="in-bar" value="' + barKg() + '"></label>' +
-          '<label>Plates, each side <input type="text" id="in-plates" value="' + plateList().join(', ') + '" placeholder="25, 20, 15, 10, 5, 2.5, 1.25"></label></div>'
+          '<label>Plates, each side <input type="text" id="in-plates" value="' + plateList().join(', ') + '" placeholder="25, 20, 15, 10, 5, 2.5, 1.25"></label></div>' +
+          '<div class="row wrap"><label>EZ bar (' + U() + ') <input type="number" step="0.5" min="0" id="in-ez" value="' + ezKg() + '"></label>' +
+          '<label>Trap bar (' + U() + ') <input type="number" step="0.5" min="0" id="in-trap" value="' + trapKg() + '"></label></div>' +
+          '<p class="hint sm">The EZ bar starts at 9 kg and the trap bar at 25 kg. The trap bar is a guess: weigh yours, or read it off the bar. A weighted chin-up or dip shows the plates to hang on the belt, from your bodyweight below. A Smith machine, T-bar machine or sled shows nothing, because their empty weight varies.</p>'
         : '') +
       '<h2>Nutrition</h2><div class="row wrap">' +
       '<label>Maintenance (kcal) <input type="number" step="10" id="in-maint" value="' + s.maintenance + '"></label>' +
@@ -2822,6 +2911,194 @@ details.info .row{margin-top:10px}
   function validResult(r) { return !!(r && r.kg > 0 && r.reps >= 1 && r.reps <= 10); }
   function tmFromResult(r) { return Math.round(resultE1RM(r.kg, r.reps) * 0.9 * 2) / 2; }
 
+  /* ---------------- 1RM calculator (v3) ---------------- */
+
+  // The start card is on screen: before the block starts, during a test week, and in
+  // the last week of a block.
+  function startCardShown() { return ONBOARDING && (!started() || !!state.testWeek || state.cursor.week >= P0.weeks); }
+
+  // For anyone who would rather give a 1RM than run the test week. Two ways in: a 1RM
+  // already known, or a heavy set (10 reps or fewer) to estimate it from. Either way
+  // the training max is 90% of the 1RM, the book's rule, and it is shown before it is used.
+  function rmMode() { return state.ui.rmMode === 'set' ? 'set' : 'known'; }
+  var RM_LADDER = [0.95, 0.9, 0.85, 0.8, 0.75, 0.7];
+  function rmCompute(kg, reps) {
+    if (!(kg > 0)) { return { ok: false, msg: 'Enter the weight' }; }
+    if (!(reps >= 1) || reps !== Math.round(reps)) { return { ok: false, msg: 'Enter the reps as a whole number (1 if it was your 1RM)' }; }
+    if (reps > 10) { return { ok: false, msg: 'Over 10 reps is too loose to set a max from. Use a heavier set.' }; }
+    var e = resultE1RM(kg, reps);
+    return { ok: true, e1rm: Math.round(e * 10) / 10, tm: tmFromResult({ kg: kg, reps: reps }) };
+  }
+  function rmOutHtml(kg, reps) {
+    var r = rmCompute(kg, reps);
+    if (!r.ok) { return esc(r.msg); }
+    return '1RM <b>' + fmt(r.e1rm) + ' ' + U() + '</b> · training max <b>' + fmt(r.tm) + ' ' + U() + '</b>' +
+      '<div class="rm-ladder">' + RM_LADDER.map(function (p) {
+        return '<span>' + Math.round(p * 100) + '% ' + fmt(E.mround(r.e1rm * p, state.settings.rounding)) + '</span>';
+      }).join('') + '</div>';
+  }
+  function rmManualHtml() {
+    var mode = rmMode(), start = startCardShown();
+    var rows = E.progressingLifts(nextProgramme()).map(function (name) {
+      var lift = E.tracked(name, state.lifts);
+      return '<tr class="rm-row" data-lift="' + esc(name) + '"><td>' + esc(name) + '<div class="hint sm">TM now ' + (lift ? fmt(lift.tm) : '–') + '</div></td>' +
+        '<td><div class="nc-res"><input type="number" inputmode="decimal" step="0.5" min="0" class="rm-kg" placeholder="' + (mode === 'known' ? '1RM ' : '') + U() + '">' +
+        (mode === 'set' ? '<span>×</span><input type="number" inputmode="numeric" step="1" min="1" class="rm-reps" placeholder="reps">' : '') + '</div>' +
+        '<div class="hint sm rm-out"></div></td>' +
+        '<td><button type="button" class="small" data-action="rm-use" data-lift="' + esc(name) + '">' + (start ? 'Use as start' : 'Set TM') + '</button></td></tr>';
+    }).join('');
+    return '' +
+      '<div class="row rm-mode"><button type="button" class="small" data-action="rm-mode" data-mode="known" aria-pressed="' + (mode === 'known') + '">I know my 1RM</button>' +
+      '<button type="button" class="small" data-action="rm-mode" data-mode="set" aria-pressed="' + (mode === 'set') + '">Estimate from a set</button></div>' +
+      '<div class="scroll"><table class="table nc-table"><thead><tr><th>Lift</th><th>' + (mode === 'known' ? '1RM (' + U() + ')' : 'Heavy set (' + U() + ' × reps)') + '</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      (mode === 'set' ? '<p class="hint sm">Ten reps or fewer: the estimate gets looser as the reps climb, so a heavy triple or five is better than a set of ten.</p>' : '') +
+      '';
+  }
+
+  // The most recent all-out effort at a lift, so nobody has to type one in: a test
+  // result, or the AMRAP set of a Realization week, whichever came last. Looks through
+  // the running cycle (or a v2 block that has been brought across but not started) and
+  // then each finished cycle, newest first.
+  function programmeOf(sp) {
+    return { id: P0.id, name: P0.name, weeks: P0.weeks, waveSlots: P0.waveSlots, days: sp.days, movements: movements(),
+      groups: P0.groups, weekOverrides: sp.weekOverrides, phaseRules: P0.phaseRules, rirByWave: P0.rirByWave };
+  }
+  function amrapEfforts(name, sp, logs, cycleNo) {
+    var out = [], pr = programmeOf(sp);
+    P0.waveSlots.forEach(function (w, slot) {
+     // Every week of a wave but its deload carries a flagged final set. The Realization
+     // one is the true all-out; Accumulation and Intensification stop 2-3 and 1-2 reps
+     // short, so they read a little low, and the card says so.
+     [1, 2, 3].forEach(function (inWave) {
+      var week = slot * 4 + inWave;
+      for (var d = 0; d < sp.days.length; d++) {
+        var log = (logs || {})[logKey(week, d)];
+        if (!log || !log.slots) { continue; }
+        var pres = E.prescribeDay(pr, week, d, ctx()).filter(function (p) { return isWaveSlot(p.slot) && nameKey(p.movement) === nameKey(name); })[0];
+        var entry = pres && log.slots[pres.id];
+        if (!entry || nameKey(entry.movement) !== nameKey(name)) { continue; }
+        var ai = -1;
+        pres.sets.forEach(function (st, i) { if (st.amrap) { ai = i; } });
+        var x = ai === -1 ? null : (entry.sets || [])[ai];
+        if (x && x.kg > 0 && x.reps >= 1) {
+          var phase = E.phaseFor(week);
+          // The session notes say RIR 2-3 in Accumulation and 1-2 in Intensification, and
+          // MAIN_RIR holds the lower number of each: what the set is taken to have left.
+          var rir = MAIN_RIR[phase] || 0;
+          out.push({ cycle: cycleNo, week: week, kg: x.kg, reps: x.reps, rir: rir, eff: x.reps + rir, label: 'AMRAP', phase: phase, short: phase !== 'Realization' });
+        }
+      }
+     });
+    });
+    return out;
+  }
+  // Where one effort sits in time, for comparing across cycles (a cycle is 16 weeks; 20 leaves a gap).
+  function effortAt(c) { return c.cycle * 20 + c.week; }
+  function lastMaxEffort(name) {
+    var cur = state.cycle || 1, found = [];
+    var typed = (state.cycleResults || {})[name];
+    if (typed && typed.kg > 0 && typed.reps >= 1) { found.push({ cycle: 1e9, week: 0, kg: typed.kg, reps: typed.reps, rir: 0, eff: typed.reps, label: typed.source, inStart: true }); }
+    found = found.concat(amrapEfforts(name, state.programme, state.logs, cur));
+    (state.archive || []).forEach(function (a) {
+      var ar = (a.results || {})[name];
+      if (ar && ar.kg > 0 && ar.reps >= 1) { found.push({ cycle: a.cycle, week: 17, kg: ar.kg, reps: ar.reps, rir: 0, eff: ar.reps, label: ar.source }); }
+      found = found.concat(amrapEfforts(name, a.programme, a.logs, a.cycle));
+    });
+    found.sort(function (x, y) { return effortAt(y) - effortAt(x); });
+    // A set counts when it is ten reps or fewer including the reserve it is taken to have
+    // had: past that the estimate is too loose to set a max from.
+    var valid = found.filter(function (c) { return c.eff <= 10; });
+    var pick = null, pool = [];
+    var typedValid = valid.filter(function (c) { return c.inStart; })[0];
+    if (typedValid) { pick = typedValid; pool = [typedValid]; }
+    else if (valid.length) {
+      // The best of the last six weeks, not just the newest: an Accumulation set is
+      // stopped further short than a Realization one, so the newest is often the lowest.
+      var newest = effortAt(valid[0]);
+      pool = valid.filter(function (c) { return effortAt(c) > newest - 6; });
+      pool.forEach(function (c) {
+        var better = !pick || resultE1RM(c.kg, c.eff) > resultE1RM(pick.kg, pick.eff);
+        if (better) { pick = c; }
+      });
+    }
+    // The newest set that was left out for being over ten reps, if it is newer than the one used.
+    var loose = found.filter(function (c) { return c.eff > 10 && (!pick || effortAt(c) > effortAt(pick)); })[0] || null;
+    if (pick) {
+      var seasons = (state.archive || []).length > 0 || cur > 1;
+      pick.where = pick.inStart ? pick.label + ', in the start card'
+        : pick.label + (pick.week && pick.week <= P0.weeks ? ', week ' + pick.week : ', end of cycle ' + pick.cycle) + (seasons && pick.week && pick.week <= P0.weeks ? ' of cycle ' + pick.cycle : '');
+      if (pick.short) {
+        pick.where = pick.phase + ' ' + pick.where;
+        pick.note = 'The session notes say ' + RESERVE_TAG[pick.phase] + ' for ' + pick.phase + ', so this counts the lower number: ' +
+          pick.rir + ' rep' + (pick.rir === 1 ? '' : 's') + ' in reserve (' + pick.reps + ' + ' + pick.rir + ').';
+      }
+      if (pool.length > 1) { pick.where += ' · best of your last six weeks'; }
+    }
+    // No test and no AMRAP to read (a lift that was only ever a support, say): the best
+    // heavy set in the last six weeks, the same one the start card's suggestion uses.
+    if (!pick) {
+      var pp = cycleProposals().filter(function (x) { return nameKey(x.name) === nameKey(name); })[0];
+      if (pp && pp.best) {
+        pick = { cycle: cur, week: pp.best.week, kg: pp.best.kg, reps: pp.best.reps, rir: 0, eff: pp.best.reps, label: 'best set', short: true,
+          where: 'best set in your last six weeks, week ' + pp.best.week,
+          note: 'Not an all-out set, so this reads low. A test week or an AMRAP gives a truer number.' };
+      }
+    }
+    return { effort: pick, loose: loose };
+  }
+  // What goes into the start card or the training max: the reps include the reserve.
+  function effortResult(e) { return { kg: e.kg, reps: e.eff }; }
+  function effortSource(e) { return (e.label === 'AMRAP' ? 'last AMRAP' : e.label) + (e.rir ? ' + ' + e.rir + ' RIR' : ''); }
+  function looseNote(c) {
+    return '<div class="hint sm">Your last ' + esc(c.label) + ' was ' + fmt(c.kg) + ' × ' + c.reps + (c.rir ? ' + ' + c.rir : '') + ' (week ' + c.week + '): over 10 reps is too loose to set a max from.</div>';
+  }
+
+  // Apply one lift's result: into the start card while one is showing, otherwise
+  // straight onto the training max. Returns the training max it gives.
+  function rmApply(name, kg, reps, source) {
+    var tm = tmFromResult({ kg: kg, reps: reps });
+    if (startCardShown()) {
+      state.cycleResults = state.cycleResults || {};
+      state.cycleResults[name] = { kg: kg, reps: reps, source: source };
+    } else {
+      state.lifts.forEach(function (l) { if (nameKey(l.name) === nameKey(name)) { l.tm = tm; } });
+    }
+    return tm;
+  }
+
+  function rmCalculatorCard() {
+    var start = startCardShown();
+    var rows = E.progressingLifts(nextProgramme()).map(function (name) {
+      var lift = E.tracked(name, state.lifts), f = lastMaxEffort(name), e = f.effort;
+      return '<tr class="rm-auto" data-lift="' + esc(name) + '"><td>' + esc(name) + '<div class="hint sm">TM now ' + (lift ? fmt(lift.tm) : '–') + '</div></td><td>' +
+        (e ? '<div><b>' + fmt(e.kg) + ' × ' + e.reps + '</b>' + (e.rir ? ' + ' + e.rir + ' in reserve' : '') + ' <span class="hint sm">' + esc(e.where) + '</span></div><div class="hint sm rm-auto-out">' + rmOutHtml(e.kg, e.eff) + '</div>' +
+             (e.note ? '<div class="hint sm">' + esc(e.note) + '</div>' : '')
+           : '<div class="hint">No test or AMRAP set logged yet</div>') +
+        (f.loose && (!e || e.label === 'best set' || effortAt(f.loose) > effortAt(e)) ? looseNote(f.loose) : '') + '</td>' +
+        '<td>' + (e && !e.inStart ? '<button type="button" class="small" data-action="rm-auto-use" data-lift="' + esc(name) + '">' + (start ? 'Use as start' : 'Set TM') + '</button>'
+                  : (e ? '<span class="hint sm">in the start card</span>' : '')) + '</td></tr>';
+    }).join('');
+    var anyUsable = E.progressingLifts(nextProgramme()).some(function (n) { var e = lastMaxEffort(n).effort; return e && !e.inStart; });
+    return '<section class="card rm-card"><h2>1RM calculator</h2>' +
+      '<p class="hint">Your training max is 90% of a recent 1RM, the book\'s rule. This reads your last test set or AMRAP, whichever came last, so there is nothing to type. ' +
+      (start ? 'Use it and it goes into the start card as that lift\'s result.'
+        : 'Your block is running, so using one changes that lift\'s training max now: the waves and the supports follow it from the next session.') + '</p>' +
+      '<div class="scroll"><table class="table nc-table"><thead><tr><th>Lift</th><th>Last test or AMRAP</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      (anyUsable ? '<div class="row"><button type="button" class="primary small" data-action="rm-auto-all">' + (start ? 'Use all as starting maxes' : 'Set all training maxes') + '</button></div>' : '') +
+      '<details class="rm-manual"' + (state.ui.rmManual ? ' open' : '') + '><summary data-action="rm-manual-toggle">No test or AMRAP yet? Enter a 1RM or a set by hand</summary>' +
+      rmManualHtml() + '</details></section>';
+  }
+
+  // Patched in place, not re-rendered, so the box keeps focus.
+  function rmInput(el) {
+    var row = el.closest('.rm-row');
+    var kg = num(row.querySelector('.rm-kg').value);
+    var repsEl = row.querySelector('.rm-reps');
+    var reps = repsEl ? num(repsEl.value) : 1;
+    var out = row.querySelector('.rm-out');
+    out.innerHTML = kg === null && (!repsEl || reps === null) ? '' : rmOutHtml(kg, reps);
+  }
+
   /* ---------------- test week ---------------- */
 
   // The main lifts of the next cycle, grouped by the day they are trained:
@@ -3000,7 +3277,11 @@ details.info .row{margin-top:10px}
         if (sl.kind === 'accessory' && oldPr.days[d] && oldPr.days[d].name === day.name) {
           var was = E.slotsFor(oldPr, P0.weeks, d).filter(function (x) { return x.id === sl.id; })[0];
           var oldBase = oldPr.days[d].slots.filter(function (x) { return x.id === sl.id; })[0];
-          if (was && oldBase && !isWaveSlot(was) && nameKey(was.movement) !== nameKey(oldBase.movement) && nameKey(sl.movement) === nameKey(oldBase.movement)) {
+          // Not if the swapped-in exercise is already elsewhere in the new template's day: a v2
+          // swap to the DB hammer curl, carried into v3, put two on Day 2 (v3 already has one) and
+          // lost the lateral raise it replaced. The new template's own choice for the slot stands.
+          var alreadyThere = !!was && day.slots.some(function (x) { return x !== sl && nameKey(x.movement) === nameKey(was.movement); });
+          if (was && oldBase && !alreadyThere && !isWaveSlot(was) && nameKey(was.movement) !== nameKey(oldBase.movement) && nameKey(sl.movement) === nameKey(oldBase.movement)) {
             sl.movement = was.movement;
             sl.load = JSON.parse(JSON.stringify(was.load));
           }
@@ -3014,6 +3295,23 @@ details.info .row{margin-top:10px}
         }
         day.slots[i] = sl;
       });
+    });
+    // A day the user reordered keeps that order in the new block (main lifts stay on top):
+    // slots the old day had come first in its order, any new ones follow in template order.
+    tpl.days.forEach(function (day, d) {
+      var was = oldPr.days[d];
+      if (!was || !was.userOrder || was.name !== day.name) { return; }
+      var rank = {};
+      was.slots.forEach(function (x, i) { rank[x.id] = i; });
+      var spots = [], movable = [];
+      day.slots.forEach(function (sl, i) { if (!isWaveSlot(sl)) { spots.push(i); movable.push(sl); } });
+      movable = movable.map(function (sl, i) { return { sl: sl, i: i }; });
+      movable.sort(function (a, b) {
+        var ra = rank[a.sl.id] === undefined ? Infinity : rank[a.sl.id], rb = rank[b.sl.id] === undefined ? Infinity : rank[b.sl.id];
+        return ra === rb ? a.i - b.i : ra < rb ? -1 : 1;
+      });
+      movable.forEach(function (m, k) { day.slots[spots[k]] = m.sl; });
+      day.userOrder = true;
     });
     state.archive = (state.archive || []).concat([{
       cycle: state.cycle || 1, endedAt: new Date().toISOString().slice(0, 10),
@@ -3129,7 +3427,7 @@ details.info .row{margin-top:10px}
       'Supports are fixed weights that go up when every set reaches the top of its range.' +
       (fresh ? '' : ' Weights carry over from what you are lifting now, and so do exercises you swapped in "from now on".') + '</p>' +
       from +
-      '<p class="hint">Starting training max is 90% of a recent 1RM — the book\'s rule. Give each lift a result: run the <b>test week</b>, <b>upload</b> an exported log, or type a heavy set you did recently (10 reps or fewer). ' +
+      '<p class="hint">Starting training max is 90% of a recent 1RM — the book\'s rule. Give each lift a result: run the <b>test week</b>, <b>upload</b> an exported log, type a heavy set you did recently (10 reps or fewer), or give a 1RM in the <b>1RM calculator</b> in Setup. ' +
       (fresh ? 'Without one it starts from the maxes shown.' : 'Without one, it suggests the lower of your current TM and 90% of your best set from the last six logged weeks.') +
       ' You can still change any number before you start.</p>' +
       (tw ? '<p class="hint"><b>Test week in progress</b> — day ' + (Math.min(tw.day || 0, testDays().length - 1) + 1) + ' of ' + testDays().length + '.</p>' : '') +
@@ -3146,6 +3444,7 @@ details.info .row{margin-top:10px}
         ? '<button type="button" data-action="tw-back">Back to the test week</button><button type="button" data-action="tw-cancel">Cancel test week</button>'
         : '<button type="button" data-action="test-week">Run a test week first</button>') +
       '<button type="button" data-action="upload-results">Upload results (CSV)</button>' +
+      (state.ui.tab !== 'setup' ? '<button type="button" data-action="tab" data-tab="setup">1RM calculator</button>' : '') +
       '<input type="file" id="results-file" accept=".csv,text/csv" hidden></div>' +
       '<div class="row"><button type="button" class="primary" data-action="' + (fresh ? 'begin-block' : 'start-cycle') + '">' + (fresh ? 'Start block' : 'Start cycle ' + nextN) + '</button></div></section>';
   }
@@ -3414,6 +3713,20 @@ details.info .row{margin-top:10px}
 
   function reset0(p) { return p.repsTop ? ', back to ' + p.sets[0].reps + ' reps' : ''; }
 
+  // The weight every prescribed set was done at: the lowest of them, and only when every set
+  // is logged with reps and a weight (and the exercise was not skipped). Mixed weights are
+  // normal when you go up part-way through; the weight all of them reached is the one to build on.
+  function achievedKg(p, entry) {
+    if (!entry || entry.skipped || !entry.sets || entry.sets.length < p.sets.length) { return null; }
+    var low = null;
+    for (var i = 0; i < p.sets.length; i++) {
+      var lg = entry.sets[i];
+      if (!lg || !lg.reps || lg.kg === null || lg.kg === undefined) { return null; }
+      if (low === null || lg.kg < low) { low = lg.kg; }
+    }
+    return low;
+  }
+
   function progressAccessories(week, day) {
     var log = state.logs[logKey(week, day)];
     if (!log) { return []; }
@@ -3439,15 +3752,8 @@ details.info .row{margin-top:10px}
       // writes it into the weeks to come, so the exercise is a plain fixed weight
       // from then on. It is reversible like any bump: undoBump puts the blank back.
       if (blankFixed && FIXED_WEIGHTS) {
-        var lifted = null, whole = !entry.skipped && entry.sets && entry.sets.length >= p.sets.length;
-        if (whole) {
-          p.sets.forEach(function (s, i) {
-            var lg = entry.sets[i];
-            if (!lg || !lg.reps || lg.kg === null || lg.kg === undefined) { whole = false; }
-            else if (lifted === null || lg.kg > lifted) { lifted = lg.kg; }
-          });
-        }
-        var gets = whole && lifted !== null ? (inc !== null && earnedBump(p, entry, week, day) ? Math.round((lifted + inc) * 100) / 100 : lifted) : null;
+        var lifted = achievedKg(p, entry), whole = lifted !== null;
+        var gets = whole ? (inc !== null && earnedBump(p, entry, week, day) ? Math.round((lifted + inc) * 100) / 100 : lifted) : null;
         var had = entry.bump && entry.bump.kind === 'weight' && entry.bump.from === null ? entry.bump.to : null;
         if (had !== null && had !== gets) { undoBump(week, day, p, entry); }
         if (gets !== null && had !== gets) {
@@ -3484,10 +3790,18 @@ details.info .row{margin-top:10px}
         entry.bump = { kind: 'pctTM', lift: p.slot.load.lift || p.movement, from: p.slot.load.pct, to: nextPct, inc: nextKg - cur };
         bumped.push(p.movement + ' → ' + fmt(nextKg) + U() + ' (' + fmt(nextPct * 100) + '% TM)' + reset);
       } else if (kind === 'weight' || kind === 'bodyweight') {
-        var base = loadValue(p.slot.load);
+        var plan = loadValue(p.slot.load), base = plan;
+        // If the day's weights are better than the plan's, the increase builds on them. It used
+        // to add the step to the plan weight, so doing 50 against a plan of 42.5 gave 45 next time.
+        var did = achievedKg(p, entry);
+        if (did !== null) {
+          // A belt's number is what hangs from it: the box holds bodyweight plus that.
+          var didVal = kind === 'weight' ? did : Math.round((did - (state.settings.bodyweight || 0)) * 100) / 100;
+          if (didVal > base) { base = didVal; }
+        }
         var next = Math.round((base + inc) * 100) / 100;
         writeForward(week, day, p, kind, next);
-        entry.bump = { kind: kind, from: base, to: next, inc: inc };
+        entry.bump = { kind: kind, from: plan, to: next, inc: inc };
         bumped.push(p.movement + ' → ' + fmt(next) + (kind === 'weight' ? U() : ' added') + reset);
       } else {
         entry.suggestBump = inc;
@@ -3566,7 +3880,7 @@ details.info .row{margin-top:10px}
     }
     if (a === 'tab') {
       if (state.ui.tab === 'today') { readSession(); }
-      swapOpen = null; skipOpen = null;
+      swapOpen = null; skipOpen = null; moveOpen = null;
       state.ui.tab = btn.dataset.tab; save(); render();
     } else if (a === 'swap-open') {
       readSession(); save();
@@ -3574,6 +3888,15 @@ details.info .row{margin-top:10px}
     } else if (a === 'skip-open') {
       readSession(); save();
       swapOpen = null; skipOpen = btn.dataset.slot; render();
+    } else if (a === 'move-slot') {
+      readSession();
+      swapOpen = null; skipOpen = null; moveOpen = btn.dataset.slot;
+      moveSlot(state.cursor.day, btn.dataset.slot, Number(btn.dataset.dir));
+      save(); render();
+    } else if (a === 'block-move') {
+      readSlotEdits();
+      moveSlot(state.ui.blockDay, btn.dataset.slot, Number(btn.dataset.dir));
+      save(); render();
     } else if (a === 'test-week') {
       state.testWeek = { day: 0 }; state.ui.tab = 'today'; save(); render();
     } else if (a === 'tw-next' || a === 'tw-prev') {
@@ -3630,19 +3953,19 @@ details.info .row{margin-top:10px}
     } else if (a === 'dismiss-migrate') {
       delete state.migrated; save(); render();
     } else if (a === 'save-session') {
-      readSession(); swapOpen = null; skipOpen = null;
+      readSession(); swapOpen = null; skipOpen = null; moveOpen = null;
       var bumped1 = progressAccessories(state.cursor.week, state.cursor.day);
       var noRir1 = missingRir(state.cursor.week, state.cursor.day);
       save(); render();
       toast(saveMessage(bumped1, noRir1, 'Session saved'), noRir1.length ? 5000 : 0);
     } else if (a === 'finish-session') {
-      readSession(); swapOpen = null; skipOpen = null;
+      readSession(); swapOpen = null; skipOpen = null; moveOpen = null;
       var bumped2 = progressAccessories(state.cursor.week, state.cursor.day);
       var noRir2 = missingRir(state.cursor.week, state.cursor.day);
       save(); advance(); save(); render();
       toast(saveMessage(bumped2, noRir2, 'Next session'), noRir2.length ? 5000 : 0);
     } else if (a === 'skip-back') {
-      readSession(); swapOpen = null; skipOpen = null; save(); retreat(); save(); render();
+      readSession(); swapOpen = null; skipOpen = null; moveOpen = null; save(); retreat(); save(); render();
     } else if (a === 'block-day') {
       readSlotEdits(); state.ui.blockDay = Number(btn.dataset.day); save(); render();
     } else if (a === 'save-slots') {
@@ -3671,6 +3994,9 @@ details.info .row{margin-top:10px}
       state.ui.tab = 'today'; save(); render();
       toast('Starting at ' + programme().days[startDay].name + ', Week ' + startWeek);
     } else if (a === 'save-setup') {
+      // What the bar and plate boxes showed, taken before the unit can change: a value is
+      // stored only if it was edited, so switching kg to lb does not save the kg bar as pounds.
+      var shown = { bar: barKg(), ez: ezKg(), trap: trapKg(), plates: plateList().join(',') };
       // Checked first, so a bad plate list leaves nothing half-saved.
       var plBox = document.getElementById('in-plates'), plateNums = null;
       if (plBox) {
@@ -3695,8 +4021,10 @@ details.info .row{margin-top:10px}
       var bw = num(fieldValue('in-bw')); if (bw !== null) { state.settings.bodyweight = bw; }
       var m = num(fieldValue('in-maint')); if (m !== null) { state.settings.maintenance = m; }
       var su = num(fieldValue('in-surplus')); if (su !== null) { state.settings.surplus = su; }
-      var bar = num(fieldValue('in-bar')); if (bar !== null && bar >= 0) { state.settings.barWeight = bar; }
-      if (plateNums) { state.settings.plates = plateNums; }
+      var bar = num(fieldValue('in-bar')); if (bar !== null && bar >= 0 && bar !== shown.bar) { state.settings.barWeight = bar; }
+      if (plateNums && plateNums.join(',') !== shown.plates) { state.settings.plates = plateNums; }
+      var ez = num(fieldValue('in-ez')); if (ez !== null && ez >= 0 && ez !== shown.ez) { state.settings.ezBarWeight = ez; }
+      var trap = num(fieldValue('in-trap')); if (trap !== null && trap >= 0 && trap !== shown.trap) { state.settings.trapBarWeight = trap; }
       save(); render(); toast('Saved');
     } else if (a === 'apply-tm') {
       var lname = btn.dataset.lift, tm = Number(btn.dataset.tm);
@@ -3738,6 +4066,45 @@ details.info .row{margin-top:10px}
       if (confirm('Delete the measurements from ' + btn.dataset.date + '?')) {
         state.measurements = state.measurements.filter(function (m) { return m.date !== btn.dataset.date; });
         save(); render();
+      }
+    } else if (a === 'rm-manual-toggle') {
+      state.ui.rmManual = !btn.parentNode.open; save();
+    } else if (a === 'rm-auto-use') {
+      var aname = btn.dataset.lift, ae = lastMaxEffort(aname).effort;
+      if (!ae || ae.inStart) { return; }
+      if (!startCardShown()) {
+        var al = state.lifts.filter(function (l) { return nameKey(l.name) === nameKey(aname); })[0];
+        if (!al || !window.confirm('Set the ' + aname + ' training max to ' + fmt(tmFromResult(effortResult(ae))) + ' ' + U() + ' (it is ' + fmt(al.tm) + ' now), from your ' + fmt(ae.kg) + ' × ' + ae.reps + (ae.rir ? ' + ' + ae.rir : '') + '? The waves and supports follow it from your next session.')) { return; }
+      }
+      var atm = rmApply(aname, ae.kg, ae.eff, effortSource(ae));
+      save(); render(); toast(aname + (startCardShown() ? ': start at ' : ' training max → ') + fmt(atm) + ' ' + U());
+    } else if (a === 'rm-auto-all') {
+      var todo = E.progressingLifts(nextProgramme()).map(function (n) { return { n: n, e: lastMaxEffort(n).effort }; }).filter(function (x) { return x.e && !x.e.inStart; });
+      if (!todo.length) { return; }
+      if (!startCardShown() && !window.confirm('Set ' + todo.map(function (x) {
+        var l = state.lifts.filter(function (q) { return nameKey(q.name) === nameKey(x.n); })[0];
+        return x.n + ' ' + fmt(l ? l.tm : 0) + ' → ' + fmt(tmFromResult(effortResult(x.e)));
+      }).join(', ') + '? The waves and supports follow them from your next session.')) { return; }
+      todo.forEach(function (x) { rmApply(x.n, x.e.kg, x.e.eff, effortSource(x.e)); });
+      save(); render(); toast(todo.length + ' training max' + (todo.length === 1 ? '' : 'es') + (startCardShown() ? ' set in the start card' : ' updated'));
+    } else if (a === 'rm-mode') {
+      state.ui.rmMode = btn.dataset.mode; save(); render();
+    } else if (a === 'rm-use') {
+      var rrow = btn.closest('.rm-row'), rname = btn.dataset.lift;
+      var rkg = num(rrow.querySelector('.rm-kg').value);
+      var rrepsEl = rrow.querySelector('.rm-reps');
+      var rreps = rrepsEl ? num(rrepsEl.value) : 1;
+      var rr = rmCompute(rkg, rreps);
+      if (!rr.ok) { toast(rr.msg); return; }
+      if (startCardShown()) {
+        state.cycleResults = state.cycleResults || {};
+        state.cycleResults[rname] = { kg: rkg, reps: rreps, source: rrepsEl ? 'calculator' : 'your 1RM' };
+        save(); render(); toast(rname + ': start at ' + fmt(rr.tm) + ' ' + U() + ' (in the start card)');
+      } else {
+        var rl = state.lifts.filter(function (l) { return nameKey(l.name) === nameKey(rname); })[0];
+        if (!rl) { return; }
+        if (!window.confirm('Set the ' + rname + ' training max to ' + fmt(rr.tm) + ' ' + U() + ' (it is ' + fmt(rl.tm) + ' now)? The waves and supports follow it from your next session.')) { return; }
+        rl.tm = rr.tm; save(); render(); toast(rname + ' training max → ' + fmt(rr.tm) + ' ' + U());
       }
     } else if (a === 'save-plan') {
       var days = [];
@@ -3784,6 +4151,7 @@ details.info .row{margin-top:10px}
     if (e.target.classList && e.target.classList.contains('tr-reps')) { trackerInput(e.target); }
     else if (e.target.classList && (e.target.classList.contains('nc-kg') || e.target.classList.contains('nc-reps'))) { ncResultInput(e.target); }
     else if (e.target.classList && (e.target.classList.contains('tw-kg') || e.target.classList.contains('tw-reps'))) { twInput(e.target.closest('.testlift')); }
+    else if (e.target.classList && (e.target.classList.contains('rm-kg') || e.target.classList.contains('rm-reps'))) { rmInput(e.target); }
     else if (e.target.classList && e.target.classList.contains('lib-inc')) { libIncInput(e.target); }
     else if (e.target.closest && e.target.closest('.editor')) {
       // A weight you typed for a set is yours: carrying the previous set's weight
