@@ -182,17 +182,6 @@ body.editing .actionbar{display:none}
 .skip-reasons button{min-height:44px}
 .card.slot.skipped{opacity:.7}
 .taken-btn{margin-top:8px}
-.reorder-bar{margin:0 0 14px}
-.ro-list{list-style:none;margin:10px 0 0;padding:0}
-.ro-item{display:flex;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--line)}
-.ro-item.locked{opacity:.6}
-.ro-item.dragging{background:var(--line);outline:1px solid var(--accent);position:relative;z-index:2}
-.ro-item.drop-before{box-shadow:0 -2px 0 var(--accent)}
-.ro-list.drop-end{box-shadow:0 2px 0 var(--accent)}
-.ro-name{flex:1;min-width:0}
-.ro-lock{width:44px;text-align:center;color:var(--muted)}
-.ro-handle{width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;font-size:24px;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;color:var(--muted)}
-.ro-item .small{min-width:40px;min-height:40px}
 .stat{padding:6px 14px 6px 0;font-size:15px}
 .stat b{font-family:var(--font-h);font-size:28px;font-weight:600;margin-right:4px}
 .gain{color:var(--accent);font-weight:600}
@@ -1164,8 +1153,8 @@ details.info .row{margin-top:10px}
   var swapOpen = null;
   // Slot id whose Skip panel is open on Today. View state, like swapOpen.
   var skipOpen = null;
-  // Whether the Reorder panel is open (Today and Block). View state, like swapOpen.
-  var reorderOpen = false;
+  // Slot id just moved on Today, so its More panel stays open for another tap.
+  var moveOpen = null;
   // Why an exercise was skipped. Kept short so it is one tap mid-session;
   // the reasons are what the Progress tally groups by.
   var SKIP_REASONS = ['Out of time', 'Too tired', 'Pain or niggle', 'Kit busy', 'Other'];
@@ -1494,46 +1483,6 @@ details.info .row{margin-top:10px}
     day.userOrder = true;
     return true;
   }
-  // Sets the whole order of a day's non-main slots from a list of ids (a drag). Main lifts
-  // keep their places; returns whether the order changed.
-  function setOrder(dayIndex, ids) {
-    var day = state.programme.days[dayIndex], spots = [], byId = {};
-    day.slots.forEach(function (sl, i) { if (!isWaveSlot(sl)) { spots.push(i); byId[sl.id] = sl; } });
-    var cur = spots.map(function (i) { return day.slots[i].id; });
-    if (ids.length !== cur.length || ids.some(function (id) { return !byId[id]; }) || ids.join('|') === cur.join('|')) { return false; }
-    ids.forEach(function (id, k) { day.slots[spots[k]] = byId[id]; });
-    day.userOrder = true;
-    return true;
-  }
-  // Applies a reorder from the panel. What is typed on the page is read first (a
-  // half-logged session on Today, unsaved edits in Block), so a re-render loses nothing.
-  function reorderChange(dayIndex, fn) {
-    if (state.ui.tab === 'today') { readSession(); } else { readSlotEdits(); }
-    fn(dayIndex);
-    save(); render();
-  }
-  // The Reorder panel: a button, which opens a list with a drag handle and arrows per
-  // exercise. Main lifts are listed first and locked.
-  function reorderHtml(dayIndex, week) {
-    if (!reorderOpen) {
-      return '<div class="row reorder-bar"><button type="button" class="small" data-action="reorder-toggle">⇅ Reorder exercises</button></div>';
-    }
-    var slots = E.slotsFor(programme(), week, dayIndex);
-    var items = slots.map(function (sl) {
-      if (isWaveSlot(sl)) {
-        return '<li class="ro-item locked"><span class="ro-lock" aria-hidden="true">▪</span><span class="ro-name">' + esc(sl.movement) + '</span><span class="hint">Main lift, stays on top</span></li>';
-      }
-      return '<li class="ro-item" data-slot="' + esc(sl.id) + '"><span class="ro-handle" role="button" aria-label="Drag to reorder" title="Drag to reorder">≡</span>' +
-        '<span class="ro-name">' + esc(sl.movement) + '</span>' +
-        '<button type="button" class="small" data-action="reorder-move" data-day="' + dayIndex + '" data-dir="-1" data-slot="' + esc(sl.id) + '" aria-label="Move up"' + (canMoveSlot(dayIndex, sl.id, -1) ? '' : ' disabled') + '>▲</button>' +
-        '<button type="button" class="small" data-action="reorder-move" data-day="' + dayIndex + '" data-dir="1" data-slot="' + esc(sl.id) + '" aria-label="Move down"' + (canMoveSlot(dayIndex, sl.id, 1) ? '' : ' disabled') + '>▼</button></li>';
-    }).join('');
-    return '<div class="card reorder" data-day="' + dayIndex + '"><div class="row spread"><h3 style="margin:0">Reorder exercises</h3>' +
-      '<button type="button" class="small" data-action="reorder-toggle">Done</button></div>' +
-      '<p class="hint">Drag the ≡ handle, or use the arrows. This changes the order for every week.</p>' +
-      '<ol class="ro-list">' + items + '</ol></div>';
-  }
-
   // Whether a slot can move up (-1) or down (1) without passing a main lift or the end.
   function canMoveSlot(dayIndex, id, dir) {
     var slots = state.programme.days[dayIndex].slots;
@@ -1867,13 +1816,15 @@ details.info .row{margin-top:10px}
     var swapping = swapOpen === p.id && !isMain;
     var skipping = skipOpen === p.id && !isMain;
     var infoHtml = ((info && info.kit) || p.note || !isMain)
-      ? '<details class="info"' + (swapping || skipping ? ' open' : '') + '><summary>More</summary>' +
+      ? '<details class="info"' + (swapping || skipping || moveOpen === p.id ? ' open' : '') + '><summary>More</summary>' +
         (info && info.kit ? '<div>' + esc(info.kit) + (info.note ? ' — ' + esc(info.note) : '') + '</div>' : '') +
         (p.note ? '<div>' + esc(p.note) + '</div>' : '') +
         // The main lift has neither: its wave and AMRAP belong to the lift, and
         // skipping it is a decision about the session, not one exercise.
         (!isMain ? '<div class="row"><button type="button" class="small swap-btn" data-action="swap-open" data-slot="' + esc(p.id) + '">Swap exercise</button>' +
-          '<button type="button" class="small skip-btn" data-action="skip-open" data-slot="' + esc(p.id) + '">Skip exercise</button></div>' : '') +
+          '<button type="button" class="small skip-btn" data-action="skip-open" data-slot="' + esc(p.id) + '">Skip exercise</button></div>' +
+          '<div class="row"><button type="button" class="small move-btn" data-action="move-slot" data-dir="-1" data-slot="' + esc(p.id) + '"' + (canMoveSlot(day, p.id, -1) ? '' : ' disabled') + '>▲ Move up</button>' +
+          '<button type="button" class="small move-btn" data-action="move-slot" data-dir="1" data-slot="' + esc(p.id) + '"' + (canMoveSlot(day, p.id, 1) ? '' : ' disabled') + '>▼ Move down</button></div>' : '') +
         '</details>' + (swapping ? swapPanel(p) : '') + (skipping ? skipPanel(p) : '')
       : '';
     var setNote = isMain && amrapSet ? 'Tap a set to log it. Last set: ' + amrapSet.reps + '+ · ' + (RESERVE_HINT[phase] || '') : '';
@@ -2124,7 +2075,7 @@ details.info .row{margin-top:10px}
         // v2 does not roll over: the next block is its own app, which reads a backup.
         : '<div class="card"><p class="hint" style="margin:0">Last week of this block. When the deload is done, export your data from Setup (Export JSON). ' +
           'The next block is <a href="./trainer3.html">the v3 app</a>, which can read that file and set your starting maxes.</p></div>';
-    return sessionHeader(week, day) + planBit + measure + endNote + reorderHtml(day, week) +
+    return sessionHeader(week, day) + planBit + measure + endNote +
       prescribed.map(function (p, i) { return renderSlot(p, week, day, i); }).join('') +
       (done ? '<p class="hint">Logged ' + esc(done) + '</p>' : '') +
       '<div class="actionbar">' +
@@ -2219,7 +2170,8 @@ details.info .row{margin-top:10px}
 
       return '<div class="card slotedit" data-slot="' + esc(s.id) + '">' +
         '<div class="row spread"><b><span class="kindtag ' + s.kind + '">' + esc(s.tag || s.kind) + '</span></b>' +
-        '</div>' +
+        (isMain ? '' : '<span class="row"><button type="button" class="small move-btn" data-action="block-move" data-dir="-1" data-slot="' + esc(s.id) + '" aria-label="Move up"' + (canMoveSlot(day, s.id, -1) ? '' : ' disabled') + '>▲</button>' +
+          '<button type="button" class="small move-btn" data-action="block-move" data-dir="1" data-slot="' + esc(s.id) + '" aria-label="Move down"' + (canMoveSlot(day, s.id, 1) ? '' : ' disabled') + '>▼</button></span>') + '</div>' +
         '<div class="row wrap">' + groupSel + movSel + '</div>' +
         '<div class="row wrap">' + loadCtl + '</div></div>';
     }).join('');
@@ -2233,7 +2185,7 @@ details.info .row{margin-top:10px}
       }).join('') + '</div>' +
       '<p class="hint">Edits apply to <b>this week only</b> unless you push them to the whole ' + (PLAIN ? 'plan' : 'block') + '.' +
       (PLAIN ? '' : ' The main lift\'s sets and percentages always come from the wave table.') + '</p>' +
-      reorderHtml(day, week) + rows +
+      rows +
       '<div class="card"><div class="row">' +
       '<button type="button" class="primary" data-action="save-slots">Save this week</button>' +
       '<button type="button" data-action="push-all">Apply to all ' + P0.weeks + ' weeks</button>' +
@@ -3912,39 +3864,6 @@ details.info .row{margin-top:10px}
     download(new Blob([csv], { type: 'text/csv' }), (CFG.file ? CFG.file + '-log' : 'juggernaut-log') + '.csv');
   }
 
-  // Drag a row by its handle. Only the handle captures the touch, so the page still scrolls
-  // everywhere else. The row follows the finger in the list; the order is applied on release.
-  document.addEventListener('pointerdown', function (e) {
-    var h = e.target.closest ? e.target.closest('.ro-handle') : null;
-    if (!h) { return; }
-    var li = h.closest('.ro-item'), list = li.parentNode, card = h.closest('.reorder'), y0 = e.clientY;
-    var others = [].slice.call(list.querySelectorAll('.ro-item:not(.locked)')).filter(function (x) { return x !== li; });
-    var target = null;
-    e.preventDefault();
-    li.classList.add('dragging');
-    try { h.setPointerCapture(e.pointerId); } catch (err) { /* older browsers */ }
-    // The row is lifted with a transform and nothing is re-parented while the finger is down,
-    // so the touch keeps its capture. A line marks where it will land; the order is applied on release.
-    function move(ev) {
-      li.style.transform = 'translateY(' + (ev.clientY - y0) + 'px)';
-      target = null;
-      for (var i = 0; i < others.length; i++) {
-        var r = others[i].getBoundingClientRect();
-        if (ev.clientY < r.top + r.height / 2) { target = others[i]; break; }
-      }
-      others.forEach(function (o) { o.classList.toggle('drop-before', o === target); });
-      list.classList.toggle('drop-end', target === null);
-    }
-    function up() {
-      h.removeEventListener('pointermove', move); h.removeEventListener('pointerup', up); h.removeEventListener('pointercancel', up);
-      var ids = [];
-      others.forEach(function (o) { if (o === target) { ids.push(li.dataset.slot); } ids.push(o.dataset.slot); });
-      if (target === null) { ids.push(li.dataset.slot); }
-      reorderChange(Number(card.dataset.day), function (d) { return setOrder(d, ids); });
-    }
-    h.addEventListener('pointermove', move); h.addEventListener('pointerup', up); h.addEventListener('pointercancel', up);
-  });
-
   document.addEventListener('click', function (e) {
     var btn = e.target.closest ? e.target.closest('[data-action]') : null;
     if (!btn) { return; }
@@ -3961,7 +3880,7 @@ details.info .row{margin-top:10px}
     }
     if (a === 'tab') {
       if (state.ui.tab === 'today') { readSession(); }
-      swapOpen = null; skipOpen = null; reorderOpen = false;
+      swapOpen = null; skipOpen = null; moveOpen = null;
       state.ui.tab = btn.dataset.tab; save(); render();
     } else if (a === 'swap-open') {
       readSession(); save();
@@ -3969,10 +3888,15 @@ details.info .row{margin-top:10px}
     } else if (a === 'skip-open') {
       readSession(); save();
       swapOpen = null; skipOpen = btn.dataset.slot; render();
-    } else if (a === 'reorder-toggle') {
-      reorderOpen = !reorderOpen; render();
-    } else if (a === 'reorder-move') {
-      reorderChange(Number(btn.dataset.day), function (d) { return moveSlot(d, btn.dataset.slot, Number(btn.dataset.dir)); });
+    } else if (a === 'move-slot') {
+      readSession();
+      swapOpen = null; skipOpen = null; moveOpen = btn.dataset.slot;
+      moveSlot(state.cursor.day, btn.dataset.slot, Number(btn.dataset.dir));
+      save(); render();
+    } else if (a === 'block-move') {
+      readSlotEdits();
+      moveSlot(state.ui.blockDay, btn.dataset.slot, Number(btn.dataset.dir));
+      save(); render();
     } else if (a === 'test-week') {
       state.testWeek = { day: 0 }; state.ui.tab = 'today'; save(); render();
     } else if (a === 'tw-next' || a === 'tw-prev') {
@@ -4029,19 +3953,19 @@ details.info .row{margin-top:10px}
     } else if (a === 'dismiss-migrate') {
       delete state.migrated; save(); render();
     } else if (a === 'save-session') {
-      readSession(); swapOpen = null; skipOpen = null; reorderOpen = false;
+      readSession(); swapOpen = null; skipOpen = null; moveOpen = null;
       var bumped1 = progressAccessories(state.cursor.week, state.cursor.day);
       var noRir1 = missingRir(state.cursor.week, state.cursor.day);
       save(); render();
       toast(saveMessage(bumped1, noRir1, 'Session saved'), noRir1.length ? 5000 : 0);
     } else if (a === 'finish-session') {
-      readSession(); swapOpen = null; skipOpen = null; reorderOpen = false;
+      readSession(); swapOpen = null; skipOpen = null; moveOpen = null;
       var bumped2 = progressAccessories(state.cursor.week, state.cursor.day);
       var noRir2 = missingRir(state.cursor.week, state.cursor.day);
       save(); advance(); save(); render();
       toast(saveMessage(bumped2, noRir2, 'Next session'), noRir2.length ? 5000 : 0);
     } else if (a === 'skip-back') {
-      readSession(); swapOpen = null; skipOpen = null; reorderOpen = false; save(); retreat(); save(); render();
+      readSession(); swapOpen = null; skipOpen = null; moveOpen = null; save(); retreat(); save(); render();
     } else if (a === 'block-day') {
       readSlotEdits(); state.ui.blockDay = Number(btn.dataset.day); save(); render();
     } else if (a === 'save-slots') {
