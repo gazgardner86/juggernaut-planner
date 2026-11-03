@@ -182,6 +182,16 @@ body.editing .actionbar{display:none}
 .skip-reasons button{min-height:44px}
 .card.slot.skipped{opacity:.7}
 .taken-btn{margin-top:8px}
+.block-tools{margin:0 0 12px}
+.slotedit .slot-sum{display:flex;align-items:center;gap:10px}
+.slotedit .sum-main{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;background:none;border:0;padding:6px 0;min-height:44px;cursor:pointer;color:inherit;font:inherit}
+.slotedit .sum-name{font-weight:600;font-size:17px}
+.slotedit .sum-meta{color:var(--muted);font-size:13px}
+.slotedit .sum-main[aria-expanded="true"] .sum-name::after{content:' ▴';color:var(--muted)}
+.slotedit .sum-main[aria-expanded="false"] .sum-name::after{content:' ▾';color:var(--muted)}
+.slotedit .sum-move{display:flex;gap:6px}
+.slotedit .sum-move .small{min-width:40px;min-height:40px}
+.slotedit .slot-body{margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
 .stat{padding:6px 14px 6px 0;font-size:15px}
 .stat b{font-family:var(--font-h);font-size:28px;font-weight:600;margin-right:4px}
 .gain{color:var(--accent);font-weight:600}
@@ -1007,6 +1017,9 @@ details.info .row{margin-top:10px}
   var swapOpen = null;
   // Slot id whose Skip panel is open on Today. View state, like swapOpen.
   var skipOpen = null;
+  // Block cards that are expanded, keyed 'day|slot id'. View state; every card starts folded so a
+  // day reads as a short list in order. Folded bodies stay in the page, so readSlotEdits() still sees them.
+  var blockOpen = {};
   // Slot id just moved on Today, so its More panel stays open for another tap.
   var moveOpen = null;
   // Why an exercise was skipped. Kept short so it is one tap mid-session;
@@ -1337,6 +1350,15 @@ details.info .row{margin-top:10px}
     day.userOrder = true;
     return true;
   }
+  // Keeps the Expand all / Collapse all button in step with the cards.
+  function syncBlockAll() {
+    var b = document.querySelector('[data-action="block-all"]');
+    if (!b) { return; }
+    var all = [].slice.call(document.querySelectorAll('.card.slotedit')).every(function (c) { return !c.querySelector('.slot-body').hidden; });
+    b.dataset.mode = all ? 'collapse' : 'expand';
+    b.textContent = all ? 'Collapse all' : 'Expand all';
+  }
+
   // Whether a slot can move up (-1) or down (1) without passing a main lift or the end.
   function canMoveSlot(dayIndex, id, dir) {
     var slots = state.programme.days[dayIndex].slots;
@@ -2022,12 +2044,23 @@ details.info .row{margin-top:10px}
         loadCtl = '<span class="hint">Sets, reps and percentages come from the ' + E.waveFor(week, P0.waveSlots) + ' wave table.</span>';
       }
 
+      var open = !!blockOpen[day + '|' + s.id];
+      var loadTxt = isMain ? E.waveFor(week, P0.waveSlots) + ' wave'
+        : (s.sets + ' × ' + E.repsLabel(s.reps, E.repTop(s)) + ' · ' +
+          (s.load.kind === 'weight' ? (s.load.kg === null || s.load.kg === undefined ? 'weight not set' : fmt(s.load.kg) + ' ' + U())
+            : s.load.kind === 'pctTM' ? Math.round(s.load.pct * 1000) / 10 + '% of ' + (s.load.lift || s.movement)
+            : s.load.kind === 'bodyweight' ? (s.load.added ? '+' + fmt(s.load.added) + ' ' + U() : 'bodyweight')
+            : 'your call'));
       return '<div class="card slotedit" data-slot="' + esc(s.id) + '">' +
-        '<div class="row spread"><b><span class="kindtag ' + s.kind + '">' + esc(s.tag || s.kind) + '</span></b>' +
-        (isMain ? '' : '<span class="row"><button type="button" class="small move-btn" data-action="block-move" data-dir="-1" data-slot="' + esc(s.id) + '" aria-label="Move up"' + (canMoveSlot(day, s.id, -1) ? '' : ' disabled') + '>▲</button>' +
-          '<button type="button" class="small move-btn" data-action="block-move" data-dir="1" data-slot="' + esc(s.id) + '" aria-label="Move down"' + (canMoveSlot(day, s.id, 1) ? '' : ' disabled') + '>▼</button></span>') + '</div>' +
+        '<div class="slot-sum"><button type="button" class="sum-main" data-action="block-toggle" data-slot="' + esc(s.id) + '" aria-expanded="' + open + '">' +
+        '<span class="sum-name">' + esc(s.movement) + '</span>' +
+        '<span class="sum-meta">' + (s.tag ? '<span class="kindtag ' + s.kind + '">' + esc(s.tag) + '</span> ' : '') + esc(loadTxt) + '</span></button>' +
+        (isMain ? '' : '<span class="sum-move"><button type="button" class="small move-btn" data-action="block-move" data-dir="-1" data-slot="' + esc(s.id) + '" aria-label="Move up"' + (canMoveSlot(day, s.id, -1) ? '' : ' disabled') + '>▲</button>' +
+          '<button type="button" class="small move-btn" data-action="block-move" data-dir="1" data-slot="' + esc(s.id) + '" aria-label="Move down"' + (canMoveSlot(day, s.id, 1) ? '' : ' disabled') + '>▼</button></span>') +
+        '</div>' +
+        '<div class="slot-body"' + (open ? '' : ' hidden') + '>' +
         '<div class="row wrap">' + groupSel + movSel + '</div>' +
-        '<div class="row wrap">' + loadCtl + '</div></div>';
+        '<div class="row wrap">' + loadCtl + '</div></div></div>';
     }).join('');
 
     var vol = E.weeklyVolume(pr, week, ctx());
@@ -2039,6 +2072,9 @@ details.info .row{margin-top:10px}
       }).join('') + '</div>' +
       '<p class="hint">Edits apply to <b>this week only</b> unless you push them to the whole ' + (PLAIN ? 'plan' : 'block') + '.' +
       (PLAIN ? '' : ' The main lift\'s sets and percentages always come from the wave table.') + '</p>' +
+      '<div class="row block-tools"><button type="button" class="small" data-action="block-all" data-mode="' + (slots.every(function (x) { return blockOpen[day + '|' + x.id]; }) ? 'collapse' : 'expand') + '">' +
+      (slots.every(function (x) { return blockOpen[day + '|' + x.id]; }) ? 'Collapse all' : 'Expand all') + '</button>' +
+      '<span class="hint" style="margin:0">Tap an exercise to edit it. ▲▼ change the order.</span></div>' +
       rows +
       '<div class="card"><div class="row">' +
       '<button type="button" class="primary" data-action="save-slots">Save this week</button>' +
@@ -3747,6 +3783,20 @@ details.info .row{margin-top:10px}
       swapOpen = null; skipOpen = null; moveOpen = btn.dataset.slot;
       moveSlot(state.cursor.day, btn.dataset.slot, Number(btn.dataset.dir));
       save(); render();
+    } else if (a === 'block-toggle') {
+      var bcard = btn.closest('.slotedit'), bkey = state.ui.blockDay + '|' + btn.dataset.slot;
+      blockOpen[bkey] = !blockOpen[bkey];
+      bcard.querySelector('.slot-body').hidden = !blockOpen[bkey];
+      btn.setAttribute('aria-expanded', String(!!blockOpen[bkey]));
+      syncBlockAll();
+    } else if (a === 'block-all') {
+      var openAll = btn.dataset.mode === 'expand';
+      document.querySelectorAll('.card.slotedit').forEach(function (c) {
+        blockOpen[state.ui.blockDay + '|' + c.dataset.slot] = openAll;
+        c.querySelector('.slot-body').hidden = !openAll;
+        c.querySelector('.sum-main').setAttribute('aria-expanded', String(openAll));
+      });
+      syncBlockAll();
     } else if (a === 'block-move') {
       readSlotEdits();
       moveSlot(state.ui.blockDay, btn.dataset.slot, Number(btn.dataset.dir));
