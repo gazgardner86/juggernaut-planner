@@ -3098,7 +3098,11 @@ details.info .row{margin-top:10px}
         if (sl.kind === 'accessory' && oldPr.days[d] && oldPr.days[d].name === day.name) {
           var was = E.slotsFor(oldPr, P0.weeks, d).filter(function (x) { return x.id === sl.id; })[0];
           var oldBase = oldPr.days[d].slots.filter(function (x) { return x.id === sl.id; })[0];
-          if (was && oldBase && !isWaveSlot(was) && nameKey(was.movement) !== nameKey(oldBase.movement) && nameKey(sl.movement) === nameKey(oldBase.movement)) {
+          // Not if the swapped-in exercise is already elsewhere in the new template's day: a v2
+          // swap to the DB hammer curl, carried into v3, put two on Day 2 (v3 already has one) and
+          // lost the lateral raise it replaced. The new template's own choice for the slot stands.
+          var alreadyThere = !!was && day.slots.some(function (x) { return x !== sl && nameKey(x.movement) === nameKey(was.movement); });
+          if (was && oldBase && !alreadyThere && !isWaveSlot(was) && nameKey(was.movement) !== nameKey(oldBase.movement) && nameKey(sl.movement) === nameKey(oldBase.movement)) {
             sl.movement = was.movement;
             sl.load = JSON.parse(JSON.stringify(was.load));
           }
@@ -3513,6 +3517,20 @@ details.info .row{margin-top:10px}
 
   function reset0(p) { return p.repsTop ? ', back to ' + p.sets[0].reps + ' reps' : ''; }
 
+  // The weight every prescribed set was done at: the lowest of them, and only when every set
+  // is logged with reps and a weight (and the exercise was not skipped). Mixed weights are
+  // normal when you go up part-way through; the weight all of them reached is the one to build on.
+  function achievedKg(p, entry) {
+    if (!entry || entry.skipped || !entry.sets || entry.sets.length < p.sets.length) { return null; }
+    var low = null;
+    for (var i = 0; i < p.sets.length; i++) {
+      var lg = entry.sets[i];
+      if (!lg || !lg.reps || lg.kg === null || lg.kg === undefined) { return null; }
+      if (low === null || lg.kg < low) { low = lg.kg; }
+    }
+    return low;
+  }
+
   function progressAccessories(week, day) {
     var log = state.logs[logKey(week, day)];
     if (!log) { return []; }
@@ -3538,15 +3556,8 @@ details.info .row{margin-top:10px}
       // writes it into the weeks to come, so the exercise is a plain fixed weight
       // from then on. It is reversible like any bump: undoBump puts the blank back.
       if (blankFixed && FIXED_WEIGHTS) {
-        var lifted = null, whole = !entry.skipped && entry.sets && entry.sets.length >= p.sets.length;
-        if (whole) {
-          p.sets.forEach(function (s, i) {
-            var lg = entry.sets[i];
-            if (!lg || !lg.reps || lg.kg === null || lg.kg === undefined) { whole = false; }
-            else if (lifted === null || lg.kg > lifted) { lifted = lg.kg; }
-          });
-        }
-        var gets = whole && lifted !== null ? (inc !== null && earnedBump(p, entry, week, day) ? Math.round((lifted + inc) * 100) / 100 : lifted) : null;
+        var lifted = achievedKg(p, entry), whole = lifted !== null;
+        var gets = whole ? (inc !== null && earnedBump(p, entry, week, day) ? Math.round((lifted + inc) * 100) / 100 : lifted) : null;
         var had = entry.bump && entry.bump.kind === 'weight' && entry.bump.from === null ? entry.bump.to : null;
         if (had !== null && had !== gets) { undoBump(week, day, p, entry); }
         if (gets !== null && had !== gets) {
@@ -3583,10 +3594,18 @@ details.info .row{margin-top:10px}
         entry.bump = { kind: 'pctTM', lift: p.slot.load.lift || p.movement, from: p.slot.load.pct, to: nextPct, inc: nextKg - cur };
         bumped.push(p.movement + ' → ' + fmt(nextKg) + U() + ' (' + fmt(nextPct * 100) + '% TM)' + reset);
       } else if (kind === 'weight' || kind === 'bodyweight') {
-        var base = loadValue(p.slot.load);
+        var plan = loadValue(p.slot.load), base = plan;
+        // If the day's weights are better than the plan's, the increase builds on them. It used
+        // to add the step to the plan weight, so doing 50 against a plan of 42.5 gave 45 next time.
+        var did = achievedKg(p, entry);
+        if (did !== null) {
+          // A belt's number is what hangs from it: the box holds bodyweight plus that.
+          var didVal = kind === 'weight' ? did : Math.round((did - (state.settings.bodyweight || 0)) * 100) / 100;
+          if (didVal > base) { base = didVal; }
+        }
         var next = Math.round((base + inc) * 100) / 100;
         writeForward(week, day, p, kind, next);
-        entry.bump = { kind: kind, from: base, to: next, inc: inc };
+        entry.bump = { kind: kind, from: plan, to: next, inc: inc };
         bumped.push(p.movement + ' → ' + fmt(next) + (kind === 'weight' ? U() : ' added') + reset);
       } else {
         entry.suggestBump = inc;
