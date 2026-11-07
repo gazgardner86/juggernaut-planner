@@ -235,7 +235,7 @@ details.info .row{margin-top:10px}
 </style>
 
 <link rel="manifest" href="./manifest-trainer3.webmanifest">
-<meta name="theme-color" content="#5980a6">
+<meta name="theme-color" content="#0f1113">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Juggernaut v3">
@@ -4197,9 +4197,10 @@ if ('serviceWorker' in navigator) {
 </script>
 <!-- ============================================================
      Juggernaut Trainer — v4 look + one-tap logging
-     Sits on top of the app above: the engine, programme and saved
-     data are untouched. Keep this block above </body> when you upload
-     a new trainer3.html. Delete it to revert to the v3 look.
+     Built into trainer3.html from src/v3/look.html (see build.mjs, `inject`).
+     It sits on top of the app: the engine, programme and saved data are
+     untouched. It reads the app's DOM (.setcell, .editor, .in-kg, .ed-plates,
+     [data-action="log-set"]), so a change to that markup needs it checked.
      ============================================================ -->
 <style id="jg-v4-style">
 /* ---- theme: dark, rounded, no registration marks ---- */
@@ -4435,15 +4436,14 @@ body.jg-sheet{overflow:hidden}
 
     var cards = Array.prototype.slice.call(app.querySelectorAll('.card.slot'));
     var active = null;
-    // The card being edited stays the open one until its editor closes. Stepping the reps on the
-    // last set logs it, which made the card look finished: it folded and the next exercise opened
-    // under the editor, so the set had to be reopened to change it.
-    var openEd = app.querySelector('.editor:not([hidden])');
-    var editing = openEd ? openEd.closest('.card.slot') : null;
-    if (editing && !editing.dataset.skipped) { active = editing; }
     cards.forEach(function (c) {
       if (!active && !c.dataset.skipped && c.querySelector('.setcell:not(.done)')) { active = c; }
     });
+    // The card being edited stays open while its editor is up. Stepping the reps on a last set
+    // logs it (reps entered = logged), which made the card look finished: it folded and the next
+    // exercise opened under the editor, so the set had to be reopened to change it.
+    var openEd = app.querySelector('.editor:not([hidden])');
+    var editing = openEd ? openEd.closest('.card.slot') : null;
 
     var allSets = 0, doneSets = 0;
     cards.forEach(function (c) {
@@ -4452,7 +4452,7 @@ body.jg-sheet{overflow:hidden}
       var done = c.querySelectorAll('.setcell.done').length;
       if (!c.dataset.skipped) { allSets += total; doneSets += done; }
       var complete = !c.dataset.skipped && total > 0 && done === total;
-      var open = Object.prototype.hasOwnProperty.call(manual, id) ? manual[id] : c === active;
+      var open = Object.prototype.hasOwnProperty.call(manual, id) ? manual[id] : c === (editing || active);
       c.classList.toggle('jg-collapsed', !open);
       c.classList.toggle('jg-complete', complete);
 
@@ -4496,11 +4496,16 @@ body.jg-sheet{overflow:hidden}
 
     document.body.classList.toggle('jg-sheet', !!app.querySelector('.editor:not([hidden])'));
 
-    var activeId = active ? active.dataset.slot : null;
-    if (activeId && lastActive && activeId !== lastActive && !document.body.classList.contains('jg-sheet')) {
-      active.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Move on to the next exercise once the editor is closed, not while it is open: lastActive is
+    // left alone during an edit, so finishing the last set scrolls on at the close, and fixing an
+    // earlier exercise does not scroll anywhere.
+    if (!document.body.classList.contains('jg-sheet')) {
+      var activeId = active ? active.dataset.slot : null;
+      if (activeId && lastActive && activeId !== lastActive) {
+        active.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      lastActive = activeId;
     }
-    lastActive = activeId;
   }
 
   function later() { setTimeout(enhance, 0); }
@@ -4579,5 +4584,6 @@ body.jg-sheet{overflow:hidden}
   enhance();
 })();
 </script>
+
 </body>
 </html>
