@@ -116,6 +116,8 @@ details.info div{margin-top:4px}
 .setcell .c-reps{font-size:12px;color:var(--muted)}
 .setcell.amrap{border-style:dashed;border-color:var(--accent)}
 .setcell.done{background:var(--accent);border:1px solid var(--accent);color:var(--on-accent)}
+.setcell.draft{border-style:dashed}
+.setcell.draft .c-reps{opacity:.75;font-style:italic}
 .setcell.done:hover{background:var(--accent-hover)}
 .setcell.done .c-reps{color:var(--on-accent)}
 .setcell.done.short{background:var(--accent-tint-2);color:var(--accent-deep)}
@@ -1659,7 +1661,7 @@ details.info .row{margin-top:10px}
         (isMain ? ' · ' + Math.round(s.pct * 1000) / 10 + '% TM' : '');
       cells += '<button type="button" class="setcell' + (s.amrap ? ' amrap' : '') + '" data-action="cell" data-i="' + i + '" aria-label="Set ' + s.n + '">' +
         '<span class="c-kg"></span><span class="c-reps"></span></button>';
-      editors += '<div class="editor" data-i="' + i + '"' + (plateKind(p.movement, p.slot.load.kind) ? ' data-plates="' + plateKind(p.movement, p.slot.load.kind) + '"' : '') + ' data-treps="' + s.reps + '" data-ttop="' + (s.top || '') + '" data-trir="' + tRir + '" data-amrap="' + (s.amrap ? 1 : 0) + '" hidden>' +
+      editors += '<div class="editor" data-i="' + i + '"' + (plateKind(p.movement, p.slot.load.kind) ? ' data-plates="' + plateKind(p.movement, p.slot.load.kind) + '"' : '') + ' data-treps="' + s.reps + '" data-ttop="' + (s.top || '') + '" data-trir="' + tRir + '" data-amrap="' + (s.amrap ? 1 : 0) + '" data-logged="' + (lg.reps !== null && lg.reps !== undefined ? 1 : 0) + '" hidden>' +
         '<div class="ed-head"><span class="ed-title">Set ' + s.n + '</span><span class="ed-target">' + esc(target) + '</span></div>' +
         '<div class="ed-fields">' +
         field('Reps', '<input type="number" inputmode="numeric" step="1" min="0" class="in-reps" data-i="' + i + '" value="' + repVal + '" placeholder="' + repsTxt + '">', 1) +
@@ -1714,24 +1716,33 @@ details.info .row{margin-top:10px}
       '</div>';
   }
 
-  // Paints a set cell from its editor's inputs. The inputs stay the source of
-  // truth — readSession() reads them exactly as it always has.
+  // A set counts as logged only once Log set was pressed (the editor carries data-logged), and only
+  // while it still has reps. What is typed or stepped before that is a draft: it shows in the editor and
+  // on the cell, but the set stays open and nothing reaches the log.
+  function isLogged(ed) {
+    return ed.dataset.logged === '1' && num(ed.querySelector('.in-reps').value) !== null;
+  }
+
+  // Paints a set cell from its editor's inputs. The inputs hold the values; data-logged says whether
+  // they are a logged set or a draft, and readSession() reads them the same way.
   function refreshCell(card, i) {
     var ed = card.querySelector('.editor[data-i="' + i + '"]');
     var cell = card.querySelector('.setcell[data-i="' + i + '"]');
     if (!ed || !cell) { return; }
     var reps = num(ed.querySelector('.in-reps').value), rir = num(ed.querySelector('.in-rir').value), kg = num(ed.querySelector('.in-kg').value);
     var tReps = num(ed.dataset.treps), tTop = num(ed.dataset.ttop), tRir = num(ed.dataset.trir), amrap = ed.dataset.amrap === '1';
-    var done = reps !== null;
+    var done = isLogged(ed), typed = reps !== null;
     var short = done && ((tReps !== null && reps < tReps) || (rir !== null && tRir !== null && rir < tRir));
     cell.classList.toggle('done', done);
+    cell.classList.toggle('draft', !done && typed);
     cell.classList.toggle('short', short);
     cell.querySelector('.c-kg').textContent = kg === null ? '–' : fmt(kg);
-    cell.querySelector('.c-reps').textContent = done ? reps + (rir !== null ? ' @ ' + rir : '') : '× ' + E.repsLabel(tReps, tTop) + (amrap ? '+' : '');
+    cell.querySelector('.c-reps').textContent = typed ? reps + (rir !== null ? ' @ ' + rir : '') : '× ' + E.repsLabel(tReps, tTop) + (amrap ? '+' : '');
     var hints = [];
-    if (done && tReps !== null && reps < tReps) { hints.push((tReps - reps) + ' short of target'); }
-    if (done && amrap && tReps !== null && reps > tReps) { hints.push((reps - tReps) + ' over the standard'); }
-    if (done && tTop !== null && reps >= tTop) { hints.push('top of the range — stop here'); }
+    if (typed && tReps !== null && reps < tReps) { hints.push((tReps - reps) + ' short of target'); }
+    if (typed && amrap && tReps !== null && reps > tReps) { hints.push((reps - tReps) + ' over the standard'); }
+    if (typed && tTop !== null && reps >= tTop) { hints.push('top of the range — stop here'); }
+    if (typed && !done) { hints.push('not logged yet'); }
     if (rir !== null && tRir !== null && rir < tRir) { hints.push('harder than planned'); }
     ed.querySelector('.ed-hint').textContent = hints.join(' · ');
     var pl = ed.querySelector('.ed-plates');
@@ -1826,8 +1837,9 @@ details.info .row{margin-top:10px}
       // RIR is never filled in: it is a measurement, not a plan. Progression
       // needs the real number, and a made-up one would also silence the
       // "no RIR logged" warning.
+      ed.dataset.logged = '1';
     } else if (a === 'clear-set') {
-      reps.value = ''; rir.value = '';
+      reps.value = ''; rir.value = ''; ed.dataset.logged = '0';
     }
     refreshCell(card, i);
     ed.hidden = true; cell.classList.remove('open');
@@ -2725,7 +2737,11 @@ details.info .row{margin-top:10px}
       var id = card.dataset.slot;
       var sets = [];
       var reps = {}, kgs = {}, rirs = {};
-      card.querySelectorAll('.in-reps').forEach(function (el) { reps[Number(el.dataset.i)] = num(el.value); });
+      // Only a set that was logged (Log set pressed, reps still there) is read: a draft stays on the page.
+      card.querySelectorAll('.in-reps').forEach(function (el) {
+        var ed = el.closest('.editor');
+        reps[Number(el.dataset.i)] = ed && !isLogged(ed) ? null : num(el.value);
+      });
       card.querySelectorAll('.in-kg').forEach(function (el) { kgs[Number(el.dataset.i)] = num(el.value); });
       card.querySelectorAll('.in-rir').forEach(function (el) { rirs[Number(el.dataset.i)] = num(el.value); });
       Object.keys(reps).forEach(function (k) {
@@ -4061,6 +4077,8 @@ details.info .row{margin-top:10px}
       // A weight you typed for a set is yours: carrying the previous set's weight
       // forward must not overwrite it.
       if (e.target.classList && e.target.classList.contains('in-kg')) { e.target.dataset.touched = '1'; }
+      // Emptying the reps takes a logged set back out, so typing a number in again is a draft.
+      if (e.target.classList && e.target.classList.contains('in-reps') && e.target.value === '') { e.target.closest('.editor').dataset.logged = '0'; }
       refreshCell(e.target.closest('.card.slot'), e.target.closest('.editor').dataset.i);
     }
   });
@@ -4388,11 +4406,15 @@ body.jg-sheet{overflow:hidden}
     // The plate line is kept apart from the hint under it: the AMRAP message used to replace
     // it, so the last set of a main lift never showed the plates.
     var plateLine = sub;
-    if (!sub && tTop && !amrap) { sub = 'Done logs ' + tReps + ' reps — did more? Tap Adjust.'; }
+    // Reps already typed for this set (a draft) are what Done logs; otherwise the plan's.
+    var typed = n(ed.querySelector('.in-reps').value);
+    var logReps = typed !== null ? typed : tReps;
+    if (!sub && typed !== null && !amrap) { sub = 'Done logs your ' + typed + ' reps.'; }
+    else if (!sub && tTop && !amrap) { sub = 'Done logs ' + tReps + ' reps — did more? Tap Adjust.'; }
     if (amrap) { sub = 'Enter the reps you got — nothing is assumed for this set.'; }
 
     var quick = !amrap && kg !== null;
-    var doneLabel = quick ? CHECK + ' Done — ' + f(kg) + ' × ' + tReps : (amrap ? 'Log reps' : 'Set weight');
+    var doneLabel = quick ? CHECK + ' Done — ' + f(kg) + ' × ' + logReps : (amrap ? 'Log reps' : 'Set weight');
     return '<div class="jg-next" data-i="' + i + '">' +
       '<div class="jg-next-k">Next · set ' + (Number(i) + 1) + ' of ' + total + (pct ? ' · ' + pct : '') + '</div>' +
       '<div class="jg-next-v">' + (kg === null ? '–' : f(kg)) + '<small> ' + unit + '</small> <span class="x">×</span> ' + reps + '</div>' +
