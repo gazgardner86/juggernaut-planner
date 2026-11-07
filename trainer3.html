@@ -4435,6 +4435,12 @@ body.jg-sheet{overflow:hidden}
 
     var cards = Array.prototype.slice.call(app.querySelectorAll('.card.slot'));
     var active = null;
+    // The card being edited stays the open one until its editor closes. Stepping the reps on the
+    // last set logs it, which made the card look finished: it folded and the next exercise opened
+    // under the editor, so the set had to be reopened to change it.
+    var openEd = app.querySelector('.editor:not([hidden])');
+    var editing = openEd ? openEd.closest('.card.slot') : null;
+    if (editing && !editing.dataset.skipped) { active = editing; }
     cards.forEach(function (c) {
       if (!active && !c.dataset.skipped && c.querySelector('.setcell:not(.done)')) { active = c; }
     });
