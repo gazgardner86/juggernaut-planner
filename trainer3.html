@@ -184,6 +184,52 @@ body.editing .actionbar{display:none}
 .skip-reasons button{min-height:44px}
 .card.slot.skipped{opacity:.7}
 .taken-btn{margin-top:8px}
+/* rest timer: a bar across the top, clear of the editor and the bottom bars */
+#rest-bar{position:fixed;left:0;right:0;top:0;z-index:40;padding:calc(8px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-left)) 8px;background:var(--surface,var(--bg));border-bottom:1px solid var(--line);display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:center;box-shadow:0 4px 16px rgba(0,0,0,.12)}
+#rest-bar[hidden]{display:none}
+body.resting{padding-top:calc(64px + env(safe-area-inset-top))}
+#rest-bar .rest-main{display:flex;align-items:baseline;gap:10px;min-width:0}
+#rest-bar .rest-label{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#rest-bar .rest-time{font-family:var(--font-h);font-size:26px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text)}
+#rest-bar .rest-btns{display:flex;gap:6px;grid-row:span 2}
+#rest-bar .rest-btns button{min-width:48px;min-height:44px;padding:0 10px}
+#rest-bar .rest-track{grid-column:1;height:4px;border-radius:2px;background:var(--line-soft);overflow:hidden}
+#rest-bar .rest-track i{display:block;height:100%;background:var(--accent);border-radius:2px;transition:width .25s linear}
+#rest-bar.over .rest-time{color:var(--accent)}
+#rest-bar.over{border-bottom-color:var(--accent)}
+/* personal records */
+.setcell{position:relative}
+.c-pr{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.04em;line-height:1;padding:3px 5px;border-radius:4px;background:#e8b923;color:#1d1f20}
+.setcell .c-pr{position:absolute;top:-6px;right:-4px}
+/* session summary */
+#sess-summary{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;padding:16px}
+.sum-card{width:100%;max-width:520px;max-height:85vh;overflow:auto;background:var(--surface,var(--bg));color:var(--text);border-radius:18px;padding:20px 18px calc(18px + env(safe-area-inset-bottom))}
+.sum-card h2{margin:2px 0 14px}
+.sum-card h3{margin:16px 0 6px;font-size:15px}
+.sum-kicker{color:var(--muted);font-size:13px}
+.sum-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.sum-tile{border:1px solid var(--line);border-radius:12px;padding:10px}
+.sum-k{color:var(--muted);font-size:12px}
+.sum-v{font-family:var(--font-h);font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.sum-d{color:var(--muted);font-size:11px}
+.sum-list{margin:0;padding-left:0;list-style:none}
+.sum-list li{padding:5px 0;border-top:1px solid var(--line-soft)}
+.sum-card .primary{width:100%;margin-top:16px;min-height:48px}
+/* charts: one series in the accent, hairline grid, muted ticks */
+.chart{width:100%;height:auto;display:block;margin-top:8px}
+.ch-grid{stroke:var(--line-soft);stroke-width:1}
+.ch-tick{fill:var(--muted);font-size:10px;font-family:var(--font-b)}
+.ch-end{fill:var(--text);font-size:11px;font-weight:600;font-family:var(--font-b)}
+.ch-line{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.ch-dot{fill:var(--accent);stroke:var(--surface,var(--bg));stroke-width:2}
+.ch-dot.on{r:6}
+.ch-hit{fill:transparent;cursor:pointer}
+.meters{display:grid;gap:8px;margin-top:6px}
+.meter-row{display:grid;grid-template-columns:minmax(90px,34%) 1fr auto;gap:10px;align-items:center;font-size:14px}
+.meter{height:10px;border-radius:5px;background:var(--accent-tint-2);overflow:hidden}
+.meter i{display:block;height:100%;background:var(--accent);border-radius:5px}
+.meter-v{font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px}
+label.check{display:flex;align-items:center;gap:6px}
 .block-tools{margin:0 0 12px}
 .slotedit .slot-sum{display:flex;align-items:center;gap:10px}
 .slotedit .sum-main{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;background:none;border:0;padding:6px 0;min-height:44px;cursor:pointer;color:inherit;font:inherit}
@@ -1421,6 +1467,8 @@ details.info .row{margin-top:10px}
   }
 
   function toast(msg, ms) {
+    // One message at a time: a new one replaces the last (a PR and "Next session" used to overlap).
+    document.querySelectorAll('.toast').forEach(function (t) { t.remove(); });
     var el = document.createElement('div');
     el.className = 'toast'; el.textContent = msg;
     document.body.appendChild(el);
@@ -1508,6 +1556,8 @@ details.info .row{margin-top:10px}
     app.querySelectorAll('.card.slot').forEach(function (card) {
       card.querySelectorAll('.editor').forEach(function (ed) { refreshCell(card, ed.dataset.i); });
     });
+    paintPrs();
+    paintRest();
     syncEditing();
   }
 
@@ -1757,6 +1807,7 @@ details.info .row{margin-top:10px}
     progressAccessories(state.cursor.week, state.cursor.day);
     save();
     paintBumpNotes();
+    paintPrs();
   }
 
   function bumpNoteText(entry) {
@@ -1775,6 +1826,257 @@ details.info .row{margin-top:10px}
       el.textContent = txt; el.hidden = !txt;
     });
   }
+
+  /* ---------------- rest timer, personal records, session summary (v3 and the machine plan) ---------------- */
+
+  // v2 is left as it was: these appear only where the app is v3 or the machine plan.
+  var EXTRAS = ONBOARDING || PLAIN;
+  function restMain() { return state.settings.restMain > 0 ? state.settings.restMain : 180; }
+  function restAcc() { return state.settings.restAcc > 0 ? state.settings.restAcc : 90; }
+  function mmss(s) { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ':' + (s % 60 < 10 ? '0' : '') + (s % 60); }
+
+  // The rest timer starts when a set is logged: about 3 minutes after a main-lift set, 90 seconds
+  // after anything else (both set in Setup). It counts from a clock time, not by ticks, so a phone
+  // that sleeps or a page that reloads shows the right time. iOS ignores vibration and cannot alert
+  // a locked home-screen app, so it is on screen, with a short sound when it ends.
+  var restTick = null, audioCtx = null;
+  function unlockAudio() {
+    if (!EXTRAS || state.settings.restSound === false) { return; }
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) { return; }
+      if (!audioCtx) { audioCtx = new AC(); }
+      if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+    } catch (e) { audioCtx = null; }
+  }
+  function chime() {
+    if (state.settings.restSound === false || !audioCtx) { return; }
+    try {
+      [0, 0.22].forEach(function (at) {
+        var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.frequency.value = 880; o.connect(g); g.connect(audioCtx.destination);
+        var t = audioCtx.currentTime + at;
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.3, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+        o.start(t); o.stop(t + 0.18);
+      });
+    } catch (e) { /* no sound is fine */ }
+  }
+  function startRest(card) {
+    if (!EXTRAS || !card) { return; }
+    var secs = card.classList.contains('main') ? restMain() : restAcc();
+    state.restTimer = { end: Date.now() + secs * 1000, total: secs, name: card.dataset.movement || '' };
+    save(); paintRest();
+  }
+  function stopRest() {
+    if (state.restTimer) { delete state.restTimer; save(); }
+    paintRest();
+  }
+  function paintRest() {
+    var el = document.getElementById('rest-bar');
+    var r = EXTRAS ? state.restTimer : null;
+    var now = Date.now();
+    // An old finished rest (a minute past the end) is dropped rather than shown.
+    if (r && now - r.end > 60000) { delete state.restTimer; save(); r = null; }
+    if (!r) {
+      if (el) { el.hidden = true; }
+      document.body.classList.remove('resting');
+      if (restTick) { clearInterval(restTick); restTick = null; }
+      return;
+    }
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'rest-bar'; el.setAttribute('role', 'timer'); el.setAttribute('aria-live', 'off');
+      el.innerHTML = '<div class="rest-main"><span class="rest-label"></span><span class="rest-time"></span></div>' +
+        '<div class="rest-track"><i></i></div>' +
+        '<div class="rest-btns"><button type="button" data-rest="-15" aria-label="15 seconds less">−15</button>' +
+        '<button type="button" data-rest="15" aria-label="15 seconds more">+15</button>' +
+        '<button type="button" data-rest="skip">Skip</button></div>';
+      document.body.appendChild(el);
+    }
+    el.hidden = false;
+    document.body.classList.add('resting');
+    var left = (r.end - now) / 1000, over = left <= 0;
+    if (over && !r.rang) {
+      r.rang = true; save(); chime();
+      try { if (navigator.vibrate) { navigator.vibrate([200, 100, 200]); } } catch (e) { /* not on iOS */ }
+    }
+    el.classList.toggle('over', over);
+    el.querySelector('.rest-label').textContent = (over ? 'Rest done · ' : 'Rest · ') + r.name;
+    el.querySelector('.rest-time').textContent = over ? 'Go' : mmss(Math.ceil(left));
+    el.querySelector('.rest-track i').style.width = (over ? 100 : Math.max(0, Math.min(100, 100 - (left / r.total) * 100))) + '%';
+    if (!restTick) { restTick = setInterval(paintRest, 250); }
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-rest]') : null;
+    if (!b || !state.restTimer) { return; }
+    var r = state.restTimer, d = b.dataset.rest;
+    if (d === 'skip') { stopRest(); return; }
+    var now = Date.now();
+    if (r.end <= now && Number(d) < 0) { return; }
+    r.end = Math.max(now, r.end + Number(d) * 1000);
+    r.total = Math.max(15, r.total + Number(d));
+    r.rang = r.end <= now;
+    save(); paintRest();
+  });
+
+  // ---- personal records ----
+  // Bests at an exercise from every session before this one, this cycle and the archive. A set of
+  // more than 10 reps does not count towards the estimated 1RM (Epley runs high past that).
+  function sessionRank(cycle, week, day) { return cycle * 10000 + week * 10 + day; }
+  function priorBests(movement, week, day) {
+    var key = nameKey(movement), me = sessionRank(state.cycle || 1, week, day);
+    var b = { any: false, e1rm: null, kg: null, sets: [] };
+    function scan(logs, cycle) {
+      Object.keys(logs || {}).forEach(function (k) {
+        var w = Number(k.split('|')[0]), d = Number(k.split('|')[1]);
+        if (sessionRank(cycle, w, d) >= me) { return; }
+        var l = logs[k];
+        Object.keys(l.slots || {}).forEach(function (id) {
+          var e = l.slots[id];
+          if (!e || nameKey(e.movement) !== key) { return; }
+          (e.sets || []).forEach(function (x) {
+            if (!x || !x.reps || x.kg === null || x.kg === undefined) { return; }
+            b.any = true; b.sets.push(x);
+            if (x.reps <= 10) { var v = resultE1RM(x.kg, x.reps); if (b.e1rm === null || v > b.e1rm) { b.e1rm = v; } }
+            if (b.kg === null || x.kg > b.kg) { b.kg = x.kg; }
+          });
+        });
+      });
+    }
+    scan(state.logs, state.cycle || 1);
+    (state.archive || []).forEach(function (a) { scan(a.logs, a.cycle); });
+    return b;
+  }
+  function mostRepsAt(sets, kg) {
+    var best = null;
+    sets.forEach(function (x) { if (x.kg >= kg && (best === null || x.reps > best)) { best = x.reps; } });
+    return best;
+  }
+  // For each set in order: the records it sets against everything before this session and the sets
+  // before it today. Nothing is a record on the first time an exercise is done.
+  function setRecords(b, sets) {
+    var seen = [], e1 = b.e1rm, kg = b.kg;
+    return (sets || []).map(function (x) {
+      if (!x || !x.reps || x.kg === null || x.kg === undefined) { return null; }
+      var out = null;
+      if (b.any) {
+        var kinds = [], v = x.reps <= 10 ? resultE1RM(x.kg, x.reps) : null;
+        if (v !== null && (e1 === null || v > e1 + 0.01)) { kinds.push({ k: 'e1rm', text: 'est. 1RM ' + fmt(Math.round(v * 2) / 2) + ' ' + U() + (e1 !== null ? ' (was ' + fmt(Math.round(e1 * 2) / 2) + ')' : '') }); }
+        if (kg === null || x.kg > kg) { kinds.push({ k: 'kg', text: 'heaviest, ' + fmt(x.kg) + ' ' + U() + (kg !== null ? ' (was ' + fmt(kg) + ')' : '') }); }
+        var before = mostRepsAt(b.sets.concat(seen), x.kg);
+        if (!kinds.length && before !== null && x.reps > before) { kinds.push({ k: 'reps', text: x.reps + ' reps at ' + fmt(x.kg) + ' ' + U() + ' (was ' + before + ')' }); }
+        if (kinds.length) { out = kinds; }
+      }
+      if (x.reps <= 10) { var v2 = resultE1RM(x.kg, x.reps); if (e1 === null || v2 > e1) { e1 = v2; } }
+      if (kg === null || x.kg > kg) { kg = x.kg; }
+      seen.push(x);
+      return out;
+    });
+  }
+  // Puts a PR badge on each logged set on Today that set one; returns them by card for the toast.
+  function paintPrs() {
+    if (!EXTRAS || state.ui.tab !== 'today' || state.testWeek) { return {}; }
+    var week = state.cursor.week, day = state.cursor.day;
+    var log = state.logs[logKey(week, day)] || { slots: {} };
+    var found = {};
+    document.querySelectorAll('#app .card.slot').forEach(function (card) {
+      var entry = log.slots[card.dataset.slot];
+      var recs = entry && entry.sets ? setRecords(priorBests(card.dataset.movement, week, day), entry.sets) : [];
+      card.querySelectorAll('.setcell').forEach(function (cell) {
+        var i = Number(cell.dataset.i), r = recs[i];
+        var tag = cell.querySelector('.c-pr');
+        if (r && cell.classList.contains('done')) {
+          if (!tag) { tag = document.createElement('span'); tag.className = 'c-pr'; tag.textContent = 'PR'; cell.appendChild(tag); }
+          tag.title = r.map(function (x) { return x.text; }).join(' · ');
+        } else if (tag) { tag.remove(); }
+      });
+      found[card.dataset.slot] = recs;
+    });
+    return found;
+  }
+
+  // ---- session summary, shown when Finish is pressed ----
+  function stampSet() {
+    var l = state.logs[logKey(state.cursor.week, state.cursor.day)];
+    if (!l) { return; }
+    var now = Date.now();
+    if (!l.startedAt) { l.startedAt = now; }
+    l.lastAt = now;
+  }
+  function sessionStats(week, day) {
+    var log = state.logs[logKey(week, day)];
+    var pres = E.prescribeDay(programme(), week, day, ctx());
+    var planned = pres.reduce(function (t, p) { return t + p.sets.length; }, 0);
+    var st = { planned: planned, sets: 0, volume: 0, skipped: [], prs: [], amraps: [], minutes: null };
+    if (!log) { return st; }
+    pres.forEach(function (p) {
+      var e = log.slots[p.id];
+      if (!e) { return; }
+      if (e.skipped) { st.skipped.push(e.movement || p.movement); }
+      var sets = (e.sets || []).filter(function (x) { return x && x.reps; });
+      st.sets += sets.length;
+      sets.forEach(function (x) { if (x.kg) { st.volume += x.kg * x.reps; } });
+      var recs = setRecords(priorBests(e.movement || p.movement, week, day), e.sets);
+      var best = null;
+      recs.forEach(function (r) { if (r) { best = r; } });
+      if (best) { st.prs.push({ name: e.movement || p.movement, text: best.map(function (x) { return x.text; }).join(' · ') }); }
+      if (isWaveSlot(p.slot)) {
+        var last = p.sets[p.sets.length - 1], got = e.sets && e.sets[p.sets.length - 1];
+        if (last && last.amrap && got && got.reps) { st.amraps.push({ name: p.movement, kg: got.kg, reps: got.reps, std: last.reps }); }
+      }
+    });
+    if (log.startedAt && log.lastAt && log.lastAt > log.startedAt) { st.minutes = Math.max(1, Math.round((log.lastAt - log.startedAt) / 60000)); }
+    st.volume = Math.round(st.volume);
+    return st;
+  }
+  function summaryHtml(week, day) {
+    var st = sessionStats(week, day);
+    var prev = week > 1 ? sessionStats(week - 1, day) : null;
+    var dayName = programme().days[day].name;
+    function tile(label, value, delta) {
+      return '<div class="sum-tile"><div class="sum-k">' + label + '</div><div class="sum-v">' + value + '</div>' + (delta ? '<div class="sum-d">' + delta + '</div>' : '') + '</div>';
+    }
+    var volDelta = '';
+    if (prev && prev.volume > 0 && st.volume > 0) {
+      var pct = Math.round((st.volume / prev.volume - 1) * 100);
+      volDelta = (pct > 0 ? '+' : '') + pct + '% on week ' + (week - 1);
+    }
+    var setsDelta = prev && prev.sets ? (st.sets - prev.sets > 0 ? '+' : '') + (st.sets - prev.sets) + ' on week ' + (week - 1) : '';
+    return '<div class="sum-card" role="dialog" aria-modal="true" aria-labelledby="sum-title">' +
+      '<div class="sum-kicker">Week ' + week + ' · ' + esc(dayName) + '</div>' +
+      '<h2 id="sum-title">Session done</h2>' +
+      '<div class="sum-tiles">' +
+      tile('Time', st.minutes === null ? '–' : st.minutes + ' min', st.minutes === null ? '' : 'first set to last') +
+      tile('Sets', st.sets + ' / ' + st.planned, setsDelta) +
+      tile('Volume', st.volume ? st.volume.toLocaleString('en-GB') + ' ' + U() : '–', volDelta) +
+      '</div>' +
+      (st.amraps.length ? '<h3>Last sets</h3><ul class="sum-list">' + st.amraps.map(function (a) {
+        return '<li><b>' + esc(a.name) + '</b> ' + fmt(a.kg) + ' × ' + a.reps + (a.reps > a.std ? ' · ' + (a.reps - a.std) + ' over the standard' : a.reps < a.std ? ' · ' + (a.std - a.reps) + ' under the standard' : ' · on the standard') + '</li>';
+      }).join('') + '</ul>' : '') +
+      '<h3>Personal records</h3>' + (st.prs.length ? '<ul class="sum-list">' + st.prs.map(function (p) {
+        return '<li><span class="c-pr">PR</span> <b>' + esc(p.name) + '</b> ' + esc(p.text) + '</li>';
+      }).join('') + '</ul>' : '<p class="hint">None this time.</p>') +
+      (st.skipped.length ? '<p class="hint">Skipped: ' + esc(st.skipped.join(', ')) + '</p>' : '') +
+      '<button type="button" class="primary" data-summary-close>Close</button></div>';
+  }
+  function showSummary(week, day) {
+    if (!EXTRAS) { return; }
+    var old = document.getElementById('sess-summary');
+    if (old) { old.remove(); }
+    var el = document.createElement('div');
+    el.id = 'sess-summary';
+    el.innerHTML = summaryHtml(week, day);
+    document.body.appendChild(el);
+    document.body.classList.add('summary-open');
+  }
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (t.closest && (t.closest('[data-summary-close]') || t.id === 'sess-summary')) {
+      var el = document.getElementById('sess-summary');
+      if (el) { el.remove(); }
+      document.body.classList.remove('summary-open');
+    }
+  });
 
   // v3: while a set's editor is open the Back / Save / Finish bar is hidden. It
   // floats just above the tab bar, so it can sit right over an editor's Log set
@@ -1843,7 +2145,14 @@ details.info .row{margin-top:10px}
     }
     refreshCell(card, i);
     ed.hidden = true; cell.classList.remove('open');
+    if (a === 'log-set' && EXTRAS) { unlockAudio(); stampSet(); }
     persistSession();
+    if (a === 'log-set' && EXTRAS) {
+      var recs = (paintPrs()[card.dataset.slot] || [])[Number(i)];
+      if (recs) { toast('PR · ' + card.dataset.movement + ': ' + recs.map(function (x) { return x.text; }).join(' · '), 3500); }
+      // Rest after every set but the session's last.
+      if (document.querySelector('#app .card.slot:not([data-skipped]) .setcell:not(.done)')) { startRest(card); } else { stopRest(); }
+    }
     if (a === 'log-set') {
       var next = card.querySelector('.setcell:not(.done)');
       // The set that opens next starts from this set's weight — unless you have
@@ -2099,6 +2408,17 @@ details.info .row{margin-top:10px}
 
   /* ---------------- setup ---------------- */
 
+  // The rest timer's two defaults and its sound (v3 and the machine plan).
+  function restSetupHtml() {
+    if (!EXTRAS) { return ''; }
+    return '<h2>Rest timer</h2>' +
+      '<p class="hint">Starts when you log a set and counts down on screen. About 3 minutes between heavy sets keeps the next one strong; 90 seconds suits most accessories.</p>' +
+      '<div class="row wrap">' +
+      (PLAIN ? '' : '<label>Main lifts (sec) <input type="number" step="15" min="15" id="in-rest-main" value="' + restMain() + '"></label>') +
+      '<label>' + (PLAIN ? 'Between sets' : 'Everything else') + ' (sec) <input type="number" step="15" min="15" id="in-rest-acc" value="' + restAcc() + '"></label>' +
+      '<label class="check"><input type="checkbox" id="in-rest-sound"' + (state.settings.restSound === false ? '' : ' checked') + '> Sound when it ends</label></div>';
+  }
+
   function viewSetupPlain() {
     var s = state.settings;
     // Her three kinds of kit, worded for her plan (the shared labels talk about hack
@@ -2136,6 +2456,7 @@ details.info .row{margin-top:10px}
           '<td><input type="number" step="0.01" min="0.01" class="in-step" data-equip="' + e.id + '" value="' + (s.increments[e.id] === undefined ? '' : s.increments[e.id]) + '"></td>' +
           '<td class="hint">' + esc(e.note) + '</td></tr>';
       }).join('') + '</tbody></table>' +
+      restSetupHtml() +
       '<button type="button" class="primary" id="save-setup" data-action="save-setup">Save</button></section>' +
       '<section class="card"><h2>Data</h2><div class="row">' +
       '<button type="button" data-action="export">Export JSON</button>' +
@@ -2217,6 +2538,7 @@ details.info .row{margin-top:10px}
       '<tr><td>Protein</td><td><b>' + protein[0] + ' – ' + protein[1] + ' g/day</b></td><td class="hint">2.0–2.2 g/kg</td></tr>' +
       '<tr><td>Target calories</td><td><b>' + (s.maintenance + s.surplus) + ' kcal</b></td><td class="hint">Re-estimate maintenance every 2–3 weeks from your weight trend</td></tr>' +
       '</tbody></table>' +
+      restSetupHtml() +
       '<button type="button" class="primary" id="save-setup" data-action="save-setup">Save</button></section>' +
       '<section class="card"><h2>Data</h2><div class="row">' +
       '<button type="button" data-action="export">Export JSON</button>' +
@@ -2583,8 +2905,170 @@ details.info .row{margin-top:10px}
       '<div class="row"><button type="button" class="primary small" data-action="save-plan">Save plan</button></div></section>';
   }
 
+  /* ---------------- Progress: bests, a chart per exercise, sets per muscle this week ---------------- */
+
+  // Every session an exercise was done in, oldest first, across finished cycles and this one.
+  function exerciseSessions(movement) {
+    var key = nameKey(movement), out = [];
+    function scan(logs, cycle) {
+      Object.keys(logs || {}).forEach(function (k) {
+        var w = Number(k.split('|')[0]), d = Number(k.split('|')[1]);
+        var sets = [];
+        Object.keys(logs[k].slots || {}).forEach(function (id) {
+          var e = logs[k].slots[id];
+          if (e && nameKey(e.movement) === key) {
+            (e.sets || []).forEach(function (x) { if (x && x.reps && x.kg !== null && x.kg !== undefined) { sets.push(x); } });
+          }
+        });
+        if (sets.length) { out.push({ cycle: cycle, week: w, day: d, sets: sets, rank: sessionRank(cycle, w, d) }); }
+      });
+    }
+    (state.archive || []).forEach(function (a) { scan(a.logs, a.cycle); });
+    scan(state.logs, state.cycle || 1);
+    out.sort(function (a, b) { return a.rank - b.rank; });
+    return out;
+  }
+  function topSet(sets) { var t = null; sets.forEach(function (x) { if (!t || x.kg > t.kg || (x.kg === t.kg && x.reps > t.reps)) { t = x; } }); return t; }
+  function bestE1(sets) { var b = null; sets.forEach(function (x) { if (x.reps <= 10) { var v = resultE1RM(x.kg, x.reps); if (!b || v > b.v) { b = { v: v, x: x }; } } }); return b; }
+  // Exercises with history, in the order they come in the plan, then any others by name.
+  function chartExercises() {
+    var seen = {}, list = [];
+    function add(n) { var k = nameKey(n); if (!seen[k]) { seen[k] = true; list.push(n); } }
+    programme().days.forEach(function (d, di) { E.slotsFor(programme(), state.cursor.week, di).forEach(function (sl) { add(sl.movement); }); });
+    var withData = list.filter(function (n) { return exerciseSessions(n).length; });
+    var others = {};
+    [state.logs].concat((state.archive || []).map(function (a) { return a.logs; })).forEach(function (logs) {
+      Object.keys(logs || {}).forEach(function (k) {
+        Object.keys(logs[k].slots || {}).forEach(function (id) { var e = logs[k].slots[id]; if (e && e.movement && !seen[nameKey(e.movement)]) { others[e.movement] = true; } });
+      });
+    });
+    return withData.concat(Object.keys(others).sort().filter(function (n) { return exerciseSessions(n).length; }));
+  }
+  function niceStep(span) {
+    var raw = span / 4, mag = Math.pow(10, Math.floor(Math.log(raw) / Math.LN10)), n = raw / mag;
+    return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * mag;
+  }
+  // One series, so no legend: the card title says what is plotted. 2px line, 8px dots with a
+  // surface ring, hairline grid, the last value labelled, and a tap on a dot to read it.
+  function lineChartSvg(points, unit) {
+    var W = 320, H = 168, L = 40, R = 46, T = 12, B = 26;
+    var vals = points.map(function (p) { return p.v; });
+    var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+    if (hi === lo) { lo -= 5; hi += 5; }
+    var step = niceStep(hi - lo);
+    lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+    var x = function (i) { return points.length === 1 ? L + (W - L - R) / 2 : L + i * (W - L - R) / (points.length - 1); };
+    var y = function (v) { return T + (hi - v) * (H - T - B) / (hi - lo); };
+    var grid = '';
+    for (var g = lo; g <= hi + 1e-9; g += step) {
+      grid += '<line class="ch-grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(g) + '" y2="' + y(g) + '"/>' +
+        '<text class="ch-tick" x="' + (L - 6) + '" y="' + (y(g) + 4) + '" text-anchor="end">' + fmt(Math.round(g * 10) / 10) + '</text>';
+    }
+    var every = Math.max(1, Math.ceil(points.length / 6)), xl = '';
+    points.forEach(function (p, i) {
+      if (i % every === 0 || i === points.length - 1) { xl += '<text class="ch-tick" x="' + x(i) + '" y="' + (H - 8) + '" text-anchor="middle">' + esc(p.short) + '</text>'; }
+    });
+    var path = points.map(function (p, i) { return (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(p.v).toFixed(1); }).join(' ');
+    var dots = points.map(function (p, i) {
+      return '<circle class="ch-dot" cx="' + x(i) + '" cy="' + y(p.v) + '" r="4"/>' +
+        '<circle class="ch-hit" cx="' + x(i) + '" cy="' + y(p.v) + '" r="14" data-tip="' + esc(p.tip) + '"><title>' + esc(p.tip) + '</title></circle>';
+    }).join('');
+    var last = points[points.length - 1];
+    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(points.length + ' sessions, latest ' + fmt(last.v) + ' ' + unit) + '">' +
+      grid + xl + '<path class="ch-line" d="' + path + '"/>' + dots +
+      '<text class="ch-end" x="' + (x(points.length - 1) + 8) + '" y="' + (y(last.v) + 4) + '">' + fmt(last.v) + '</text></svg>';
+  }
+  function exerciseChartCard() {
+    var names = chartExercises();
+    if (!names.length) { return ''; }
+    var cur = names.filter(function (n) { return nameKey(n) === nameKey(state.ui.chartEx || ''); })[0] || names[0];
+    var isMain = E.progressingLifts(programme()).some(function (n) { return nameKey(n) === nameKey(cur); });
+    var metric = state.ui.chartMetric === 'top' || state.ui.chartMetric === 'e1rm' ? state.ui.chartMetric : (isMain ? 'e1rm' : 'top');
+    var sess = exerciseSessions(cur);
+    var cycles = sess.some(function (s) { return s.cycle !== (state.cycle || 1); });
+    var pts = [];
+    sess.forEach(function (s) {
+      var where = (cycles ? 'C' + s.cycle + ' ' : '') + 'W' + s.week;
+      var t = topSet(s.sets), b = bestE1(s.sets);
+      if (metric === 'e1rm') {
+        if (b) { pts.push({ v: Math.round(b.v * 2) / 2, short: where, tip: where + ': est. 1RM ' + fmt(Math.round(b.v * 2) / 2) + ' ' + U() + ' from ' + fmt(b.x.kg) + ' × ' + b.x.reps }); }
+      } else if (t) { pts.push({ v: t.kg, short: where, tip: where + ': top set ' + fmt(t.kg) + ' ' + U() + ' × ' + t.reps }); }
+    });
+    var body = pts.length ? lineChartSvg(pts, U()) + '<p class="hint sm chart-tip">Tap a point to read it.</p>'
+      : '<p class="hint">' + (metric === 'e1rm' ? 'No set of 10 reps or fewer yet, so no estimate. Switch to top set.' : 'Nothing logged yet.') + '</p>';
+    return '<section class="card chart-card"><h2>' + (metric === 'e1rm' ? 'Estimated 1RM' : 'Top set') + ' · ' + esc(cur) + '</h2>' +
+      '<div class="row wrap"><label>Exercise <select id="chart-ex">' + names.map(function (n) {
+        return '<option value="' + esc(n) + '"' + (n === cur ? ' selected' : '') + '>' + esc(n) + '</option>';
+      }).join('') + '</select></label>' +
+      '<div class="seg" role="tablist" style="grid-template-columns:repeat(2,minmax(0,1fr))">' +
+      '<button type="button" role="tab" aria-selected="' + (metric === 'e1rm') + '" class="' + (metric === 'e1rm' ? 'on' : '') + '" data-action="chart-metric" data-metric="e1rm">Est. 1RM</button>' +
+      '<button type="button" role="tab" aria-selected="' + (metric === 'top') + '" class="' + (metric === 'top' ? 'on' : '') + '" data-action="chart-metric" data-metric="top">Top set</button></div></div>' +
+      body + '</section>';
+  }
+  // Sets logged this week against the plan, by muscle group: one bar each, the plan as the track.
+  function weekSetsCard() {
+    var week = state.cursor.week, pr = programme();
+    var plan = E.weeklyVolume(pr, week, ctx()), done = {};
+    pr.days.forEach(function (d, di) {
+      var l = state.logs[logKey(week, di)];
+      if (!l) { return; }
+      Object.keys(l.slots || {}).forEach(function (id) {
+        var e = l.slots[id];
+        if (!e || !e.movement) { return; }
+        var g = (movementInfo(e.movement) || {}).group || 'Other';
+        done[g] = (done[g] || 0) + (e.sets || []).filter(function (x) { return x && x.reps; }).length;
+      });
+    });
+    var groups = Object.keys(plan).concat(Object.keys(done).filter(function (g) { return plan[g] === undefined; }));
+    if (!groups.length) { return ''; }
+    groups.sort(function (a, b) { return (plan[b] || 0) - (plan[a] || 0); });
+    var totalDone = groups.reduce(function (t, g) { return t + (done[g] || 0); }, 0), totalPlan = groups.reduce(function (t, g) { return t + (plan[g] || 0); }, 0);
+    return '<section class="card"><h2>Sets this week · week ' + week + '</h2>' +
+      '<p class="hint">' + totalDone + ' of ' + totalPlan + ' planned sets logged, by muscle group.</p>' +
+      '<div class="meters">' + groups.map(function (g) {
+        var d = done[g] || 0, p = plan[g] || 0, pct = p ? Math.min(100, d / p * 100) : (d ? 100 : 0);
+        return '<div class="meter-row"><span class="meter-k">' + esc(pretty(g)) + '</span>' +
+          '<span class="meter" role="img" aria-label="' + esc(pretty(g) + ': ' + d + ' of ' + p + ' sets') + '"><i style="width:' + pct + '%"></i></span>' +
+          '<span class="meter-v">' + d + ' / ' + p + '</span></div>';
+      }).join('') + '</div></section>';
+  }
+  // Each exercise's best: heaviest set and best estimated 1RM, with where it was done.
+  function bestsCardHtml() {
+    var names = chartExercises();
+    if (!names.length) { return ''; }
+    var cyclesSeen = false;
+    var rows = names.map(function (n) {
+      var heavy = null, e1 = null;
+      exerciseSessions(n).forEach(function (s) {
+        if (s.cycle !== (state.cycle || 1)) { cyclesSeen = true; }
+        var where = { cycle: s.cycle, week: s.week };
+        s.sets.forEach(function (x) {
+          if (!heavy || x.kg > heavy.x.kg || (x.kg === heavy.x.kg && x.reps > heavy.x.reps)) { heavy = { x: x, at: where }; }
+          if (x.reps <= 10) { var v = resultE1RM(x.kg, x.reps); if (!e1 || v > e1.v) { e1 = { v: v, at: where }; } }
+        });
+      });
+      return { n: n, heavy: heavy, e1: e1 };
+    });
+    function at(w) { return (cyclesSeen ? 'C' + w.cycle + ' ' : '') + 'wk ' + w.week; }
+    return '<section class="card"><h2>Personal bests</h2><div class="scroll"><table class="table"><thead><tr><th>Exercise</th><th>Heaviest</th><th>Est. 1RM</th></tr></thead><tbody>' +
+      rows.map(function (r) {
+        return '<tr><td>' + esc(r.n) + '</td><td>' + (r.heavy ? fmt(r.heavy.x.kg) + ' × ' + r.heavy.x.reps + ' <span class="hint sm">' + at(r.heavy.at) + '</span>' : '–') + '</td>' +
+          '<td>' + (r.e1 ? '<b>' + fmt(Math.round(r.e1.v * 2) / 2) + '</b> <span class="hint sm">' + at(r.e1.at) + '</span>' : '–') + '</td></tr>';
+      }).join('') + '</tbody></table></div><p class="hint sm">Est. 1RM counts sets of 10 reps or fewer.</p></section>';
+  }
+  function progressExtrasHtml() { return EXTRAS ? exerciseChartCard() + weekSetsCard() + bestsCardHtml() : ''; }
+  document.addEventListener('click', function (e) {
+    var hit = e.target.closest ? e.target.closest('[data-tip]') : null;
+    if (!hit) { return; }
+    var card = hit.closest('.chart-card'), tip = card && card.querySelector('.chart-tip');
+    if (tip) { tip.textContent = hit.getAttribute('data-tip'); }
+    card.querySelectorAll('.ch-dot.on').forEach(function (d) { d.classList.remove('on'); });
+    var dot = hit.previousElementSibling;
+    if (dot) { dot.classList.add('on'); }
+  });
+
   function viewProgressPlain() {
-    return strengthCardHtml() + measurementsCard() + skipTallyHtml() + historyCardHtml();
+    return strengthCardHtml() + progressExtrasHtml() + measurementsCard() + skipTallyHtml() + historyCardHtml();
   }
 
   function viewProgress() {
@@ -2680,7 +3164,7 @@ details.info .row{margin-top:10px}
       '<button type="button" role="tab" aria-selected="' + (view === 'climb') + '" class="' + (view === 'climb' ? 'on' : '') + '" data-action="prog-view" data-view="climb">Climb</button>' +
       '<button type="button" role="tab" aria-selected="' + (view === 'amrap') + '" class="' + (view === 'amrap' ? 'on' : '') + '" data-action="prog-view" data-view="amrap">AMRAP &amp; ledger</button>' +
       '</div>';
-    return view === 'climb' ? switcher + ov.climb + full.slice(cut) : switcher + ov.preview + full.slice(0, cut);
+    return view === 'climb' ? switcher + ov.climb + progressExtrasHtml() + full.slice(cut) : switcher + ov.preview + full.slice(0, cut);
   }
 
   /* ---------------- library ---------------- */
@@ -3776,6 +4260,7 @@ details.info .row{margin-top:10px}
     var a = btn.dataset.action;
     if (a === 'cell' || a === 'step' || a === 'log-set' || a === 'clear-set') { setAction(btn, a); return; }
     if (a === 'prog-view') { state.ui.progView = btn.dataset.view; save(); render(); return; }
+    if (a === 'chart-metric') { state.ui.chartMetric = btn.dataset.metric; save(); render(); return; }
     if (a === 'prog-lift') { state.ui.progLift = btn.dataset.lift; state.ui.progReps = null; save(); render(); return; }
     if (a === 'prog-step') {
       var pnames = E.progressingLifts(programme()).filter(function (n) { return E.tracked(n, state.lifts) && nextRealizationFor(n); });
@@ -3882,7 +4367,11 @@ details.info .row{margin-top:10px}
       readSession(); swapOpen = null; skipOpen = null; moveOpen = null;
       var bumped2 = progressAccessories(state.cursor.week, state.cursor.day);
       var noRir2 = missingRir(state.cursor.week, state.cursor.day);
+      var doneWk = state.cursor.week, doneDay = state.cursor.day;
+      var hadSets = EXTRAS && sessionStats(doneWk, doneDay).sets > 0;
+      if (EXTRAS) { delete state.restTimer; }
       save(); advance(); save(); render();
+      if (hadSets) { showSummary(doneWk, doneDay); }
       toast(saveMessage(bumped2, noRir2, 'Next session'), noRir2.length ? 5000 : 0);
     } else if (a === 'skip-back') {
       readSession(); swapOpen = null; skipOpen = null; moveOpen = null; save(); retreat(); save(); render();
@@ -3945,6 +4434,11 @@ details.info .row{margin-top:10px}
       if (plateNums && plateNums.join(',') !== shown.plates) { state.settings.plates = plateNums; }
       var ez = num(fieldValue('in-ez')); if (ez !== null && ez >= 0 && ez !== shown.ez) { state.settings.ezBarWeight = ez; }
       var trap = num(fieldValue('in-trap')); if (trap !== null && trap >= 0 && trap !== shown.trap) { state.settings.trapBarWeight = trap; }
+      if (EXTRAS) {
+        var rm = num(fieldValue('in-rest-main')); if (rm !== null && rm >= 15 && rm !== restMain()) { state.settings.restMain = rm; }
+        var ra = num(fieldValue('in-rest-acc')); if (ra !== null && ra >= 15 && ra !== restAcc()) { state.settings.restAcc = ra; }
+        var snd = document.getElementById('in-rest-sound'); if (snd) { state.settings.restSound = snd.checked; }
+      }
       save(); render(); toast('Saved');
     } else if (a === 'apply-tm') {
       var lname = btn.dataset.lift, tm = Number(btn.dataset.tm);
@@ -4109,6 +4603,7 @@ details.info .row{margin-top:10px}
       var addBox = t.closest('.swap-panel').querySelector('.swap-add');
       if (addBox) { addBox.hidden = t.value !== '__add__'; }
     }
+    else if (t.id === 'chart-ex') { state.ui.chartEx = t.value; state.ui.chartMetric = null; save(); render(); }
     else if (t.id === 'block-week') { readSlotEdits(); state.ui.blockWeek = Number(t.value); save(); render(); }
     else if (t.classList.contains('s-group')) {
       readSlotEdits();
