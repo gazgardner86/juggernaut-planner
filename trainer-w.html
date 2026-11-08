@@ -230,6 +230,23 @@ body.resting{padding-top:calc(64px + env(safe-area-inset-top))}
 .meter i{display:block;height:100%;background:var(--accent);border-radius:5px}
 .meter-v{font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px}
 label.check{display:flex;align-items:center;gap:6px}
+/* last time, faint inside each set until it is logged */
+.setcell .c-prev{font-size:10px;line-height:1.1;color:var(--faint);font-variant-numeric:tabular-nums}
+.setcell.done .c-prev,.setcell.draft .c-prev{display:none}
+/* warm-up chips carry their plates */
+.warm .chip{display:inline-flex;flex-direction:column;align-items:center;line-height:1.15}
+.warm .w-pl{font-size:10px;color:var(--muted)}
+/* quick weight jumps under the weight box */
+.kg-chips{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:8px}
+.kg-chips button{min-height:40px;font-variant-numeric:tabular-nums}
+/* a superset: the two cards joined by a bracket */
+.card.slot.ss-a,.card.slot.ss-b{border-left:3px solid var(--accent)}
+.card.slot.ss-a{margin-bottom:4px}
+.card.slot.ss-a::before,.card.slot.ss-b::before{position:absolute;top:-9px;left:14px;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:1px 6px;border-radius:4px;background:var(--accent);color:var(--on-accent)}
+.card.slot.ss-a::before{content:'Superset · A'}
+.card.slot.ss-b::before{content:'Superset · B'}
+.pill.sess-clock{font-variant-numeric:tabular-nums}
+.pill[hidden]{display:none}
 .block-tools{margin:0 0 12px}
 .slotedit .slot-sum{display:flex;align-items:center;gap:10px}
 .slotedit .sum-main{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;background:none;border:0;padding:6px 0;min-height:44px;cursor:pointer;color:inherit;font:inherit}
@@ -1704,6 +1721,9 @@ details.info .row{margin-top:10px}
     });
     paintPrs();
     paintRest();
+    paintSessPills();
+    syncWake();
+    applyTheme();
     syncEditing();
   }
 
@@ -1756,7 +1776,7 @@ details.info .row{margin-top:10px}
       return '<div class="card sess">' +
         '<div class="sess-kicker">Week ' + week + ' of ' + P0.weeks + ' · ' + esc(d.name) + '</div>' +
         '<div class="sess-title">' + esc(d.title || d.name) + '</div>' +
-        '<div class="tags"><span class="pill accent">Block ' + blockOf(week) + '</span><span class="pill">' + (light ? 'Lighter week' : 'Build week') + '</span></div>' +
+        '<div class="tags"><span class="pill accent">Block ' + blockOf(week) + '</span><span class="pill">' + (light ? 'Lighter week' : 'Build week') + '</span>' + (EXTRAS ? '<span class="pill jg-sets"></span><span class="pill sess-clock" hidden></span>' : '') + '</div>' +
         '<div class="weekticks" style="grid-template-columns:repeat(' + P0.weeks + ',1fr)" aria-hidden="true">' + ticks + '</div>' +
         '<p class="phase-note">' + plainNote + '</p></div>';
     }
@@ -1769,7 +1789,7 @@ details.info .row{margin-top:10px}
     return '<div class="card sess">' +
       '<div class="sess-kicker">' + ((state.cycle || 1) > 1 ? 'Cycle ' + state.cycle + ' · ' : '') + 'Week ' + week + ' of ' + P0.weeks + ' · ' + esc(d.name) + '</div>' +
       '<div class="sess-title">' + esc(mains.length ? mains.map(function (m) { return m.movement; }).join(' + ') : d.name) + ' day</div>' +
-      '<div class="tags"><span class="pill accent">' + wave + ' wave</span><span class="pill">' + phase + '</span></div>' +
+      '<div class="tags"><span class="pill accent">' + wave + ' wave</span><span class="pill">' + phase + '</span>' + (EXTRAS ? '<span class="pill jg-sets"></span><span class="pill sess-clock" hidden></span>' : '') + '</div>' +
       '<div class="weekticks" style="grid-template-columns:repeat(' + P0.weeks + ',1fr)" aria-hidden="true">' + ticks + '</div>' +
       (note ? '<p class="phase-note">' + note + '</p>' : '') +
       '</div>';
@@ -1814,7 +1834,11 @@ details.info .row{margin-top:10px}
       prevLine = '<div class="lasttime">Last time (' + (prev.cycle ? 'cycle ' + prev.cycle + ', ' : '') + 'wk ' + prev.week + '): ' + esc(txt) + (rirs.length ? ' · RIR ' + esc(rirs.join('/')) : '') + '</div>';
     }
     var warm = p.warmups.length
-      ? '<div class="warm">Warm-up ' + p.warmups.map(function (w) { return '<span class="chip">' + fmt(w.kg) + ' × ' + w.reps + '</span>'; }).join('') + '</div>'
+      ? '<div class="warm">Warm-up ' + p.warmups.map(function (w) {
+          // The plates for each warm-up step too, on a barbell lift.
+          var wp = EXTRAS && PLATES && plateKind(p.movement, p.slot.load.kind) === 'bar' ? platesLine(w.kg, 'bar').text.replace(/^Per side: /, '') : '';
+          return '<span class="chip">' + fmt(w.kg) + ' × ' + w.reps + (wp ? '<small class="w-pl">' + esc(wp) + '</small>' : '') + '</span>';
+        }).join('') + '</div>'
       : '';
 
     // Weight steps by the plate rounding for TM-driven loads, otherwise by the
@@ -1855,8 +1879,11 @@ details.info .row{margin-top:10px}
       var target = 'Target ' + repsTxt + (s.amrap ? '+' : '') +
         (s.amrap && isMain ? ' · ' + (RESERVE_TAG[phase] || 'AMRAP') : (tRir !== '' ? ' @ RIR ' + tRir : '')) +
         (isMain ? ' · ' + Math.round(s.pct * 1000) / 10 + '% TM' : '');
+      // What this set was last time, faint inside the cell until it is logged (Hevy's "Previous").
+      var was = EXTRAS && prev && prev.entry.sets ? prev.entry.sets[i] : null;
+      var prevTxt = was && was.reps ? (was.kg === null || was.kg === undefined ? '?' : fmt(was.kg)) + '×' + was.reps : '';
       cells += '<button type="button" class="setcell' + (s.amrap ? ' amrap' : '') + '" data-action="cell" data-i="' + i + '" aria-label="Set ' + s.n + '">' +
-        '<span class="c-kg"></span><span class="c-reps"></span></button>';
+        '<span class="c-kg"></span><span class="c-reps"></span>' + (prevTxt ? '<span class="c-prev" title="Last time">' + esc(prevTxt) + '</span>' : '') + '</button>';
       editors += '<div class="editor" data-i="' + i + '"' + (plateKind(p.movement, p.slot.load.kind) ? ' data-plates="' + plateKind(p.movement, p.slot.load.kind) + '"' : '') + ' data-treps="' + s.reps + '" data-ttop="' + (s.top || '') + '" data-trir="' + tRir + '" data-amrap="' + (s.amrap ? 1 : 0) + '" data-logged="' + (lg.reps !== null && lg.reps !== undefined ? 1 : 0) + '" hidden>' +
         '<div class="ed-head"><span class="ed-title">Set ' + s.n + '</span><span class="ed-target">' + esc(target) + '</span></div>' +
         '<div class="ed-fields">' +
@@ -1865,7 +1892,12 @@ details.info .row{margin-top:10px}
           ? field('RIR', '<input type="number" inputmode="numeric" step="1" min="0" class="in-rir" data-i="' + i + '" value="' + rirVal + '" placeholder="' + tRir + '">', 1)
           : '<input type="hidden" class="in-rir" data-i="' + i + '" value="' + rirVal + '">') +
         field(U(), '<input type="number" inputmode="decimal" step="0.5" min="0" class="in-kg" data-i="' + i + '" value="' + kgVal + '">', kgStep, askRir) +
-        '</div><div class="ed-hint"></div>' + (plateKind(p.movement, p.slot.load.kind) ? '<div class="ed-plates hint sm"></div>' : '') +
+        '</div>' +
+        // Bigger jumps than the stepper, one tap each (Strong's keypad has these).
+        (EXTRAS ? '<div class="kg-chips">' + [-10, -5, 5, 10].map(function (d) {
+          return '<button type="button" class="small" data-action="kg-add" data-d="' + d + '" aria-label="' + (d > 0 ? 'Add ' : 'Take off ') + Math.abs(d) + ' ' + U() + '">' + (d > 0 ? '+' : '−') + Math.abs(d) + '</button>';
+        }).join('') + '</div>' : '') +
+        '<div class="ed-hint"></div>' + (plateKind(p.movement, p.slot.load.kind) ? '<div class="ed-plates hint sm"></div>' : '') +
         '<div class="ed-actions"><button type="button" data-action="clear-set">Clear</button><button type="button" class="primary" data-action="log-set">Log set</button></div>' +
         '</div>';
     });
@@ -1954,6 +1986,7 @@ details.info .row{margin-top:10px}
     save();
     paintBumpNotes();
     paintPrs();
+    paintSessPills();
   }
 
   function bumpNoteText(entry) {
@@ -2064,6 +2097,60 @@ details.info .row{margin-top:10px}
     r.rang = r.end <= now;
     save(); paintRest();
   });
+
+
+  // ---- session clock, sets done, keeping the screen on ----
+  // Live while the session is going (a set logged in the last two hours), the session's length after.
+  var clockTick = null;
+  function sessionLive(l) { return !!(l && l.startedAt && l.lastAt && Date.now() - l.lastAt < 2 * 3600000); }
+  function hms(ms) {
+    var t = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, sec = t % 60;
+    return (h ? h + ':' + (m < 10 ? '0' : '') : '') + m + ':' + (sec < 10 ? '0' : '') + sec;
+  }
+  function paintSessPills() {
+    if (!EXTRAS) { return; }
+    var sets = document.querySelector('#app .card.sess .jg-sets');
+    if (sets) {
+      var all = document.querySelectorAll('#app .card.slot:not([data-skipped]) .setcell').length;
+      var done = document.querySelectorAll('#app .card.slot:not([data-skipped]) .setcell.done').length;
+      sets.textContent = done + ' / ' + all + ' sets';
+      sets.hidden = !all;
+    }
+    var clock = document.querySelector('#app .card.sess .sess-clock');
+    var l = state.logs[logKey(state.cursor.week, state.cursor.day)];
+    if (clock) {
+      if (l && l.startedAt && l.lastAt) {
+        clock.hidden = false;
+        clock.textContent = sessionLive(l) ? '⏱ ' + hms(Date.now() - l.startedAt) : Math.max(1, Math.round((l.lastAt - l.startedAt) / 60000)) + ' min';
+      } else { clock.hidden = true; }
+    }
+    var live = !!clock && sessionLive(l);
+    if (live && !clockTick) { clockTick = setInterval(paintSessPills, 1000); }
+    if (!live && clockTick) { clearInterval(clockTick); clockTick = null; }
+  }
+  // The screen stays on while a session is going (Setup can turn it off). Older iOS ignored this in
+  // home-screen apps, so it is a best effort: nothing breaks where it is missing.
+  var wakeLock = null;
+  function syncWake() {
+    if (!EXTRAS || !('wakeLock' in navigator)) { return; }
+    var l = state.logs[logKey(state.cursor.week, state.cursor.day)];
+    var want = state.settings.keepAwake !== false && state.ui.tab === 'today' && document.visibilityState === 'visible' && sessionLive(l);
+    if (want && !wakeLock) {
+      navigator.wakeLock.request('screen').then(function (w) {
+        wakeLock = w;
+        w.addEventListener('release', function () { if (wakeLock === w) { wakeLock = null; } });
+      }).catch(function () { wakeLock = null; });
+    } else if (!want && wakeLock) {
+      var w0 = wakeLock; wakeLock = null;
+      try { w0.release(); } catch (e) { /* already gone */ }
+    }
+  }
+  document.addEventListener('visibilitychange', function () { syncWake(); });
+  // Dark, light, or match the phone, for the v3 look (the plain builds have no theme of their own).
+  function applyTheme() {
+    var t = state.settings.theme === 'light' || state.settings.theme === 'auto' ? state.settings.theme : 'dark';
+    document.documentElement.setAttribute('data-theme', t);
+  }
 
   // ---- personal records ----
   // Bests at an exercise from every session before this one, this cycle and the archive. A set of
@@ -2254,6 +2341,13 @@ details.info .row{margin-top:10px}
     var ed = btn.closest('.editor');
     var i = ed.dataset.i;
     var reps = ed.querySelector('.in-reps'), rir = ed.querySelector('.in-rir');
+    if (a === 'kg-add') {
+      var kgIn = ed.querySelector('.in-kg');
+      kgIn.value = Math.max(0, Math.round(((num(kgIn.value) || 0) + Number(btn.dataset.d)) * 100) / 100);
+      kgIn.dataset.touched = '1';
+      refreshCell(card, i); persistSession();
+      return;
+    }
     if (a === 'step') {
       var input = btn.parentNode.querySelector('input');
       var cur = num(input.value);
@@ -2291,13 +2385,18 @@ details.info .row{margin-top:10px}
     }
     refreshCell(card, i);
     ed.hidden = true; cell.classList.remove('open');
-    if (a === 'log-set' && EXTRAS) { unlockAudio(); stampSet(); }
+    if (a === 'log-set' && EXTRAS) { unlockAudio(); }
     persistSession();
     if (a === 'log-set' && EXTRAS) {
+      // After the save: the session's log does not exist until its first set is read.
+      stampSet(); save(); paintSessPills();
       var recs = (paintPrs()[card.dataset.slot] || [])[Number(i)];
       if (recs) { toast('PR · ' + card.dataset.movement + ': ' + recs.map(function (x) { return x.text; }).join(' · '), 3500); }
       // Rest after every set but the session's last.
-      if (document.querySelector('#app .card.slot:not([data-skipped]) .setcell:not(.done)')) { startRest(card); } else { stopRest(); }
+      // No rest between the two halves of a superset: straight on to the partner.
+      if (card.classList.contains('ss-a')) { stopRest(); }
+      else if (document.querySelector('#app .card.slot:not([data-skipped]) .setcell:not(.done)')) { startRest(card); } else { stopRest(); }
+      syncWake();
     }
     if (a === 'log-set') {
       var next = card.querySelector('.setcell:not(.done)');
@@ -2419,7 +2518,14 @@ details.info .row{margin-top:10px}
         : '<div class="card"><p class="hint" style="margin:0">Last week of this block. When the deload is done, export your data from Setup (Export JSON). ' +
           'The next block is <a href="./trainer3.html">the v3 app</a>, which can read that file and set your starting maxes.</p></div>';
     return sessionHeader(week, day) + planBit + measure + endNote +
-      prescribed.map(function (p, i) { return renderSlot(p, week, day, i); }).join('') +
+      prescribed.map(function (p, i) {
+        var html = renderSlot(p, week, day, i);
+        if (!EXTRAS) { return html; }
+        var startsPair = function (q) { return q && /superset with/i.test(q.note || (q.slot && q.slot.note) || ''); };
+        if (startsPair(p) && prescribed[i + 1]) { return html.replace('class="card slot', 'class="card slot ss-a'); }
+        if (startsPair(prescribed[i - 1])) { return html.replace('class="card slot', 'class="card slot ss-b'); }
+        return html;
+      }).join('') +
       (done ? '<p class="hint">Logged ' + esc(done) + '</p>' : '') +
       '<div class="actionbar">' +
       '<button type="button" data-action="skip-back" aria-label="Previous session">‹ Back</button>' +
@@ -2562,7 +2668,12 @@ details.info .row{margin-top:10px}
       '<div class="row wrap">' +
       (PLAIN ? '' : '<label>Main lifts (sec) <input type="number" step="15" min="15" id="in-rest-main" value="' + restMain() + '"></label>') +
       '<label>' + (PLAIN ? 'Between sets' : 'Everything else') + ' (sec) <input type="number" step="15" min="15" id="in-rest-acc" value="' + restAcc() + '"></label>' +
-      '<label class="check"><input type="checkbox" id="in-rest-sound"' + (state.settings.restSound === false ? '' : ' checked') + '> Sound when it ends</label></div>';
+      '<label class="check"><input type="checkbox" id="in-rest-sound"' + (state.settings.restSound === false ? '' : ' checked') + '> Sound when it ends</label></div>' +
+      '<h2>Screen</h2><div class="row wrap">' +
+      '<label class="check"><input type="checkbox" id="in-awake"' + (state.settings.keepAwake === false ? '' : ' checked') + '> Keep the screen on during a session</label>' +
+      (document.getElementById('jg-v4-style') ? '<label>Theme <select id="in-theme">' + [['dark', 'Dark'], ['light', 'Light'], ['auto', 'Match my phone']].map(function (o) {
+        return '<option value="' + o[0] + '"' + ((state.settings.theme || 'dark') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+      }).join('') + '</select></label>' : '') + '</div>';
   }
 
   function viewSetupPlain() {
@@ -2906,7 +3017,10 @@ details.info .row{margin-top:10px}
         (hist[s.movement] = hist[s.movement] || []).push({ k: k, week: Number(k.split('|')[0]), sets: sets });
       });
     });
-    var histHtml = Object.keys(hist).sort().map(function (m) {
+    // In the order the exercises come in the plan, not by name.
+    var planOrder = chartExercises().map(nameKey);
+    var rank = function (m) { var r = planOrder.indexOf(nameKey(m)); return r < 0 ? 1e6 : r; };
+    var histHtml = Object.keys(hist).sort(function (a, b) { return rank(a) - rank(b) || (a < b ? -1 : 1); }).map(function (m) {
       var entries = hist[m].sort(function (a, b) { return b.week - a.week; }).slice(0, 4);
       return '<tr><td>' + esc(m) + '</td><td class="hint">' + entries.map(function (e) {
         return 'wk' + e.week + ': ' + e.sets.map(function (s) { return (s.kg === null || s.kg === undefined ? '?' : s.kg) + '×' + s.reps; }).join(', ');
@@ -4404,7 +4518,7 @@ details.info .row{margin-top:10px}
     var btn = e.target.closest ? e.target.closest('[data-action]') : null;
     if (!btn) { return; }
     var a = btn.dataset.action;
-    if (a === 'cell' || a === 'step' || a === 'log-set' || a === 'clear-set') { setAction(btn, a); return; }
+    if (a === 'cell' || a === 'step' || a === 'kg-add' || a === 'log-set' || a === 'clear-set') { setAction(btn, a); return; }
     if (a === 'prog-view') { state.ui.progView = btn.dataset.view; save(); render(); return; }
     if (a === 'chart-metric') { state.ui.chartMetric = btn.dataset.metric; save(); render(); return; }
     if (a === 'prog-lift') { state.ui.progLift = btn.dataset.lift; state.ui.progReps = null; save(); render(); return; }
@@ -4515,7 +4629,7 @@ details.info .row{margin-top:10px}
       var noRir2 = missingRir(state.cursor.week, state.cursor.day);
       var doneWk = state.cursor.week, doneDay = state.cursor.day;
       var hadSets = EXTRAS && sessionStats(doneWk, doneDay).sets > 0;
-      if (EXTRAS) { delete state.restTimer; }
+      if (EXTRAS) { delete state.restTimer; if (wakeLock) { try { wakeLock.release(); } catch (e) { /* gone */ } wakeLock = null; } }
       save(); advance(); save(); render();
       if (hadSets) { showSummary(doneWk, doneDay); }
       toast(saveMessage(bumped2, noRir2, 'Next session'), noRir2.length ? 5000 : 0);
@@ -4584,6 +4698,8 @@ details.info .row{margin-top:10px}
         var rm = num(fieldValue('in-rest-main')); if (rm !== null && rm >= 15 && rm !== restMain()) { state.settings.restMain = rm; }
         var ra = num(fieldValue('in-rest-acc')); if (ra !== null && ra >= 15 && ra !== restAcc()) { state.settings.restAcc = ra; }
         var snd = document.getElementById('in-rest-sound'); if (snd) { state.settings.restSound = snd.checked; }
+        var awake = document.getElementById('in-awake'); if (awake) { state.settings.keepAwake = awake.checked; }
+        var th = fieldValue('in-theme'); if (th === 'dark' || th === 'light' || th === 'auto') { state.settings.theme = th; }
       }
       save(); render(); toast('Saved');
     } else if (a === 'apply-tm') {
