@@ -838,6 +838,61 @@ details.info .row{margin-top:10px}
     M('Spanish squat', 'Quad', 'Band anchored to a rig', 'band', 'A warm-up, not a growth driver.')
   ];
 
+  // Each exercise's own rep scheme: [bottom, top, RIR]. When an exercise changes in a slot (a swap
+  // on Today, a pick in Block), the slot takes the new exercise's scheme, not the old one's: a
+  // hammer curl swapped onto a lateral raise's slot used to keep the raise's 15-20. A plan slot
+  // uses its exercise's scheme too (checked by tests/v3-engine.test.mjs). Ranges follow the kit:
+  // heavy barbell work low, machines and cables higher, small-muscle isolation highest, and wide
+  // enough that a dumbbell or plate jump still lands inside the range. Timed and carried work
+  // (planks, conditioning) has no rep scheme, so a slot keeps its own numbers for those.
+  var SCHEMES = {
+    // horizontal push
+    'Bench press': [6, 10, 2], 'Incline bench': [6, 8, 3], 'Close-grip bench press': [6, 10, 2],
+    'Cable fly': [12, 15, 1], 'High-to-low cable fly': [12, 15, 1], 'Low-to-high cable fly': [12, 15, 1],
+    'DB fly': [10, 15, 1], 'Pec fly machine': [12, 15, 1], 'DB bench press': [8, 12, 2], 'Incline DB press': [8, 12, 2],
+    'Machine chest press': [8, 12, 1], 'Machine incline press': [8, 12, 1], 'Cable chest press': [10, 15, 1],
+    'Smith machine bench press': [6, 10, 2], 'Smith machine incline press': [6, 10, 2], 'Push-up': [10, 20, 1], 'Weighted dip': [6, 10, 1],
+    // vertical push
+    'Overhead press': [5, 8, 2], 'Push press': [3, 6, 2], 'Seated DB shoulder press': [8, 12, 2], 'Standing DB shoulder press': [8, 12, 2],
+    'Arnold press': [8, 12, 2], 'Machine shoulder press': [8, 12, 1], 'Smith machine shoulder press': [6, 10, 2],
+    'DB lateral raise': [12, 20, 1], 'Machine lateral raise': [12, 20, 1], 'Cable lateral raise': [15, 20, 1],
+    // horizontal pull
+    'Chest-supported row': [8, 10, 2], 'Seated cable row': [12, 15, 2], 'Wide-grip cable row': [10, 15, 2], 'Single-arm cable row': [10, 15, 1],
+    'Chest-supported DB row': [8, 12, 2], 'One-arm DB row': [8, 12, 2], 'T-bar row': [8, 12, 2], 'Barbell row': [6, 10, 2], 'Pendlay row': [5, 8, 2],
+    'Machine row': [10, 15, 1], 'Inverted row': [8, 15, 1], 'Cable face pull': [15, 20, 1], 'DB rear delt fly': [15, 20, 1],
+    'Rear delt machine': [15, 20, 1], 'Reverse cable fly': [15, 20, 1], 'Band pull-apart': [15, 25, 1],
+    // vertical pull
+    'Weighted chin-up': [6, 8, 1], 'Weighted pull-up': [6, 8, 1], 'Chin-up': [6, 10, 1], 'Pull-up': [6, 10, 1], 'Lat pulldown': [8, 12, 1],
+    'Wide-grip lat pulldown': [10, 15, 1], 'Underhand lat pulldown': [8, 12, 1], 'Neutral-grip pulldown': [12, 15, 1],
+    'Single-arm lat pulldown': [10, 15, 1], 'Straight-arm pulldown': [12, 15, 1],
+    // quad
+    'Squat': [5, 8, 2], 'Front squat': [5, 8, 2], 'Pause squat': [4, 6, 2], 'Box squat': [5, 8, 2], 'Smith machine squat': [8, 12, 2],
+    'Smith squat to box': [8, 12, 2], 'Goblet squat': [10, 15, 2], 'Leg press': [10, 15, 2], 'Single-leg leg press': [10, 15, 2],
+    'Hack squat': [8, 12, 2], 'Leg extension': [15, 20, 1], 'Bulgarian split squat': [8, 12, 2], 'Split squat': [8, 12, 2],
+    'Reverse lunge': [8, 12, 2], 'Walking lunge': [10, 16, 2], 'Step-up': [8, 12, 2],
+    // hinge and hamstrings
+    'Deadlift': [3, 6, 2], 'Trap bar deadlift': [5, 8, 2], 'Deficit deadlift': [3, 6, 2], 'Romanian deadlift': [8, 12, 2],
+    'DB stiff-leg deadlift': [10, 15, 2], 'Single-leg RDL': [8, 12, 2], 'Good morning': [8, 12, 3], 'Seated leg curl': [10, 15, 1],
+    'Lying leg curl': [10, 15, 1], 'Nordic curl': [4, 8, 1], '45° back extension': [10, 15, 1], 'Cable pull-through': [12, 15, 1],
+    // glutes
+    'Barbell hip thrust': [8, 12, 2], 'Hip thrust machine': [10, 15, 1], 'Glute bridge': [12, 20, 1], 'Cable glute kickback': [12, 15, 1],
+    'Banded lateral walk': [15, 20, 1], 'Abduction machine': [15, 20, 1], 'Hip adduction machine': [12, 15, 1],
+    // calves
+    'Standing calf raise': [10, 15, 1], 'Seated calf raise': [12, 20, 1], 'Smith calf raise': [10, 15, 1], 'Leg press calf raise': [12, 15, 1],
+    'DB calf raise': [12, 20, 1], 'Single-leg calf raise': [12, 20, 1],
+    // core (the planks are timed, so they have none)
+    'Cable crunch': [12, 15, 1], 'Ab crunch machine': [12, 15, 1], 'Hanging knee raise': [10, 15, 1], 'Hanging leg raise': [8, 15, 1],
+    "Captain's chair knee raise": [10, 15, 1], 'Ab wheel rollout': [8, 12, 2], 'Pallof press': [10, 12, 2], 'Cable woodchop': [10, 12, 1], 'Dead bug': [8, 12, 2],
+    // arms
+    'EZ-bar curl': [8, 12, 1], 'EZ-bar preacher curl': [8, 12, 1], 'Reverse EZ-bar curl': [10, 15, 1], 'DB curl': [8, 12, 1], 'Incline DB curl': [8, 12, 1],
+    'DB hammer curl': [10, 15, 1], 'Preacher curl machine': [10, 15, 1], 'Cable curl': [10, 15, 1], 'Cable rope hammer curl': [10, 15, 1],
+    'Bayesian cable curl': [10, 15, 1], 'Triceps pushdown': [10, 15, 1], 'Single-arm triceps pushdown': [12, 15, 1],
+    'Overhead cable extension': [12, 15, 1], 'Cross-body cable extension': [12, 15, 1], 'EZ-bar skull crusher': [8, 12, 1],
+    'DB skull crusher': [8, 12, 1], 'DB overhead extension': [10, 15, 1], 'Triceps extension machine': [10, 15, 1], 'Wrist curl': [15, 20, 1],
+    // power: low reps, far from failure, so every rep stays fast
+    'Hang power clean': [3, 5, 3], 'Box jump': [3, 5, 3], 'Jump squat': [3, 5, 3], 'Broad jump': [3, 5, 3], 'Medicine ball slam': [5, 8, 3]
+  };
+
   var GROUPS = ['Horizontal_Push', 'Vertical_Push', 'Horizontal_Pull', 'Vertical_Pull',
     'Quad', 'Hinge_Hamstring', 'Glute', 'Calf', 'Core', 'Arms', 'Conditioning', 'Power'];
 
@@ -939,6 +994,7 @@ details.info .row{margin-top:10px}
     // first thing to change between cycles is the training maxes, not the plan.
     nextCycle: { days: DAYS, weekOverrides: {} },
     legacyMovements: LEGACY_MOVEMENTS,
+    schemes: SCHEMES,
     // Volume scaling for everything except the main lift, whose wave table
     // already varies. Realization is the week whose AMRAP sets the next TM.
     phaseRules: {
@@ -1164,7 +1220,7 @@ details.info .row{margin-top:10px}
   // left alone.
   var REP_RANGES = 2;
   // Revisions of v3's own plan that a block already running should pick up (migrateV3Plan).
-  var V3_PLAN_REV = 1;
+  var V3_PLAN_REV = 2;
 
   /* ---------------- state ---------------- */
 
@@ -1276,6 +1332,26 @@ details.info .row{margin-top:10px}
     return found;
   }
 
+  // An exercise's own rep scheme: the plan's slot for it if the plan has one (its sets and note come
+  // too), else the library's scheme for it (P0.schemes, v3 and the machine plan), else null (a
+  // timed or carried exercise, or one you added yourself), when the slot keeps its own numbers.
+  function exerciseScheme(name) {
+    var t = templateSlotFor(name);
+    if (t && t.repsTop) { return { sets: t.sets, reps: t.reps, repsTop: t.repsTop, rir: t.rir, note: t.note || '' }; }
+    var k = nameKey(name), table = P0.schemes || {}, hit = null;
+    Object.keys(table).forEach(function (n) { if (!hit && nameKey(n) === k) { hit = table[n]; } });
+    return hit ? { reps: hit[0], repsTop: hit[1], rir: hit[2], note: '' } : null;
+  }
+  // Writes a scheme into a slot or an override patch.
+  function applyScheme(target, sc) {
+    if (!sc) { return target; }
+    if (sc.sets) { target.sets = sc.sets; }
+    target.reps = sc.reps; target.repsTop = sc.repsTop;
+    if (sc.rir !== undefined) { target.rir = sc.rir; }
+    target.note = sc.note || '';
+    return target;
+  }
+
   // v3 plan revision 1 (a review of every range and note). A block already running keeps the plan it
   // started with, so this brings it up to date, but only where it still holds what the old template
   // put there: a range you changed in Block is yours and is left alone.
@@ -1338,14 +1414,52 @@ details.info .row{margin-top:10px}
         });
       });
     }
-    st.planRev = V3_PLAN_REV;
+    st.planRev = 1;
+  }
+
+  // v3 plan revision 2: each exercise carries its own rep scheme. A slot (or a week of it) holding an
+  // exercise other than the plan's for that position, on numbers it only inherited from the plan's
+  // exercise (the position's numbers, old or new), takes its own exercise's scheme. A range typed in
+  // Block is left alone, and so is anything with no scheme (timed work, your own exercises).
+  function migrateV3Schemes(st) {
+    var pr = st.programme;
+    var OLD = { 'Day 1': { a1: [10, 12] }, 'Day 2': { a2: [15, 20] }, 'Day 3': { a3: [10, 12], a4: [12, 15] } };
+    if (st.started !== false && pr && pr.days) {
+      pr.days.forEach(function (day) {
+        var tday = P0.days.filter(function (d) { return d.name === day.name; })[0];
+        if (!tday) { return; }
+        var inherited = function (id, reps, top) {
+          var t = tday.slots.filter(function (x) { return x.id === id; })[0], o = (OLD[day.name] || {})[id];
+          return !!t && ((reps === t.reps && top === t.repsTop) || (!!o && reps === o[0] && top === o[1]));
+        };
+        var planMove = function (id) { var t = tday.slots.filter(function (x) { return x.id === id; })[0]; return t ? t.movement : null; };
+        day.slots.forEach(function (sl) {
+          if (isWaveSlot(sl) || !planMove(sl.id)) { return; }
+          if (nameKey(sl.movement) !== nameKey(planMove(sl.id)) && inherited(sl.id, sl.reps, sl.repsTop)) {
+            var sc = exerciseScheme(sl.movement);
+            if (sc) { sl.reps = sc.reps; sl.repsTop = sc.repsTop; if (sc.rir !== undefined) { sl.rir = sc.rir; } if (!sl.note) { sl.note = sc.note || ''; } }
+          }
+          Object.keys(pr.weekOverrides || {}).forEach(function (w) {
+            var x = (((pr.weekOverrides[w] || {})[day.name] || {}).slots || {})[sl.id];
+            if (!x || !x.movement || nameKey(x.movement) === nameKey(planMove(sl.id))) { return; }
+            var reps = x.reps === undefined ? sl.reps : x.reps, top = x.repsTop === undefined ? sl.repsTop : x.repsTop;
+            var sc2 = exerciseScheme(x.movement);
+            if (sc2 && (inherited(sl.id, reps, top) || (nameKey(sl.movement) !== nameKey(x.movement) && reps === sl.reps && top === sl.repsTop))) {
+              x.reps = sc2.reps; x.repsTop = sc2.repsTop; if (sc2.rir !== undefined) { x.rir = sc2.rir; }
+            }
+          });
+        });
+      });
+    }
+    st.planRev = 2;
   }
 
   // Brings a saved state up to date. Shared by load and Import, so a backup
   // taken before a change gets the same migrations as the copy on the phone.
   function upgrade(parsed) {
     if ((parsed.repRanges || 0) < REP_RANGES) { migrateRepRanges(parsed); }
-    if (ONBOARDING && (parsed.planRev || 0) < V3_PLAN_REV) { migrateV3Plan(parsed); }
+    if (ONBOARDING && (parsed.planRev || 0) < 1) { migrateV3Plan(parsed); }
+    if (ONBOARDING && (parsed.planRev || 0) < 2) { migrateV3Schemes(parsed); }
     var base = defaultState();
     Object.keys(base).forEach(function (k) { if (parsed[k] === undefined) { parsed[k] = base[k]; } });
     // settings gained keys after v2 shipped, so backfill inside it too —
@@ -2546,7 +2660,7 @@ details.info .row{margin-top:10px}
       '<button type="button" class="small" data-action="swap-forward" data-slot="' + esc(p.id) + '">From now on</button>' +
       '<button type="button" class="small" data-action="swap-cancel">Cancel</button></div>' +
       '<div class="hint sm">' + (FIXED_WEIGHTS ? 'The weight starts blank and fills from the new exercise\'s own history.' : 'The load resets to "your call"; the new exercise brings its own history.') +
-      ' Where the plan has the new exercise, its sets and reps come with it.</div></div>';
+      ' It brings its own reps too.</div></div>';
   }
 
   function fmtBox(n) { return n === null || n === undefined ? '' : n; }
@@ -2672,7 +2786,7 @@ details.info .row{margin-top:10px}
           var cur = (movementInfo(s.movement) || {}).group;
           return '<option value="' + g + '"' + (g === cur ? ' selected' : '') + '>' + pretty(g) + '</option>';
         }).join('') + '</select></label>';
-      var movSel = '<label>Movement <select class="s-move">' +
+      var movSel = '<label>Movement <select class="s-move" data-was="' + esc(s.movement) + '">' +
         pool.map(function (n) { return '<option value="' + esc(n) + '"' + (n === s.movement ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') +
         (isMain ? '' : '<option value="__add__">+ Add your own…</option>') + '</select></label>';
 
@@ -4266,14 +4380,9 @@ details.info .row{margin-top:10px}
     // dropped. Its own history supplies the weight from here.
     // A note belongs to the exercise it was written for ("reps are per leg"), so it goes too.
     var patch = { movement: name, load: FIXED_WEIGHTS ? { kind: 'weight', kg: null } : { kind: 'open' }, note: '' };
-    // The plan's own range and note for the exercise coming in, where the plan has it: a hammer curl
-    // swapped into a lateral raise's slot used to keep the raise's 15-20.
-    var own = templateSlotFor(name);
-    if (own) {
-      patch.sets = own.sets; patch.reps = own.reps; patch.repsTop = own.repsTop === undefined ? null : own.repsTop;
-      if (own.rir !== undefined) { patch.rir = own.rir; }
-      patch.note = own.note || '';
-    }
+    // The exercise coming in brings its own rep scheme (exerciseScheme): a hammer curl swapped into
+    // a lateral raise's slot used to keep the raise's 15-20.
+    applyScheme(patch, exerciseScheme(name));
     var changed = 0;
     for (var w = week; w <= P0.weeks; w++) {
       if (scope === 'today' && w !== week) { break; }
@@ -4327,6 +4436,10 @@ details.info .row{margin-top:10px}
         var tv = num(card.querySelector('.s-reps-top').value);
         patch.repsTop = tv !== null && tv > (rv || 0) ? tv : null;
         var rir = num(card.querySelector('.s-rir').value); if (rir !== null) { patch.rir = rir; }
+      }
+      // A different exercise picked here brings its own scheme; the boxes still show the old one's.
+      if (mv && patch.movement && mv.dataset.was && nameKey(patch.movement) !== nameKey(mv.dataset.was)) {
+        applyScheme(patch, exerciseScheme(patch.movement));
       }
       setOverride(week, dayName, id, patch);
     });
@@ -4976,7 +5089,7 @@ details.info .row{margin-top:10px}
       var card = t.closest('.slotedit');
       var first = movementsIn(t.value)[0];
       if (first) {
-        setOverride(state.ui.blockWeek, state.programme.days[state.ui.blockDay].name, card.dataset.slot, { movement: first.name });
+        setOverride(state.ui.blockWeek, state.programme.days[state.ui.blockDay].name, card.dataset.slot, applyScheme({ movement: first.name }, exerciseScheme(first.name)));
       }
       save(); render();
     }
