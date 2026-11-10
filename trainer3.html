@@ -841,10 +841,24 @@ details.info .row{margin-top:10px}
   // Each exercise's own rep scheme: [bottom, top, RIR]. When an exercise changes in a slot (a swap
   // on Today, a pick in Block), the slot takes the new exercise's scheme, not the old one's: a
   // hammer curl swapped onto a lateral raise's slot used to keep the raise's 15-20. A plan slot
-  // uses its exercise's scheme too (checked by tests/v3-engine.test.mjs). Ranges follow the kit:
-  // heavy barbell work low, machines and cables higher, small-muscle isolation highest, and wide
-  // enough that a dumbbell or plate jump still lands inside the range. Timed and carried work
-  // (planks, conditioning) has no rep scheme, so a slot keeps its own numbers for those.
+  // uses its exercise's scheme too (checked by tests/v3-engine.test.mjs).
+  //
+  // What the evidence supports, and so the rules the table follows:
+  //  - Growth is much the same anywhere from about 6 to 30 reps when the set ends near failure
+  //    (Schoenfeld et al. 2017 meta-analysis), and no muscle group has been shown to need its own
+  //    range. So the range is set by the exercise, not the muscle.
+  //  - Very light work grows less (Lasevicius et al. 2018: 20% of 1RM grew less than 40-80%, which
+  //    were alike), and reps in reserve is judged worst on long, light sets. So nothing for size goes
+  //    past 20.
+  //  - Strength favours heavy loads, which is the main lifts' job. Their variants (squat, press and
+  //    deadlift kinds, Pendlay row, push press) and the Nordic curl may go below 6. Power work stays
+  //    at 3-5 reps, three or more short of failure, so every rep is fast.
+  //  - Heavy compounds sit lower, because on a long set breathing, grip or the lower back gives out
+  //    before the muscle the set is for (the RDL, stiff-leg deadlift, lunges). Machines, cables and
+  //    isolation go higher, where the target muscle is what fails.
+  //  - Wide enough that the next dumbbell, plate or pin still lands inside the range (at least three
+  //    reps, except heavy work starting at 8 or fewer).
+  // Timed and carried work (planks, conditioning) has no rep scheme, so a slot keeps its own numbers.
   var SCHEMES = {
     // horizontal push
     'Bench press': [6, 10, 2], 'Incline bench': [6, 8, 3], 'Close-grip bench press': [6, 10, 2],
@@ -860,7 +874,7 @@ details.info .row{margin-top:10px}
     'Chest-supported row': [8, 10, 2], 'Seated cable row': [12, 15, 2], 'Wide-grip cable row': [10, 15, 2], 'Single-arm cable row': [10, 15, 1],
     'Chest-supported DB row': [8, 12, 2], 'One-arm DB row': [8, 12, 2], 'T-bar row': [8, 12, 2], 'Barbell row': [6, 10, 2], 'Pendlay row': [5, 8, 2],
     'Machine row': [10, 15, 1], 'Inverted row': [8, 15, 1], 'Cable face pull': [15, 20, 1], 'DB rear delt fly': [15, 20, 1],
-    'Rear delt machine': [15, 20, 1], 'Reverse cable fly': [15, 20, 1], 'Band pull-apart': [15, 25, 1],
+    'Rear delt machine': [15, 20, 1], 'Reverse cable fly': [15, 20, 1], 'Band pull-apart': [15, 20, 1],
     // vertical pull
     'Weighted chin-up': [6, 8, 1], 'Weighted pull-up': [6, 8, 1], 'Chin-up': [6, 10, 1], 'Pull-up': [6, 10, 1], 'Lat pulldown': [8, 12, 1],
     'Wide-grip lat pulldown': [10, 15, 1], 'Underhand lat pulldown': [8, 12, 1], 'Neutral-grip pulldown': [12, 15, 1],
@@ -869,10 +883,10 @@ details.info .row{margin-top:10px}
     'Squat': [5, 8, 2], 'Front squat': [5, 8, 2], 'Pause squat': [4, 6, 2], 'Box squat': [5, 8, 2], 'Smith machine squat': [8, 12, 2],
     'Smith squat to box': [8, 12, 2], 'Goblet squat': [10, 15, 2], 'Leg press': [10, 15, 2], 'Single-leg leg press': [10, 15, 2],
     'Hack squat': [8, 12, 2], 'Leg extension': [15, 20, 1], 'Bulgarian split squat': [8, 12, 2], 'Split squat': [8, 12, 2],
-    'Reverse lunge': [8, 12, 2], 'Walking lunge': [10, 16, 2], 'Step-up': [8, 12, 2],
+    'Reverse lunge': [8, 12, 2], 'Walking lunge': [8, 12, 2], 'Step-up': [8, 12, 2],
     // hinge and hamstrings
     'Deadlift': [3, 6, 2], 'Trap bar deadlift': [5, 8, 2], 'Deficit deadlift': [3, 6, 2], 'Romanian deadlift': [8, 12, 2],
-    'DB stiff-leg deadlift': [10, 15, 2], 'Single-leg RDL': [8, 12, 2], 'Good morning': [8, 12, 3], 'Seated leg curl': [10, 15, 1],
+    'DB stiff-leg deadlift': [8, 12, 2], 'Single-leg RDL': [8, 12, 2], 'Good morning': [8, 12, 3], 'Seated leg curl': [10, 15, 1],
     'Lying leg curl': [10, 15, 1], 'Nordic curl': [4, 8, 1], '45° back extension': [10, 15, 1], 'Cable pull-through': [12, 15, 1],
     // glutes
     'Barbell hip thrust': [8, 12, 2], 'Hip thrust machine': [10, 15, 1], 'Glute bridge': [12, 20, 1], 'Cable glute kickback': [12, 15, 1],
@@ -882,7 +896,7 @@ details.info .row{margin-top:10px}
     'DB calf raise': [12, 20, 1], 'Single-leg calf raise': [12, 20, 1],
     // core (the planks are timed, so they have none)
     'Cable crunch': [12, 15, 1], 'Ab crunch machine': [12, 15, 1], 'Hanging knee raise': [10, 15, 1], 'Hanging leg raise': [8, 15, 1],
-    "Captain's chair knee raise": [10, 15, 1], 'Ab wheel rollout': [8, 12, 2], 'Pallof press': [10, 12, 2], 'Cable woodchop': [10, 12, 1], 'Dead bug': [8, 12, 2],
+    "Captain's chair knee raise": [10, 15, 1], 'Ab wheel rollout': [8, 12, 2], 'Pallof press': [10, 15, 2], 'Cable woodchop': [10, 15, 1], 'Dead bug': [8, 12, 2],
     // arms
     'EZ-bar curl': [8, 12, 1], 'EZ-bar preacher curl': [8, 12, 1], 'Reverse EZ-bar curl': [10, 15, 1], 'DB curl': [8, 12, 1], 'Incline DB curl': [8, 12, 1],
     'DB hammer curl': [10, 15, 1], 'Preacher curl machine': [10, 15, 1], 'Cable curl': [10, 15, 1], 'Cable rope hammer curl': [10, 15, 1],
