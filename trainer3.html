@@ -866,14 +866,17 @@ details.info .row{margin-top:10px}
       slots: [
         { id: 'main', kind: 'main', movement: 'Squat', load: wave() },
         { id: 'main2', kind: 'main', movement: 'Overhead press', load: wave(),
-          note: 'Second main lift — after the squat, with its own wave and AMRAP' },
-        acc('a1', 'Romanian deadlift', 4, [10, 12], 2),
-        acc('a2', 'Seated cable row', 3, [12, 15], 2, 'Day 1 has no other pulling; this balances the week'),
+          note: 'The second main lift, after the squat, with its own wave and AMRAP.' },
+        // Three sets of 8-12, was four of 10-12: Day 1 already carries two main lifts,
+        // the deadlift is on Day 3, and long barbell RDL sets fail on grip and back
+        // position before the hamstrings. A wider range also absorbs a 2.5 kg jump.
+        acc('a1', 'Romanian deadlift', 3, [8, 12], 2, 'Hamstrings at long length. Kept two short of failure, as Day 3 is the deadlift.'),
+        acc('a2', 'Seated cable row', 3, [12, 15], 2, 'Day 1 has no other pull, so this balances the pressing.'),
         // No hack squat: with the press now a second main lift, Day 1 runs long
         // and it was the slot that got dropped. The squat, leg extension and
         // the deadlift's quad work cover the legs.
-        acc('a4', 'Cable lateral raise', 3, [15, 20], 1),
-        acc('a5', 'Neutral-grip pulldown', 3, [12, 15], 1, 'Second vertical pull, two days off the chin-up — higher rep, different grip')
+        acc('a4', 'Cable lateral raise', 3, [15, 20], 1, 'Side delts. The cable keeps tension at the bottom, where a dumbbell goes slack.'),
+        acc('a5', 'Neutral-grip pulldown', 3, [12, 15], 1, 'The second vertical pull of the week, two days from the chin-up, with a different grip.')
       ]
     },
     {
@@ -881,18 +884,20 @@ details.info .row{margin-top:10px}
       slots: [
         { id: 'main', kind: 'main', movement: 'Bench press', load: wave() },
         { id: 'support', kind: 'support', movement: 'Chest-supported row', load: kgs(60), sets: 4, reps: 8, repsTop: 10, rir: 2,
-          note: 'A pull in the main work, on fresh tissue, with no erector cost. A fixed weight: it goes up when all four sets reach 10' },
+          note: 'A pull in the main work, on fresh tissue, with no load on the lower back. It goes up when all four sets reach 10.' },
         // The machine in place of the cable fly and the rear delt machine in place
         // of the face pull: the two substitutions that were made in practice, and
         // both load more consistently.
-        acc('a1', 'Pec fly machine', 3, [12, 15], 1),
-        acc('a2', 'DB lateral raise', 3, [15, 20], 1),
-        acc('a3', 'Rear delt machine', 3, [15, 20], 1),
-        acc('a4', 'Overhead cable extension', 3, [12, 15], 1),
+        acc('a1', 'Pec fly machine', 3, [12, 15], 1, 'Chest at length after the bench. Control the stretch; do not bounce out of it.'),
+        // 12-20, was 15-20: the next dumbbell is 2 kg, a big share of a light one, and
+        // reps fall well below 15 when you go up. A wider range absorbs the jump.
+        acc('a2', 'DB lateral raise', 3, [12, 20], 1, 'Side delts. The range is wide because the next dumbbell is a big jump on a light weight.'),
+        acc('a3', 'Rear delt machine', 3, [15, 20], 1, 'Rear delts and upper back, to balance the week of pressing.'),
+        acc('a4', 'Overhead cable extension', 3, [12, 15], 1, 'The long head of the triceps, in the stretch the bench never reaches.'),
         // Replaces the hanging knee raise, which could never progress: it was
         // logged at 20 reps with no weight, and a step needs a weight to add to.
         // The cable crunch on Day 3 keeps direct trunk flexion in the week.
-        acc('a5', 'DB hammer curl', 3, [10, 15], 1, 'A second biceps session a week: the EZ-bar curl is on Day 3')
+        acc('a5', 'DB hammer curl', 3, [10, 15], 1, 'Brachialis and forearm, and a second biceps session a week. The EZ-bar curl is on Day 3.')
       ]
     },
     {
@@ -902,13 +907,17 @@ details.info .row{margin-top:10px}
         // Null until the block starts, when it is filled from what was being
         // lifted; blank means "enter it and it carries forward".
         { id: 'support', kind: 'support', movement: 'Incline bench', load: kgs(null), sets: 4, reps: 6, repsTop: 8, rir: 3,
-          note: 'A fixed weight: it goes up when all four sets reach 8' },
+          note: 'Upper chest. Kept three short of failure, after the bench day. It goes up when all four sets reach 8.' },
         { id: 'a1', kind: 'accessory', movement: 'Weighted chin-up', load: { kind: 'bodyweight', added: 0 }, sets: 4, reps: 6, repsTop: 8, rir: 1,
-          note: 'Your loaded vertical pull — progress the belt weight like a main lift' },
-        acc('a2', 'Leg extension', 3, [15, 20], 1, 'Rectus femoris is shortened at the hip in a squat and never trained well by it'),
-        acc('a3', 'Seated leg curl', 3, [10, 12], 1),
-        acc('a4', 'EZ-bar curl', 3, [12, 15], 1),
-        acc('a5', 'Cable crunch', 3, [12, 15], 1)
+          note: 'Your loaded vertical pull. The belt weight goes up when all four sets reach 8.' },
+        acc('a2', 'Leg extension', 3, [15, 20], 1, 'The squat trains the rectus femoris poorly, as it is shortened at the hip.'),
+        // 10-15, was 10-12: two reps of headroom is too narrow for a stack whose pins
+        // are a big share of a hamstring curl's weight.
+        acc('a3', 'Seated leg curl', 3, [10, 15], 1, 'Knee flexion to pair with the RDL. Seated works the hamstrings longer than lying.'),
+        // 8-12, was 12-15: the heavier biceps day (the hammer curl on Day 2 is the lighter
+        // one), and a 2.5 kg jump on a curl needs room below the top to land in.
+        acc('a4', 'EZ-bar curl', 3, [8, 12], 1, 'The heavier biceps day. Elbows still, and lower it under control.'),
+        acc('a5', 'Cable crunch', 3, [12, 15], 1, 'Weighted trunk flexion. Curl the ribs down to the hips; the arms only hold the rope.')
       ]
     }
   ];
@@ -1008,6 +1017,8 @@ details.info .row{margin-top:10px}
   // safe: a slot that already has a top, or an override already decided, is
   // left alone.
   var REP_RANGES = 2;
+  // Revisions of v3's own plan that a block already running should pick up (migrateV3Plan).
+  var V3_PLAN_REV = 1;
 
   /* ---------------- state ---------------- */
 
@@ -1062,6 +1073,7 @@ details.info .row{margin-top:10px}
       movementIncrements: {},
       // Which round of template rep ranges the saved programme has picked up.
       repRanges: REP_RANGES,
+      planRev: V3_PLAN_REV,
       // The 16-week cycle being trained, and every finished one before it,
       // each kept whole ({cycle, endedAt, logs, programme, lifts, tracker,
       // trackerBase}). History reads across them; everything else in the app
@@ -1090,21 +1102,104 @@ details.info .row{margin-top:10px}
   // Why an exercise was skipped. Kept short so it is one tap mid-session;
   // the reasons are what the Progress tally groups by.
   var SKIP_REASONS = ['Out of time', 'Too tired', 'Pain or niggle', 'Kit busy', 'Other'];
+  // Set by load() when a saved state was read, so the migrations it ran are written back once.
+  var loadedSaved = false;
   var state = load();
+  // A migration that changed the plan (migrateV3Plan) must be kept, not rerun on every open.
+  if (loadedSaved) { save(); }
 
   function load() {
     try {
       var raw = localStorage.getItem(KEY);
-      if (raw) { return upgrade(JSON.parse(raw)); }
+      // Marked only once the upgrade has worked: a failed load falls back to a fresh state, which
+      // must never be written over the saved one.
+      if (raw) { var up = upgrade(JSON.parse(raw)); loadedSaved = true; return up; }
       return migrateFromV1() || defaultState();
     } catch (e) { memoryOnly = true; }
     return defaultState();
+  }
+
+  // The plan's own slot for an exercise, from the template (any day), if it has one.
+  function templateSlotFor(name) {
+    var k = nameKey(name), found = null;
+    [P0.days].concat(P0.nextCycle ? [P0.nextCycle.days] : []).forEach(function (days) {
+      (days || []).forEach(function (d) {
+        d.slots.forEach(function (sl) { if (!found && !isWaveSlot(sl) && nameKey(sl.movement) === k) { found = sl; } });
+      });
+    });
+    return found;
+  }
+
+  // v3 plan revision 1 (a review of every range and note). A block already running keeps the plan it
+  // started with, so this brings it up to date, but only where it still holds what the old template
+  // put there: a range you changed in Block is yours and is left alone.
+  //  - Ranges: a slot still on the old template's sets and reps for its position takes the plan's
+  //    range for the exercise it now holds. That also fixes an exercise swapped into another's
+  //    slot, which kept the old slot's range (a hammer curl on a lateral raise's 15-20).
+  //  - Notes: a slot still holding the template's exercise takes the template's new note.
+  //  - A duplicate from an early v2 import: a swap carried into a day that already had that
+  //    exercise (two hammer curls on Day 2, and no lateral raise). The carried one goes back to
+  //    the template's exercise, its weight blank so its own history fills it.
+  function migrateV3Plan(st) {
+    // Inside the function: load() runs near the top of the file, before a table defined out here
+    // would be assigned, and an error there loses the saved state to a fresh one.
+    var V3_OLD_RANGES = {
+      'Day 1': { a1: [4, 10, 12], a2: [3, 12, 15], a4: [3, 15, 20], a5: [3, 12, 15] },
+      'Day 2': { support: [4, 8, 10], a1: [3, 12, 15], a2: [3, 15, 20], a3: [3, 15, 20], a4: [3, 12, 15], a5: [3, 10, 15] },
+      'Day 3': { support: [4, 6, 8], a1: [4, 6, 8], a2: [3, 15, 20], a3: [3, 10, 12], a4: [3, 12, 15], a5: [3, 12, 15] }
+    };
+    var pr = st.programme;
+    // A block not yet started (a fresh v3, or a v2 backup waiting to roll over) is built from the
+    // template when it starts, so it already has all of this.
+    if (st.started !== false && pr && pr.days) {
+      pr.days.forEach(function (day) {
+        var tday = P0.days.filter(function (d) { return d.name === day.name; })[0];
+        var old = V3_OLD_RANGES[day.name];
+        if (!tday || !old) { return; }
+        // the duplicate first, so the slot it frees takes the right range below
+        day.slots.forEach(function (sl) {
+          var t = tday.slots.filter(function (x) { return x.id === sl.id; })[0];
+          if (!t || isWaveSlot(sl) || nameKey(t.movement) === nameKey(sl.movement)) { return; }
+          var twin = day.slots.some(function (x) { return x !== sl && nameKey(x.movement) === nameKey(sl.movement); });
+          if (!twin) { return; }
+          var gone = sl.movement;
+          sl.movement = t.movement;
+          sl.load = JSON.parse(JSON.stringify(t.load));
+          sl.note = t.note || '';
+          Object.keys(pr.weekOverrides || {}).forEach(function (w) {
+            var o = ((pr.weekOverrides[w] || {})[day.name] || {}).slots;
+            if (o && o[sl.id] && o[sl.id].movement && nameKey(o[sl.id].movement) === nameKey(gone)) { delete o[sl.id]; }
+          });
+        });
+        day.slots.forEach(function (sl) {
+          if (isWaveSlot(sl)) { return; }
+          var o = old[sl.id], t = templateSlotFor(sl.movement);
+          if (o && t && sl.sets === o[0] && sl.reps === o[1] && sl.repsTop === o[2]) {
+            sl.sets = t.sets; sl.reps = t.reps; sl.repsTop = t.repsTop;
+            // a week override that only copied the old numbers goes, so the week follows the slot
+            Object.keys(pr.weekOverrides || {}).forEach(function (w) {
+              var ov = ((pr.weekOverrides[w] || {})[day.name] || {}).slots;
+              var x = ov && ov[sl.id];
+              if (!x) { return; }
+              if (x.sets === o[0]) { delete x.sets; }
+              if (x.reps === o[1]) { delete x.reps; }
+              if (x.repsTop === o[2]) { delete x.repsTop; }
+              if (!Object.keys(x).length) { delete ov[sl.id]; }
+            });
+          }
+          var own = tday.slots.filter(function (x) { return x.id === sl.id; })[0];
+          if (own && nameKey(own.movement) === nameKey(sl.movement) && own.note) { sl.note = own.note; }
+        });
+      });
+    }
+    st.planRev = V3_PLAN_REV;
   }
 
   // Brings a saved state up to date. Shared by load and Import, so a backup
   // taken before a change gets the same migrations as the copy on the phone.
   function upgrade(parsed) {
     if ((parsed.repRanges || 0) < REP_RANGES) { migrateRepRanges(parsed); }
+    if (ONBOARDING && (parsed.planRev || 0) < V3_PLAN_REV) { migrateV3Plan(parsed); }
     var base = defaultState();
     Object.keys(base).forEach(function (k) { if (parsed[k] === undefined) { parsed[k] = base[k]; } });
     // settings gained keys after v2 shipped, so backfill inside it too —
@@ -2304,7 +2399,8 @@ details.info .row{margin-top:10px}
       '<div class="row"><button type="button" class="small primary" data-action="swap-today" data-slot="' + esc(p.id) + '">Just today</button>' +
       '<button type="button" class="small" data-action="swap-forward" data-slot="' + esc(p.id) + '">From now on</button>' +
       '<button type="button" class="small" data-action="swap-cancel">Cancel</button></div>' +
-      '<div class="hint sm">The load resets to "your call" — the new exercise brings its own history.</div></div>';
+      '<div class="hint sm">' + (FIXED_WEIGHTS ? 'The weight starts blank and fills from the new exercise\'s own history.' : 'The load resets to "your call"; the new exercise brings its own history.') +
+      ' Where the plan has the new exercise, its sets and reps come with it.</div></div>';
   }
 
   function fmtBox(n) { return n === null || n === undefined ? '' : n; }
@@ -4024,6 +4120,14 @@ details.info .row{margin-top:10px}
     // dropped. Its own history supplies the weight from here.
     // A note belongs to the exercise it was written for ("reps are per leg"), so it goes too.
     var patch = { movement: name, load: FIXED_WEIGHTS ? { kind: 'weight', kg: null } : { kind: 'open' }, note: '' };
+    // The plan's own range and note for the exercise coming in, where the plan has it: a hammer curl
+    // swapped into a lateral raise's slot used to keep the raise's 15-20.
+    var own = templateSlotFor(name);
+    if (own) {
+      patch.sets = own.sets; patch.reps = own.reps; patch.repsTop = own.repsTop === undefined ? null : own.repsTop;
+      if (own.rir !== undefined) { patch.rir = own.rir; }
+      patch.note = own.note || '';
+    }
     var changed = 0;
     for (var w = week; w <= P0.weeks; w++) {
       if (scope === 'today' && w !== week) { break; }
