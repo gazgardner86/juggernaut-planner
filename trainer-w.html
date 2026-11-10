@@ -296,6 +296,9 @@ details.info .row{margin-top:10px}
 .libtable td.lib-step,.libtable td.lib-type{display:inline-block;vertical-align:top;width:calc(50% - 6px)}
 .libtable td.lib-step{margin-right:8px}
 .libtable input,.libtable select{width:100%}
+.libtable td.lib-reps{margin:4px 0 6px}
+.lib-reps-row{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:6px;align-items:center}
+.lib-reps-row span{color:var(--muted);font-size:12px}
 .lib-lbl{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:500;margin-bottom:2px}
 </style>
 
@@ -1287,6 +1290,7 @@ details.info .row{margin-top:10px}
       // Movement name -> its own progression step, set by hand in Library.
       // Beats the equipment class for that one movement.
       movementIncrements: {},
+      movementSchemes: {},
       // Which round of template rep ranges the saved programme has picked up.
       repRanges: REP_RANGES,
       planRev: V3_PLAN_REV,
@@ -1351,11 +1355,51 @@ details.info .row{margin-top:10px}
   // timed or carried exercise, or one you added yourself), when the slot keeps its own numbers.
   function exerciseScheme(name) {
     var t = templateSlotFor(name);
+    // Numbers typed against the exercise in Library win (state may not exist yet while loading).
+    var mine = typeof state !== 'undefined' && state && state.movementSchemes ? ownScheme(name) : null;
+    if (mine) { return { sets: t ? t.sets : undefined, reps: mine[0], repsTop: mine[1], rir: mine[2], note: t ? t.note || '' : '' }; }
     if (t && t.repsTop) { return { sets: t.sets, reps: t.reps, repsTop: t.repsTop, rir: t.rir, note: t.note || '' }; }
     var k = nameKey(name), table = P0.schemes || {}, hit = null;
     Object.keys(table).forEach(function (n) { if (!hit && nameKey(n) === k) { hit = table[n]; } });
     return hit ? { reps: hit[0], repsTop: hit[1], rir: hit[2], note: '' } : null;
   }
+  // The scheme typed against an exercise in Library, if any: [bottom, top, RIR].
+  function ownScheme(name) {
+    var k = nameKey(name), hit = null, own = (state && state.movementSchemes) || {};
+    Object.keys(own).forEach(function (n) { if (!hit && nameKey(n) === k) { hit = own[n]; } });
+    return hit;
+  }
+  // The scheme an exercise has before anything typed in Library: the plan's slot, else the library's.
+  function defaultScheme(name) {
+    var t = templateSlotFor(name);
+    if (t && t.repsTop) { return [t.reps, t.repsTop, t.rir]; }
+    var k = nameKey(name), table = P0.schemes || {}, hit = null;
+    Object.keys(table).forEach(function (n) { if (!hit && nameKey(n) === k) { hit = table[n]; } });
+    return hit;
+  }
+  // A new scheme for an exercise, written through the plan: every slot and week holding it that was
+  // still on the old scheme takes the new one. A range typed for a week in Block is left alone.
+  function propagateScheme(name, from, to) {
+    var k = nameKey(name), n = 0, pr = state.programme;
+    var same = function (reps, top) { return !!from && reps === from[0] && top === from[1]; };
+    (pr.days || []).forEach(function (day) {
+      day.slots.forEach(function (sl) {
+        if (isWaveSlot(sl)) { return; }
+        if (nameKey(sl.movement) === k && same(sl.reps, sl.repsTop)) {
+          sl.reps = to[0]; sl.repsTop = to[1]; sl.rir = to[2]; n++;
+        }
+        Object.keys(pr.weekOverrides || {}).forEach(function (w) {
+          var x = (((pr.weekOverrides[w] || {})[day.name] || {}).slots || {})[sl.id];
+          if (!x) { return; }
+          var holds = x.movement ? nameKey(x.movement) === k : nameKey(sl.movement) === k;
+          if (!holds || x.reps === undefined) { return; }
+          if (same(x.reps, x.repsTop)) { x.reps = to[0]; x.repsTop = to[1]; x.rir = to[2]; n++; }
+        });
+      });
+    });
+    return n;
+  }
+
   // Writes a scheme into a slot or an override patch.
   function applyScheme(target, sc) {
     if (!sc) { return target; }
@@ -3660,22 +3704,36 @@ details.info .row{margin-top:10px}
     return eq === null ? 'no default step (' + equipName((movementInfo(name) || {}).equip) + ')' : 'from ' + ((movementInfo(name) || {}).equip || '');
   }
 
+  // The reps an exercise is done for, and its RIR: what the plan or the library gives, or your own.
+  // Shown as placeholders when not your own, so the difference stays visible (like Step).
+  function libRepsCell(name) {
+    var own = ownScheme(name), base = defaultScheme(name);
+    var v = function (i) { return own ? own[i] : ''; }, ph = function (i) { return base ? base[i] : '–'; };
+    return '<td class="lib-reps"><span class="lib-lbl">Reps</span><div class="lib-reps-row" data-movement="' + esc(name) + '">' +
+      '<input type="number" inputmode="numeric" min="1" step="1" class="lib-r lib-lo" aria-label="Fewest reps" value="' + v(0) + '" placeholder="' + ph(0) + '">' +
+      '<span>to</span><input type="number" inputmode="numeric" min="1" step="1" class="lib-r lib-hi" aria-label="Most reps" value="' + v(1) + '" placeholder="' + ph(1) + '">' +
+      '<span>RIR</span><input type="number" inputmode="numeric" min="0" step="1" class="lib-r lib-rir" aria-label="Reps in reserve" value="' + v(2) + '" placeholder="' + ph(2) + '"></div>' +
+      '<div class="hint sm reps-src">' + esc(own ? 'set by you' : !base ? 'no scheme (timed or yours): the slot keeps its numbers' : templateSlotFor(name) ? 'from the plan' : 'from the library') + '</div></td>';
+  }
+
   function viewLibrary() {
     return '<section class="card"><h2>Exercise library</h2>' +
       '<p class="hint">Every exercise has an <b>equipment</b> type, and a version on different kit is its own exercise — a dumbbell fly and a machine fly step up by different amounts. ' +
       '<b>Step</b> is how much it goes up by when you earn a progression: leave it blank to follow the equipment default from Setup, or type a number to pin this one exercise to a step of its own. ' +
-      'Band, bodyweight and cardio have no default step — give one a number here and it will progress.</p></section>' +
+      'Band, bodyweight and cardio have no default step — give one a number here and it will progress.' +
+      (P0.schemes ? ' <b>Reps</b> are the exercise\'s own: they go with it into any slot it is swapped or picked into. Type your own and the plan follows wherever it still had the old numbers; clear them to go back.' : '') + '</p></section>' +
       '<section>' + P0.groups.map(function (g) {
         var items = movementsIn(g);
         if (!items.length) { return ''; }
         return '<div class="card"><h3>' + pretty(g) + '</h3>' +
-          '<table class="table libtable"><thead><tr><th>Exercise</th><th>Step (' + U() + ')</th><th>Equipment</th></tr></thead><tbody>' +
+          '<table class="table libtable"><thead><tr><th>Exercise</th>' + (P0.schemes ? '<th>Reps</th>' : '') + '<th>Step (' + U() + ')</th><th>Equipment</th></tr></thead><tbody>' +
           items.map(function (m) {
             var mine = (state.customMovements || []).some(function (c) { return c.name === m.name; });
             var own = (state.movementIncrements || {})[m.name];
             var eq = equipIncrementFor(m.name);
             return '<tr><td>' + esc(m.name) + ' ' + videoLink(m.name) + (mine ? ' <span class="tag">YOURS</span>' : '') +
               (m.note ? '<div class="hint sm">' + esc(m.note) + '</div>' : '') + '</td>' +
+              (P0.schemes ? libRepsCell(m.name) : '') +
               '<td class="lib-step"><span class="lib-lbl">Step (' + U() + ')</span><input type="number" step="0.01" min="0.01" class="lib-inc" data-movement="' + esc(m.name) + '"' +
               ' value="' + (own === undefined || own === null ? '' : own) + '"' +
               ' placeholder="' + (eq === null ? '—' : eq) + '">' +
@@ -5082,8 +5140,34 @@ details.info .row{margin-top:10px}
     if (src) { src.textContent = incSourceLabel(name); }
   }
 
+  // A rep scheme typed in Library. Saved on change, not on each key, and patched in place (a
+  // re-render would take the focus out of the box).
+  function libRepsChange(row) {
+    var name = row.dataset.movement;
+    var lo = num(row.querySelector('.lib-lo').value), hi = num(row.querySelector('.lib-hi').value), rir = num(row.querySelector('.lib-rir').value);
+    var before = ownScheme(name) || defaultScheme(name), base = defaultScheme(name);
+    var src = row.parentNode.querySelector('.reps-src');
+    if (lo === null && hi === null && rir === null) {
+      Object.keys(state.movementSchemes).forEach(function (n) { if (nameKey(n) === nameKey(name)) { delete state.movementSchemes[n]; } });
+      var back = base ? propagateScheme(name, before, base) : 0;
+      save();
+      if (src) { src.textContent = !base ? 'no scheme (timed or yours): the slot keeps its numbers' : templateSlotFor(name) ? 'from the plan' : 'from the library'; }
+      if (back) { toast(name + ': back to ' + base[0] + '–' + base[1] + ' in ' + back + ' place' + (back === 1 ? '' : 's') + ' in your plan'); }
+      return;
+    }
+    var b = base || [null, null, 1];
+    lo = lo === null ? b[0] : lo; hi = hi === null ? b[1] : hi; rir = rir === null ? (b[2] === undefined ? 1 : b[2]) : rir;
+    if (!(lo >= 1) || !(hi > lo)) { toast('The most reps has to be above the fewest'); return; }
+    state.movementSchemes[name] = [lo, hi, rir];
+    var n = propagateScheme(name, before, [lo, hi, rir]);
+    save();
+    if (src) { src.textContent = 'set by you'; }
+    toast(name + ': ' + lo + '–' + hi + ' at RIR ' + rir + (n ? ', updated in ' + n + ' place' + (n === 1 ? '' : 's') + ' in your plan' : ''));
+  }
+
   document.addEventListener('change', function (e) {
     var t = e.target;
+    if (t.classList && t.classList.contains('lib-r')) { libRepsChange(t.closest('.lib-reps-row')); return; }
     if (t.closest && t.closest('.editor')) { persistSession(); return; }
     if (t.classList.contains('lib-equip')) {
       var lname = t.dataset.movement;
