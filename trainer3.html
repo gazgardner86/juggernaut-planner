@@ -245,6 +245,8 @@ label.check{display:flex;align-items:center;gap:6px}
 .card.slot.ss-a::before,.card.slot.ss-b::before{position:absolute;top:-9px;left:14px;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:1px 6px;border-radius:4px;background:var(--accent);color:var(--on-accent)}
 .card.slot.ss-a::before{content:'Superset · A'}
 .card.slot.ss-b::before{content:'Superset · B'}
+.undo-banner{border-color:var(--accent)}
+.danger-zone .danger{margin-top:6px}
 .pill.sess-clock{font-variant-numeric:tabular-nums}
 .pill[hidden]{display:none}
 .block-tools{margin:0 0 12px}
@@ -317,7 +319,7 @@ details.info .row{margin-top:10px}
 </header>
 <div id="app"></div>
 <footer>Main lifts run the wave tables off your training max; the Realization AMRAP sets the next one. Everything else is yours to set. Data stays in this browser — export from Setup to back it up.<p style="margin-top:10px"><a href="./trainer.html" style="color:inherit">v2 trainer (the first block) →</a></p></footer>
-<script>window.JG_CONFIG = {"app":"v3","key":"gym-coach-jg-v3","v1Migration":false,"onboarding":true,"plates":true,"legacyKey":"gym-coach-jg-v2","title":"Juggernaut Trainer","label":"v3"};</script>
+<script>window.JG_CONFIG = {"app":"v3","key":"gym-coach-jg-v3","v1Migration":false,"onboarding":true,"plates":true,"legacyKey":"gym-coach-jg-v2","title":"Juggernaut Trainer","label":"v3","file":"juggernaut-v3"};</script>
 <script>
 /*
  * Juggernaut trainer v2 — engine.
@@ -1777,7 +1779,8 @@ details.info .row{margin-top:10px}
     var latest = 0;
     Object.keys(state.logs).forEach(function (k) {
       var w = Number(k.split('|')[0]);
-      if (state.logs[k] && state.logs[k].date && E.phaseFor(w) === 'Realization') { latest = Math.max(latest, w); }
+      // v3 and the machine plan are reminded every week that has something new; v2 once a wave.
+      if (state.logs[k] && state.logs[k].date && (EXTRAS || E.phaseFor(w) === 'Realization')) { latest = Math.max(latest, w); }
     });
     if (!latest || latest <= (state.backupThrough || 0) || latest <= (state.backupDismissedThrough || 0)) { return 0; }
     return latest;
@@ -1809,10 +1812,15 @@ details.info .row{margin-top:10px}
   var CORNERS = '<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>';
 
   function render() {
+    collectDrafts();
     var views = { today: viewToday, block: viewBlock, setup: viewSetup, progress: PLAIN ? viewProgressPlain : viewProgress, library: viewLibrary };
     var app = document.getElementById('app');
     app.innerHTML =
       (memoryOnly ? '<div class="banner">Browser storage unavailable — this tab only. Export from Setup.</div>' : '') +
+      (undoState ? '<div class="banner undo-banner">' + (undoState.what === 'reset' ? 'Everything was reset.' : 'Your data was replaced by the imported file.') +
+        ' What was here before is kept until you close the app.' +
+        '<div class="row"><button type="button" class="small primary" data-action="undo-replace">Undo, bring it back</button>' +
+        '<button type="button" class="small" data-action="undo-dismiss">Keep it as it is</button></div></div>' : '') +
       (state.ui.tab === 'setup' && unbackedRealization() ? '<div class="banner backup-banner">Week ' + unbackedRealization() +
         ' is logged but not backed up. Safari can delete this app\'s data after 7 days without a visit — keep a copy.' +
         '<div class="row"><button type="button" class="small primary" data-action="export">Export now</button>' +
@@ -1837,9 +1845,11 @@ details.info .row{margin-top:10px}
     var foot = document.querySelector('footer');
     if (foot && CFG.footer && !foot.querySelector('a')) { foot.textContent = CFG.footer; }
     app.querySelectorAll('.card').forEach(function (c) { c.insertAdjacentHTML('afterbegin', CORNERS); });
+    restoreDrafts();
     app.querySelectorAll('.card.slot').forEach(function (card) {
       card.querySelectorAll('.editor').forEach(function (ed) { refreshCell(card, ed.dataset.i); });
     });
+    paintStorage();
     paintPrs();
     paintRest();
     paintSessPills();
@@ -2220,6 +2230,103 @@ details.info .row{margin-top:10px}
   });
 
 
+  // ---- protecting what is stored (v3 and the machine plan) ----
+
+  // What was here before a Reset or an Import, kept in memory until the app is closed, so either
+  // can be undone. { what: 'reset' | 'import', state }
+  var undoState = null;
+  function hasData(st) { return !!st && (Object.keys(st.logs || {}).length > 0 || (st.archive || []).length > 0); }
+
+  // Sets typed but not logged (drafts) used to vanish on any re-render: a tab switch, Save, a swap.
+  // They are collected from the page before a render and put back after it, per session, in
+  // memory only: a draft is still not a logged set and never reaches the log.
+  var draftStore = {}, shownSession = null;
+  function collectDrafts() {
+    if (!EXTRAS || !shownSession) { return; }
+    var cards = document.querySelectorAll('#app .card.slot');
+    if (!cards.length) { return; }
+    var found = {}, any = false;
+    cards.forEach(function (card) {
+      card.querySelectorAll('.editor').forEach(function (ed) {
+        if (ed.dataset.logged === '1') { return; }
+        var reps = ed.querySelector('.in-reps').value, kgEl = ed.querySelector('.in-kg'), rir = ed.querySelector('.in-rir').value;
+        if (reps === '' && !kgEl.dataset.touched) { return; }
+        found[card.dataset.slot + '|' + ed.dataset.i] = { m: card.dataset.movement, reps: reps, rir: rir, kg: kgEl.value, touched: !!kgEl.dataset.touched };
+        any = true;
+      });
+    });
+    if (any) { draftStore[shownSession] = found; } else { delete draftStore[shownSession]; }
+  }
+  function restoreDrafts() {
+    if (!EXTRAS) { return; }
+    if (state.ui.tab !== 'today' || state.testWeek || !started()) { shownSession = null; return; }
+    shownSession = logKey(state.cursor.week, state.cursor.day);
+    var d = draftStore[shownSession];
+    if (!d) { return; }
+    Object.keys(d).forEach(function (k) {
+      var slot = k.split('|')[0], i = k.split('|')[1], x = d[k];
+      var card = document.querySelector('#app .card.slot[data-slot="' + slot + '"]');
+      // Not onto a different exercise (a swap), and not over a set that has since been logged.
+      if (!card || nameKey(card.dataset.movement) !== nameKey(x.m)) { return; }
+      var ed = card.querySelector('.editor[data-i="' + i + '"]');
+      if (!ed || ed.dataset.logged === '1') { return; }
+      if (x.reps !== '') { ed.querySelector('.in-reps').value = x.reps; }
+      if (x.rir !== '') { ed.querySelector('.in-rir').value = x.rir; }
+      if (x.touched) { var kgEl = ed.querySelector('.in-kg'); kgEl.value = x.kg; kgEl.dataset.touched = '1'; }
+    });
+  }
+  function dropDrafts(week, day) { delete draftStore[logKey(week, day)]; shownSession = null; }
+
+  // Ask the browser to keep the app's data instead of clearing it when space is short or the app
+  // has not been opened for a while. It may say no; either way Setup says which.
+  var storageKept = null, persistAsked = false;
+  function askPersist() {
+    if (!EXTRAS || persistAsked || !navigator.storage || !navigator.storage.persist) { return; }
+    persistAsked = true;
+    try {
+      navigator.storage.persist().then(function (ok) { storageKept = !!ok; paintStorage(); }).catch(function () { /* unknown */ });
+    } catch (e) { /* unknown */ }
+  }
+  function paintStorage() {
+    var el = document.getElementById('storage-status');
+    if (!el) { return; }
+    el.textContent = storageKept === true ? 'This browser has agreed to keep the app\'s data.'
+      : storageKept === false ? 'This browser may clear the app\'s data if it is not opened for a while, so keep a backup.' : '';
+  }
+
+  // One backup file. On a phone it goes to the Share sheet (Save to Files, iCloud Drive, AirDrop);
+  // elsewhere, or if sharing a file is not possible, it downloads. The backup is marked as taken
+  // only once the file has actually gone: a cancelled Share sheet saves nothing. then(ok) is told.
+  function backupNow(tag, then) {
+    var day = new Date().toISOString().slice(0, 10);
+    var name = (CFG.file || 'juggernaut-v2') + (tag ? '-' + tag : '') + '-' + day + '.json';
+    var json = JSON.stringify(state, null, 2);
+    var taken = function () {
+      state.backupThrough = maxLoggedWeek(); state.lastExportAt = day; save();
+      if (then) { then(true); }
+    };
+    if (EXTRAS && typeof File === 'function' && navigator.canShare && navigator.share) {
+      var file = null;
+      try { file = new File([json], name, { type: 'application/json' }); } catch (e) { file = null; }
+      if (file && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: name }).then(taken).catch(function (err) {
+          if (err && err.name === 'AbortError') { if (then) { then(false); } return; }
+          download(new Blob([json], { type: 'application/json' }), name); taken();
+        });
+        return;
+      }
+    }
+    download(new Blob([json], { type: 'application/json' }), name);
+    taken();
+  }
+  // The Data card's Reset, in a section of its own so it is not next to Export.
+  function resetSectionHtml() {
+    return '<section class="card danger-zone"><h2>Reset</h2>' +
+      '<p class="hint">Wipes every logged session, finished cycles and your settings on this phone, back to a fresh start. ' +
+      'A backup is saved first, and it can be undone until you close the app.</p>' +
+      '<button type="button" class="danger" data-action="reset">Reset everything</button></section>';
+  }
+
   // ---- session clock, sets done, keeping the screen on ----
   // Live while the session is going (a set logged in the last two hours), the session's length after.
   var clockTick = null;
@@ -2506,7 +2613,7 @@ details.info .row{margin-top:10px}
     }
     refreshCell(card, i);
     ed.hidden = true; cell.classList.remove('open');
-    if (a === 'log-set' && EXTRAS) { unlockAudio(); }
+    if (a === 'log-set' && EXTRAS) { unlockAudio(); askPersist(); }
     persistSession();
     if (a === 'log-set' && EXTRAS) {
       // After the save: the session's log does not exist until its first set is read.
@@ -2842,9 +2949,10 @@ details.info .row{margin-top:10px}
       '<button type="button" data-action="import">Import JSON</button>' +
       '<input type="file" id="import-file" accept=".json" hidden>' +
       '<button type="button" data-action="export-csv">Export log (CSV)</button>' +
-      '<button type="button" class="danger" data-action="reset">Reset</button></div>' +
+      (EXTRAS ? '' : '<button type="button" class="danger" data-action="reset">Reset</button>') + '</div>' +
       '<p class="hint">Stored in this browser only. Your measurements are part of the JSON backup. ' +
-      (state.lastExportAt ? 'Last backup: ' + esc(state.lastExportAt) + '.' : 'Never backed up.') + '</p></section>';
+      (state.lastExportAt ? 'Last backup: ' + esc(state.lastExportAt) + '.' : 'Never backed up.') + ' <span id="storage-status"></span></p></section>' +
+      (EXTRAS ? resetSectionHtml() : '');
   }
 
   function viewSetup() {
@@ -2924,9 +3032,10 @@ details.info .row{margin-top:10px}
       '<button type="button" data-action="import">Import JSON</button>' +
       '<input type="file" id="import-file" accept=".json" hidden>' +
       '<button type="button" data-action="export-csv">Export log (CSV)</button>' +
-      '<button type="button" class="danger" data-action="reset">Reset</button></div>' +
+      (EXTRAS ? '' : '<button type="button" class="danger" data-action="reset">Reset</button>') + '</div>' +
       '<p class="hint">Stored in this browser only. ' +
-      (state.lastExportAt ? 'Last backup: ' + esc(state.lastExportAt) + '.' : 'Never backed up.') + '</p></section>';
+      (state.lastExportAt ? 'Last backup: ' + esc(state.lastExportAt) + '.' : 'Never backed up.') + ' <span id="storage-status"></span></p></section>' +
+      (EXTRAS ? resetSectionHtml() : '');
   }
 
   /* ---------------- progress ---------------- */
@@ -4767,6 +4876,9 @@ details.info .row{margin-top:10px}
       save(); render();
       toast(saveMessage(bumped1, noRir1, 'Session saved'), noRir1.length ? 5000 : 0);
     } else if (a === 'finish-session') {
+      var typed = EXTRAS ? document.querySelectorAll('#app .card.slot .setcell.draft').length : 0;
+      if (typed && !confirm(typed + (typed === 1 ? ' set is' : ' sets are') + ' typed but not logged, and will not be saved. Finish anyway?')) { return; }
+      if (EXTRAS) { dropDrafts(state.cursor.week, state.cursor.day); }
       readSession(); swapOpen = null; skipOpen = null; moveOpen = null;
       var bumped2 = progressAccessories(state.cursor.week, state.cursor.day);
       var noRir2 = missingRir(state.cursor.week, state.cursor.day);
@@ -4857,6 +4969,10 @@ details.info .row{margin-top:10px}
       state.lifts.forEach(function (l) { if (nameKey(l.name) === nameKey(lname)) { l.tm = tm; } });
       save(); render(); toast(lname + ' TM → ' + fmt(tm));
     } else if (a === 'export') {
+      if (EXTRAS) {
+        backupNow('', function (ok) { render(); toast(ok ? 'Backup saved' : 'No backup was saved'); });
+        return;
+      }
       state.backupThrough = maxLoggedWeek();
       state.lastExportAt = new Date().toISOString().slice(0, 10);
       save();
@@ -4946,7 +5062,27 @@ details.info .row{margin-top:10px}
     } else if (a === 'import') {
       document.getElementById('import-file').click();
     } else if (a === 'reset') {
-      if (confirm('Reset everything to the programme defaults?')) { state = defaultState(); save(); render(); }
+      if (!EXTRAS) {
+        if (confirm('Reset everything to the programme defaults?')) { state = defaultState(); save(); render(); }
+        return;
+      }
+      var had = hasData(state);
+      if (!confirm('Reset wipes every logged session, finished cycles and your settings on this phone.' +
+        (had ? ' A backup file is saved first.' : '') + ' Continue?')) { return; }
+      var wipe = function () {
+        undoState = { what: 'reset', state: state };
+        draftStore = {}; shownSession = null;
+        state = defaultState(); save(); render();
+        toast('Reset. You can undo it until you close the app.', 5000);
+      };
+      if (!had) { wipe(); return; }
+      backupNow('before-reset', function (ok) {
+        if (ok || confirm('No backup was saved. Reset anyway?')) { wipe(); } else { toast('Nothing was reset'); }
+      });
+    } else if (a === 'undo-replace') {
+      if (undoState) { state = undoState.state; undoState = null; draftStore = {}; shownSession = null; save(); render(); toast('Brought back'); }
+    } else if (a === 'undo-dismiss') {
+      undoState = null; render();
     }
   });
 
@@ -5114,11 +5250,17 @@ details.info .row{margin-top:10px}
                 toast('That is a v2 backup — importing it here would replace the block you are running. Export this one first, or use a fresh browser to bring v2 across.', 7000);
                 return;
               }
+              if (EXTRAS && hasData(state)) { undoState = { what: 'import', state: state }; }
               state = importLegacy(parsed); save(); render();
               toast('That is a v2 backup — brought across; check the starting maxes, then start', 6000);
               return;
             }
-            state = upgrade(parsed); save(); render(); toast('Imported');
+            // Checked before anything is replaced, so a bad file leaves the data alone; what was
+            // here is kept so the import can be undone.
+            var incoming = upgrade(parsed);
+            if (EXTRAS && hasData(state)) { undoState = { what: 'import', state: state }; }
+            draftStore = {}; shownSession = null;
+            state = incoming; save(); render(); toast('Imported');
           } catch (err) { toast('Import failed'); }
         };
         reader.readAsText(f);
@@ -5127,6 +5269,8 @@ details.info .row{margin-top:10px}
     }
   });
 
+  // Once there is something to lose, ask the browser to keep it.
+  if (EXTRAS && hasData(state)) { askPersist(); }
   render();
 })();
 
