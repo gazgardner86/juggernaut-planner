@@ -1015,9 +1015,11 @@ details.info .row{margin-top:10px}
     legacyMovements: LEGACY_MOVEMENTS,
     schemes: SCHEMES,
     // Volume scaling for everything except the main lift, whose wave table
-    // already varies. Realization is the week whose AMRAP sets the next TM.
+    // already varies. Realization keeps the full sets: it was cut to
+    // two thirds to leave him fresh for the AMRAP, but the AMRAP comes first in the
+    // session, so the cut bought nothing for it and left the day too light to train.
+    // The %TM supports this was also for are fixed weights in this block.
     phaseRules: {
-      Realization: { scale: 2 / 3 },
       // Half, not a third: the main lift already carries the deload's real job
       // (3 sets at 40-60%, down in both volume and intensity). Cable/machine
       // accessories cost little systemically, so cutting a 3-set slot to a
@@ -3575,23 +3577,53 @@ details.info .row{margin-top:10px}
   /* ---------------- Progress: bests, a chart per exercise, sets per muscle this week ---------------- */
 
   // Every session an exercise was done in, oldest first, across finished cycles and this one.
+  // A main lift's estimated 1RM comes from the final set of each session only.
+  // The sets before it are the warm-up ramp, and a 70% single read as a 1RM said the lift had
+  // dropped to 70% of its max; in Accumulation they are the same weight stopped short. The final
+  // set is the flagged AMRAP. Outside Realization it is stopped short by the session notes' RIR
+  // (2-3, 1-2), so the lower number is added, as the 1RM calculator does. None from a deload, and
+  // none until the final set itself is logged (half a session would read off a ramp set again).
+  function wasMainSlot(sp, day, id) {
+    var d = sp && sp.days && sp.days[day];
+    return !!(d && (d.slots || []).some(function (sl) { return sl.id === id && isWaveSlot(sl); }));
+  }
+  function mainFinalSet(sp, week, day, id, entry) {
+    var n = 0;
+    try {
+      var pr = E.prescribeDay(programmeOf(sp), week, day, ctx()).filter(function (p) { return p.id === id; })[0];
+      n = pr ? pr.sets.length : 0;
+    } catch (err) { n = 0; }
+    var x = n ? (entry.sets || [])[n - 1] : null;
+    return x && x.reps && x.kg ? x : null;
+  }
+  function mainFinalEffort(x, week) {
+    var phase = E.phaseFor(week);
+    if (!x || phase === 'Deload') { return null; }
+    var rir = MAIN_RIR[phase] || 0;
+    return { x: x, kg: x.kg, reps: x.reps, rir: rir, eff: x.reps + rir, v: resultE1RM(x.kg, x.reps + rir) };
+  }
+  function effortText(m) {
+    return fmt(m.kg) + ' × ' + m.reps + (m.rir ? ' + ' + m.rir + ' in reserve' : '') + (m.eff > 10 ? ' (over 10 reps, reads high)' : '');
+  }
+
   function exerciseSessions(movement) {
     var key = nameKey(movement), out = [];
-    function scan(logs, cycle) {
+    function scan(logs, cycle, sp) {
       Object.keys(logs || {}).forEach(function (k) {
         var w = Number(k.split('|')[0]), d = Number(k.split('|')[1]);
-        var sets = [];
+        var sets = [], main = false, final = null;
         Object.keys(logs[k].slots || {}).forEach(function (id) {
           var e = logs[k].slots[id];
           if (e && nameKey(e.movement) === key) {
             (e.sets || []).forEach(function (x) { if (x && x.reps && x.kg !== null && x.kg !== undefined) { sets.push(x); } });
+            if (wasMainSlot(sp, d, id)) { main = true; final = mainFinalSet(sp, w, d, id, e) || final; }
           }
         });
-        if (sets.length) { out.push({ cycle: cycle, week: w, day: d, sets: sets, rank: sessionRank(cycle, w, d) }); }
+        if (sets.length) { out.push({ cycle: cycle, week: w, day: d, sets: sets, main: main, effort: main ? mainFinalEffort(final, w) : null, rank: sessionRank(cycle, w, d) }); }
       });
     }
-    (state.archive || []).forEach(function (a) { scan(a.logs, a.cycle); });
-    scan(state.logs, state.cycle || 1);
+    (state.archive || []).forEach(function (a) { scan(a.logs, a.cycle, a.programme); });
+    scan(state.logs, state.cycle || 1, state.programme);
     out.sort(function (a, b) { return a.rank - b.rank; });
     return out;
   }
@@ -3658,11 +3690,14 @@ details.info .row{margin-top:10px}
       var where = (cycles ? 'C' + s.cycle + ' ' : '') + 'W' + s.week;
       var t = topSet(s.sets), b = bestE1(s.sets);
       if (metric === 'e1rm') {
-        if (b) { pts.push({ v: Math.round(b.v * 2) / 2, short: where, tip: where + ': est. 1RM ' + fmt(Math.round(b.v * 2) / 2) + ' ' + U() + ' from ' + fmt(b.x.kg) + ' × ' + b.x.reps }); }
+        if (s.main) {
+          var m = s.effort;
+          if (m) { pts.push({ v: Math.round(m.v * 2) / 2, short: where, tip: where + ': est. 1RM ' + fmt(Math.round(m.v * 2) / 2) + ' ' + U() + ' from the final set, ' + effortText(m) }); }
+        } else if (b) { pts.push({ v: Math.round(b.v * 2) / 2, short: where, tip: where + ': est. 1RM ' + fmt(Math.round(b.v * 2) / 2) + ' ' + U() + ' from ' + fmt(b.x.kg) + ' × ' + b.x.reps }); }
       } else if (t) { pts.push({ v: t.kg, short: where, tip: where + ': top set ' + fmt(t.kg) + ' ' + U() + ' × ' + t.reps }); }
     });
     var body = pts.length ? lineChartSvg(pts, U()) + '<p class="hint sm chart-tip">Tap a point to read it.</p>'
-      : '<p class="hint">' + (metric === 'e1rm' ? 'No set of 10 reps or fewer yet, so no estimate. Switch to top set.' : 'Nothing logged yet.') + '</p>';
+      : '<p class="hint">' + (metric === 'e1rm' ? (isMain ? 'No final set logged yet, so no estimate. Switch to top set.' : 'No set of 10 reps or fewer yet, so no estimate. Switch to top set.') : 'Nothing logged yet.') + '</p>';
     return '<section class="card chart-card"><h2>' + (metric === 'e1rm' ? 'Estimated 1RM' : 'Top set') + ' · ' + esc(cur) + '</h2>' +
       '<div class="row wrap"><label>Exercise <select id="chart-ex">' + names.map(function (n) {
         return '<option value="' + esc(n) + '"' + (n === cur ? ' selected' : '') + '>' + esc(n) + '</option>';
@@ -3711,8 +3746,10 @@ details.info .row{margin-top:10px}
         var where = { cycle: s.cycle, week: s.week };
         s.sets.forEach(function (x) {
           if (!heavy || x.kg > heavy.x.kg || (x.kg === heavy.x.kg && x.reps > heavy.x.reps)) { heavy = { x: x, at: where }; }
-          if (x.reps <= 10) { var v = resultE1RM(x.kg, x.reps); if (!e1 || v > e1.v) { e1 = { v: v, at: where }; } }
+          if (!s.main && x.reps <= 10) { var v = resultE1RM(x.kg, x.reps); if (!e1 || v > e1.v) { e1 = { v: v, at: where }; } }
         });
+        // A main lift: the final set of each session (see mainFinalEffort), not the ramp.
+        if (s.main && s.effort && (!e1 || s.effort.v > e1.v)) { e1 = { v: s.effort.v, at: where, high: s.effort.eff > 10 }; }
       });
       return { n: n, heavy: heavy, e1: e1 };
     });
@@ -3720,8 +3757,8 @@ details.info .row{margin-top:10px}
     return '<section class="card"><h2>Personal bests</h2><div class="scroll"><table class="table"><thead><tr><th>Exercise</th><th>Heaviest</th><th>Est. 1RM</th></tr></thead><tbody>' +
       rows.map(function (r) {
         return '<tr><td>' + esc(r.n) + '</td><td>' + (r.heavy ? fmt(r.heavy.x.kg) + ' × ' + r.heavy.x.reps + ' <span class="hint sm">' + at(r.heavy.at) + '</span>' : '–') + '</td>' +
-          '<td>' + (r.e1 ? '<b>' + fmt(Math.round(r.e1.v * 2) / 2) + '</b> <span class="hint sm">' + at(r.e1.at) + '</span>' : '–') + '</td></tr>';
-      }).join('') + '</tbody></table></div><p class="hint sm">Est. 1RM counts sets of 10 reps or fewer.</p></section>';
+          '<td>' + (r.e1 ? '<b>' + fmt(Math.round(r.e1.v * 2) / 2) + '</b>' + (r.e1.high ? '*' : '') + ' <span class="hint sm">' + at(r.e1.at) + '</span>' : '–') + '</td></tr>';
+      }).join('') + '</tbody></table></div><p class="hint sm">Est. 1RM: for a main lift, the final set of each session only (not the ramp before it), with the reserve the week leaves; * means that set was over 10 reps and reads high. For anything else, sets of 10 reps or fewer.</p></section>';
   }
   function progressExtrasHtml() { return EXTRAS ? exerciseChartCard() + weekSetsCard() + bestsCardHtml() : ''; }
   document.addEventListener('click', function (e) {
@@ -3781,14 +3818,9 @@ details.info .row{margin-top:10px}
       mainSlots(wk, dy).forEach(function (ms) {
         var entry = l.slots[ms.id];
         if (!entry || !entry.movement) { return; }
-        var best = 0;
-        (entry.sets || []).forEach(function (s) {
-          if (s && s.kg && s.reps) {
-            var e = E.estimate1RM(s.kg, s.reps);
-            if (e > best) { best = e; }
-          }
-        });
-        if (best) { (oneRm[entry.movement] = oneRm[entry.movement] || []).push({ wk: wk, e: best }); }
+        // The final set only: the ramp before it is not an effort (see mainFinalEffort).
+        var m = mainFinalEffort(mainFinalSet(state.programme, wk, dy, ms.id, entry), wk);
+        if (m) { (oneRm[entry.movement] = oneRm[entry.movement] || []).push({ wk: wk, e: Math.round(m.v * 10) / 10, high: m.eff > 10 }); }
       });
     });
     var oneRmHtml = Object.keys(oneRm).sort().map(function (m) {
@@ -3796,7 +3828,7 @@ details.info .row{margin-top:10px}
       var last = entries[entries.length - 1];
       return '<tr><td>' + esc(m) + '</td><td class="hint">' +
         entries.map(function (e) {
-          return 'wk' + e.wk + ' ' + (e === last ? '<b>' + fmt(e.e) + '</b>' : fmt(e.e));
+          return 'wk' + e.wk + ' ' + (e === last ? '<b>' + fmt(e.e) + '</b>' : fmt(e.e)) + (e.high ? '*' : '');
         }).join(' → ') + '</td></tr>';
     }).join('');
 
@@ -3805,7 +3837,7 @@ details.info .row{margin-top:10px}
       '<div class="scroll"><table class="table"><thead><tr><th>Weeks</th><th>Wave</th><th>Lift</th><th>TM</th><th>Std</th><th>AMRAP</th><th>Inc</th><th>New TM</th><th></th></tr></thead><tbody>' +
       rows + '</tbody></table></div></section>' +
       (oneRmHtml ? '<section class="card"><h2>Estimated 1RM</h2>' +
-        '<p class="hint">Best set per logged main-lift session (deloads excluded). Flat into a new wave means the TM is about right; falling means it is set too high.</p>' +
+        '<p class="hint">From the final set of each main-lift session, with the reserve the week leaves (deloads excluded; the ramp sets before it do not count). * means over 10 reps, which reads high. Flat into a new wave means the TM is about right; falling means it is set too high.</p>' +
         '<div class="scroll"><table class="table"><thead><tr><th>Lift</th><th>Trend (' + U() + ')</th></tr></thead><tbody>' +
         oneRmHtml + '</tbody></table></div></section>' : '') +
       (function () {
@@ -3959,7 +3991,10 @@ details.info .row{margin-top:10px}
         Object.keys(state.logs[k].slots || {}).forEach(function (id) {
           var e = state.logs[k].slots[id];
           if (!e || nameKey(e.movement) !== nameKey(name)) { return; }
-          (e.sets || []).forEach(function (x) {
+          // As a main lift, the session's final set only: a ramp single is not a heavy set.
+          var dy = Number(k.split('|')[1]);
+          var sets = wasMainSlot(state.programme, dy, id) ? [mainFinalSet(state.programme, wk, dy, id, e)] : (e.sets || []);
+          sets.forEach(function (x) {
             if (!x || !x.kg || !x.reps || x.reps > 10) { return; }
             var v = E.estimate1RM(x.kg, x.reps);
             if (!best || v > best.e) { best = { e: v, kg: x.kg, reps: x.reps, week: wk }; }
@@ -4269,8 +4304,18 @@ details.info .row{margin-top:10px}
     var ki = at('kg') === -1 ? at('lb') : at('kg');
     if (wi < 0 || mi < 0 || ri < 0 || ki < 0) { return null; }
     var rows = lines.slice(1).map(parseCsvLine).map(function (c) {
-      return { cycle: ci < 0 ? 1 : (Number(c[ci]) || 1), week: Number(c[wi]), m: c[mi], set: si < 0 ? '' : c[si], kg: Number(c[ki]), reps: Number(c[ri]) };
+      return { cycle: ci < 0 ? 1 : (Number(c[ci]) || 1), week: Number(c[wi]), day: at('day') < 0 ? '' : c[at('day')], m: c[mi], set: si < 0 ? '' : c[si], kg: Number(c[ki]), reps: Number(c[ri]) };
     }).filter(function (r) { return r.set !== 'skipped' && r.kg > 0 && r.reps >= 1; });
+    // A main lift's final set of each session only (see mainFinalEffort): drop every row with a
+    // later set of the same lift on the same day. Needs the Day and Set columns.
+    if (at('day') >= 0 && si >= 0) {
+      var lastSet = {};
+      rows.forEach(function (r) {
+        var key = r.cycle + '|' + r.week + '|' + r.day + '|' + nameKey(r.m);
+        if (!(key in lastSet) || Number(r.set) > lastSet[key]) { lastSet[key] = Number(r.set); }
+      });
+      rows = rows.filter(function (r) { return Number(r.set) === lastSet[r.cycle + '|' + r.week + '|' + r.day + '|' + nameKey(r.m)]; });
+    }
     var lastCycle = Math.max.apply(null, rows.map(function (r) { return r.cycle; }).concat([0]));
     rows = rows.filter(function (r) { return r.cycle === lastCycle; });
     var lastWeek = Math.max.apply(null, rows.map(function (r) { return r.week; }).concat([0]));
