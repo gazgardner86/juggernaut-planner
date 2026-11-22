@@ -2394,6 +2394,24 @@ details.info .row{margin-top:10px}
   // They are collected from the page before a render and put back after it, per session, in
   // memory only: a draft is still not a logged set and never reaches the log.
   var draftStore = {}, shownSession = null;
+  // A weight changed on a set becomes the weight of every set after it that is not logged yet and
+  // whose weight was not set by hand: change it once (say to 87.5 in Edit set), not set by set.
+  // Main-lift sets are exempt, because a wave ramp prescribes a different weight for each.
+  function followWeight(card, i) {
+    if (!V3_LOGGING || !card || card.classList.contains('main')) { return; }
+    var src = card.querySelector('.in-kg[data-i="' + i + '"]');
+    if (!src || src.value === '') { return; }
+    card.querySelectorAll('.editor').forEach(function (ed) {
+      var j = ed.dataset.i;
+      if (Number(j) <= Number(i) || isLogged(ed)) { return; }
+      var kg = ed.querySelector('.in-kg');
+      if (kg.dataset.touched) { return; }
+      kg.value = src.value;
+      kg.dataset.follow = '1';
+      refreshCell(card, j);
+    });
+  }
+
   function collectDrafts() {
     if (!EXTRAS || !shownSession) { return; }
     var cards = document.querySelectorAll('#app .card.slot');
@@ -2403,8 +2421,8 @@ details.info .row{margin-top:10px}
       card.querySelectorAll('.editor').forEach(function (ed) {
         if (ed.dataset.logged === '1') { return; }
         var reps = ed.querySelector('.in-reps').value, kgEl = ed.querySelector('.in-kg'), rir = ed.querySelector('.in-rir').value;
-        if (reps === '' && !kgEl.dataset.touched) { return; }
-        found[card.dataset.slot + '|' + ed.dataset.i] = { m: card.dataset.movement, reps: reps, rir: rir, kg: kgEl.value, touched: !!kgEl.dataset.touched };
+        if (reps === '' && !kgEl.dataset.touched && !kgEl.dataset.follow) { return; }
+        found[card.dataset.slot + '|' + ed.dataset.i] = { m: card.dataset.movement, reps: reps, rir: rir, kg: kgEl.value, touched: !!kgEl.dataset.touched, follow: !!kgEl.dataset.follow };
         any = true;
       });
     });
@@ -2425,7 +2443,10 @@ details.info .row{margin-top:10px}
       if (!ed || ed.dataset.logged === '1') { return; }
       if (x.reps !== '') { ed.querySelector('.in-reps').value = x.reps; }
       if (x.rir !== '') { ed.querySelector('.in-rir').value = x.rir; }
-      if (x.touched) { var kgEl = ed.querySelector('.in-kg'); kgEl.value = x.kg; kgEl.dataset.touched = '1'; }
+      var kgEl = ed.querySelector('.in-kg');
+      if (x.touched) { kgEl.value = x.kg; kgEl.dataset.touched = '1'; }
+      // A weight that followed an earlier set's change, kept as well (it is still not yours by hand).
+      else if (x.follow) { kgEl.value = x.kg; kgEl.dataset.follow = '1'; }
     });
   }
   function dropDrafts(week, day) { delete draftStore[logKey(week, day)]; shownSession = null; }
@@ -2726,7 +2747,7 @@ details.info .row{margin-top:10px}
       var kgIn = ed.querySelector('.in-kg');
       kgIn.value = Math.max(0, Math.round(((num(kgIn.value) || 0) + Number(btn.dataset.d)) * 100) / 100);
       kgIn.dataset.touched = '1';
-      refreshCell(card, i); persistSession();
+      refreshCell(card, i); followWeight(card, i); persistSession();
       return;
     }
     if (a === 'step') {
@@ -2740,7 +2761,9 @@ details.info .row{margin-top:10px}
       }
       input.value = Math.max(0, Math.round((cur + Number(btn.dataset.d)) * 100) / 100);
       if (input.classList.contains('in-kg')) { input.dataset.touched = '1'; }
-      refreshCell(card, i); persistSession();
+      refreshCell(card, i);
+      if (input.classList.contains('in-kg')) { followWeight(card, i); }
+      persistSession();
       return;
     }
     var cell = card.querySelector('.setcell[data-i="' + i + '"]');
@@ -5268,6 +5291,7 @@ details.info .row{margin-top:10px}
       // Emptying the reps takes a logged set back out, so typing a number in again is a draft.
       if (e.target.classList && e.target.classList.contains('in-reps') && e.target.value === '') { e.target.closest('.editor').dataset.logged = '0'; }
       refreshCell(e.target.closest('.card.slot'), e.target.closest('.editor').dataset.i);
+      if (e.target.classList && e.target.classList.contains('in-kg')) { followWeight(e.target.closest('.card.slot'), e.target.closest('.editor').dataset.i); }
     }
   });
 
