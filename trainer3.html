@@ -1957,7 +1957,10 @@ details.info .row{margin-top:10px}
     var phase = E.phaseFor(week);
 
     var prevLine = '';
-    if (prev) {
+    // Not on a main lift: its weight is set by the week's wave, so last session's numbers (another
+    // percentage, another rep target) only read as going backwards on a lighter day. The prescription
+    // is the number that matters there. History still has them (Progress, the CSV).
+    if (prev && !isMain) {
       var txt = (prev.entry.sets || []).filter(function (s) { return s && s.reps; })
         .map(function (s) { return (s.kg === null || s.kg === undefined ? '?' : s.kg) + '×' + (s.reps === null || s.reps === undefined ? '?' : s.reps); }).join('  ');
       var rirs = (prev.entry.sets || []).filter(function (s) { return s && s.reps && s.rir !== null && s.rir !== undefined; })
@@ -2019,7 +2022,7 @@ details.info .row{margin-top:10px}
         (s.amrap && isMain ? ' · ' + (RESERVE_TAG[phase] || 'AMRAP') : (tRir !== '' ? ' @ RIR ' + tRir : '')) +
         (isMain ? ' · ' + Math.round(s.pct * 1000) / 10 + '% TM' : '');
       // What this set was last time, faint inside the cell until it is logged (Hevy's "Previous").
-      var was = EXTRAS && prev && prev.entry.sets ? prev.entry.sets[i] : null;
+      var was = EXTRAS && prev && !isMain && prev.entry.sets ? prev.entry.sets[i] : null;
       var prevTxt = was && was.reps ? (was.kg === null || was.kg === undefined ? '?' : fmt(was.kg)) + '×' + was.reps : '';
       cells += '<button type="button" class="setcell' + (s.amrap ? ' amrap' : '') + '" data-action="cell" data-i="' + i + '" aria-label="Set ' + s.n + '">' +
         '<span class="c-kg"></span><span class="c-reps"></span>' + (prevTxt ? '<span class="c-prev" title="Last time">' + esc(prevTxt) + '</span>' : '') + '</button>';
