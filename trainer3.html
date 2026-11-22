@@ -1980,6 +1980,14 @@ details.info .row{margin-top:10px}
         '<button type="button" data-action="step" data-d="-' + step + '" aria-label="Less ' + label + '">−</button>' + input +
         '<button type="button" data-action="step" data-d="' + step + '" aria-label="More ' + label + '">+</button></div></div>';
     }
+    // Bigger weight jumps than the stepper, one tap each (Strong's keypad has these). They sit
+    // inside the weight box's own column: spread under both boxes, they read as changing the reps.
+    function kgFieldHtml(html) {
+      if (!EXTRAS) { return html; }
+      return html.slice(0, -'</div>'.length) + '<div class="kg-chips">' + [-10, -5, 5, 10].map(function (d) {
+        return '<button type="button" class="small" data-action="kg-add" data-d="' + d + '" aria-label="' + (d > 0 ? 'Add ' : 'Take off ') + Math.abs(d) + ' ' + U() + '">' + (d > 0 ? '+' : '−') + Math.abs(d) + '</button>';
+      }).join('') + '</div></div>';
+    }
 
     // RIR is asked for only where something uses it: a fixed-rep slot, which
     // progresses on a beaten RIR. A rep range progresses on reps alone and the
@@ -2022,12 +2030,8 @@ details.info .row{margin-top:10px}
         (askRir
           ? field('RIR', '<input type="number" inputmode="numeric" step="1" min="0" class="in-rir" data-i="' + i + '" value="' + rirVal + '" placeholder="' + tRir + '">', 1)
           : '<input type="hidden" class="in-rir" data-i="' + i + '" value="' + rirVal + '">') +
-        field(U(), '<input type="number" inputmode="decimal" step="0.5" min="0" class="in-kg" data-i="' + i + '" value="' + kgVal + '">', kgStep, askRir) +
+        kgFieldHtml(field(U(), '<input type="number" inputmode="decimal" step="0.5" min="0" class="in-kg" data-i="' + i + '" value="' + kgVal + '">', kgStep, askRir)) +
         '</div>' +
-        // Bigger jumps than the stepper, one tap each (Strong's keypad has these).
-        (EXTRAS ? '<div class="kg-chips">' + [-10, -5, 5, 10].map(function (d) {
-          return '<button type="button" class="small" data-action="kg-add" data-d="' + d + '" aria-label="' + (d > 0 ? 'Add ' : 'Take off ') + Math.abs(d) + ' ' + U() + '">' + (d > 0 ? '+' : '−') + Math.abs(d) + '</button>';
-        }).join('') + '</div>' : '') +
         '<div class="ed-hint"></div>' + (plateKind(p.movement, p.slot.load.kind) ? '<div class="ed-plates hint sm"></div>' : '') +
         '<div class="ed-actions"><button type="button" data-action="clear-set">Clear</button><button type="button" class="primary" data-action="log-set">Log set</button></div>' +
         '</div>';
@@ -5400,6 +5404,22 @@ input[type=number],input[type=text],select{border-radius:10px;background:var(--b
 .jg-next-actions button{min-height:56px;font-size:16px;border-radius:16px}
 .jg-next-actions .primary{font-size:17px}
 .jg-alldone{color:var(--accent-strong);font-weight:600;font-size:14px;display:flex;align-items:center;gap:8px}
+.jg-next-actions.one{grid-template-columns:1fr}
+.jg-reps-k{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:12px}
+.jg-reps{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:6px;margin-top:6px}
+.jg-reps button{min-height:56px;border-radius:14px;font-family:var(--font-h);font-size:22px;font-weight:600;
+  background:var(--accent);border:0;color:var(--on-accent);font-variant-numeric:tabular-nums}
+.jg-reps button.on{box-shadow:0 0 0 3px var(--text) inset}
+.jg-reps button.jg-more{background:transparent;border:1px solid var(--line);color:var(--text);font-size:18px}
+.jg-next-actions.one .jg-adjust:not(.primary){min-height:44px;font-size:15px}
+
+/* one-tap log: take it back */
+#jg-undo{position:fixed;left:12px;right:12px;bottom:calc(var(--nav-h) + 12px + env(safe-area-inset-bottom));z-index:28;
+  max-width:560px;margin:0 auto;display:flex;align-items:center;gap:10px;padding:8px 8px 8px 16px;border-radius:14px;
+  background:var(--surface-2,var(--surface));border:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.4);font-size:15px}
+#jg-undo[hidden]{display:none}
+#jg-undo .jg-undo-t{flex:1;min-width:0}
+#jg-undo button{min-height:44px;padding:0 18px;border-radius:12px;font-weight:700;color:var(--accent-strong);background:transparent;border:1px solid var(--line)}
 
 /* set editor as a bottom sheet */
 #jg-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:29}
@@ -5418,6 +5438,16 @@ body.jg-sheet{overflow:hidden}
 .stepper button{border-radius:0;background:transparent;min-height:60px;font-size:24px}
 .stepper input[type=number]{min-height:60px;font-size:30px;border-color:var(--line);background:transparent}
 .ed-actions button{min-height:56px;border-radius:16px;font-size:16px}
+#app .ed-actions{display:flex;align-items:center;gap:8px}
+#app .ed-actions .primary{flex:1}
+/* Clear is a quiet text button away from the thumb's path, not a twin of Log set */
+#app .ed-actions [data-action="clear-set"]{order:-1;background:transparent;border:0;color:var(--muted);padding:0 10px;font-size:14px;text-decoration:underline;text-underline-offset:3px}
+#app .ed-head{padding-right:40px}
+.jg-close{position:absolute;top:10px;right:10px;width:40px;height:40px;min-height:0;padding:0;display:grid;place-items:center;
+  border-radius:50%;background:transparent;border:1px solid var(--line);color:var(--muted)}
+#app .ed-field .kg-chips{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+#app .ed-field .kg-chips button{min-height:40px;padding:0;border-radius:10px;font-size:13px}
+#app .ed-field.wide .kg-chips button{font-size:15px}
 .jg-hide{display:none!important}
 .jg-rir{margin-top:12px}
 .jg-rir>span{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
@@ -5494,21 +5524,44 @@ body.jg-sheet{overflow:hidden}
     // Reps already typed for this set (a draft) are what Done logs; otherwise the plan's.
     var typed = n(ed.querySelector('.in-reps').value);
     var logReps = typed !== null ? typed : tReps;
-    if (!sub && typed !== null && !amrap) { sub = 'Done logs your ' + typed + ' reps.'; }
-    else if (!sub && tTop && !amrap) { sub = 'Done logs ' + tReps + ' reps — did more? Tap Adjust.'; }
-    if (amrap) { sub = 'Enter the reps you got — nothing is assumed for this set.'; }
-
     var quick = !amrap && kg !== null;
-    var doneLabel = quick ? CHECK + ' Done — ' + f(kg) + ' × ' + logReps : (amrap ? 'Log reps' : 'Set weight');
+    var lo = n(tReps), hi = n(tTop);
+    // A rep range is logged by tapping the reps done. A single Done used to log the bottom of the
+    // range, which can never earn the weight increase (that needs the top on every set).
+    var range = quick && lo !== null && hi !== null && hi > lo;
+    sub = '';
+    if (amrap) { sub = 'Enter the reps you got. Nothing is assumed for this set.'; }
+    else if (kg === null) { sub = 'No weight yet. Enter the weight you are using.'; }
+    else if (typed !== null) { sub = 'Your ' + typed + ' reps are typed but not logged yet.'; }
+
+    var actions;
+    if (range) {
+      var top = Math.min(hi, lo + 11), chips = '';
+      var chip = function (r, more) {
+        return '<button type="button" class="jg-rep' + (more ? ' jg-more' : '') + (!more && typed === r ? ' on' : '') + '" data-r="' + r + '"' +
+          (more ? ' aria-label="More than ' + top + ' reps"' : ' aria-label="Log ' + r + ' reps"') + '>' + r + (more ? '+' : '') + '</button>';
+      };
+      if (typed !== null && typed < lo) { chips += chip(typed); }
+      for (var r = lo; r <= top; r++) { chips += chip(r); }
+      if (typed !== null && typed > top) { chips += chip(typed); }
+      chips += chip(top + 1, true);
+      actions = '<div class="jg-reps-k">Reps done · one tap logs the set at ' + f(kg) + ' ' + unit + '</div>' +
+        '<div class="jg-reps">' + chips + '</div>' +
+        '<div class="jg-next-actions one"><button type="button" class="jg-adjust">Edit set</button></div>';
+    } else if (quick) {
+      actions = '<div class="jg-next-actions">' +
+        '<button type="button" class="jg-adjust">Edit set</button>' +
+        '<button type="button" class="primary jg-done">' + CHECK + ' Done — ' + f(kg) + ' × ' + logReps + '</button></div>';
+    } else {
+      // Nothing to log in one tap: one button, saying what is needed.
+      actions = '<div class="jg-next-actions one"><button type="button" class="primary jg-adjust">' + (amrap ? 'Enter reps' : 'Enter weight') + '</button></div>';
+    }
     return '<div class="jg-next" data-i="' + i + '">' +
       '<div class="jg-next-k">Next · set ' + (Number(i) + 1) + ' of ' + total + (pct ? ' · ' + pct : '') + '</div>' +
       '<div class="jg-next-v">' + (kg === null ? '–' : f(kg)) + '<small> ' + unit + '</small> <span class="x">×</span> ' + reps + '</div>' +
-      (plateLine ? '<div class="jg-next-plates">' + plateLine + '</div>' : '') +
-      '<div class="jg-next-sub">' + (sub === plateLine ? '' : sub) + '</div>' +
-      '<div class="jg-next-actions">' +
-      '<button type="button" class="jg-adjust">Adjust</button>' +
-      '<button type="button" class="primary ' + (quick ? 'jg-done' : 'jg-adjust') + '">' + doneLabel + '</button>' +
-      '</div></div>';
+      // With no weight the plate line only repeats "set a weight", which the hint already says.
+      (plateLine && kg !== null ? '<div class="jg-next-plates">' + plateLine + '</div>' : '') +
+      '<div class="jg-next-sub">' + sub + '</div>' + actions + '</div>';
   }
 
   function enhanceEditor(card, ed) {
@@ -5534,6 +5587,32 @@ body.jg-sheet{overflow:hidden}
         b.setAttribute('aria-pressed', rirIn.value !== '' && Number(rirIn.value) === Number(b.dataset.v) ? 'true' : 'false');
       });
     }
+    // A plain way out: the handle suggests a swipe (which works), and the ✕ says it outright.
+    if (!ed.querySelector('.jg-close')) {
+      ed.insertAdjacentHTML('afterbegin', '<button type="button" class="jg-close" aria-label="Close">' +
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></button>');
+    }
+    syncEditor(ed);
+  }
+
+  // The parts of the sheet that follow what is typed: Clear only when there is something to clear,
+  // and the log button names what it will record (an empty reps box records the plan's bottom).
+  function syncEditor(ed) {
+    var repsIn = ed.querySelector('.in-reps');
+    var log = ed.querySelector('[data-action="log-set"]');
+    var clr = ed.querySelector('[data-action="clear-set"]');
+    if (!repsIn || !log) { return; }
+    var typed = n(repsIn.value);
+    var logged = ed.dataset.logged === '1' && typed !== null;
+    if (clr) {
+      clr.textContent = 'Clear set';
+      clr.classList.toggle('jg-hide', !logged && typed === null);
+    }
+    var label;
+    if (logged) { label = 'Save · ' + typed + ' reps'; }
+    else if (ed.dataset.amrap === '1' && typed === null) { label = 'Enter your reps'; }
+    else { label = 'Log ' + (typed !== null ? typed : ed.dataset.treps) + ' reps'; }
+    if (log.textContent !== label) { log.textContent = label; }
   }
 
   function enhance() {
@@ -5617,28 +5696,103 @@ body.jg-sheet{overflow:hidden}
 
   function later() { setTimeout(enhance, 0); }
 
-  // One tap: log the next set exactly as prescribed.
-  function quickLog(card, i) {
+  function setReps(ed, r) {
+    var repsIn = ed.querySelector('.in-reps');
+    repsIn.value = String(r);
+    repsIn.dispatchEvent(new Event('input', { bubbles: true }));
+    repsIn.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  // One tap: log the next set, at the reps given (a rep chip) or as shown (Done).
+  function quickLog(card, i, reps) {
     var cell = card.querySelector('.setcell[data-i="' + i + '"]');
     var ed = card.querySelector('.editor[data-i="' + i + '"]');
     if (!cell || !ed) { return; }
     if (ed.hidden) { cell.click(); }
+    if (reps !== undefined) { setReps(ed, reps); }
     var log = ed.querySelector('[data-action="log-set"]');
     if (log) { log.click(); }
     closeSheet();
     enhance();
+    if (ed.dataset.logged === '1') {
+      showUndo(card.dataset.slot, i, card.dataset.movement, ed.querySelector('.in-kg').value, ed.querySelector('.in-reps').value);
+    }
     if (navigator.vibrate) { try { navigator.vibrate(15); } catch (e) { /* ignore */ } }
+  }
+
+  // A one-tap log can be taken back for a few seconds without opening the set.
+  var undoTimer = null;
+  function hideUndo() {
+    var el = document.getElementById('jg-undo');
+    if (el) { el.hidden = true; }
+    if (undoTimer) { clearTimeout(undoTimer); undoTimer = null; }
+  }
+  function showUndo(slot, i, movement, kg, reps) {
+    var el = document.getElementById('jg-undo');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'jg-undo'; el.setAttribute('role', 'status');
+      el.innerHTML = '<span class="jg-undo-t"></span><button type="button" class="jg-undo-b">Undo</button>';
+      document.body.appendChild(el);
+    }
+    el.dataset.slot = slot; el.dataset.i = i; el.dataset.movement = movement;
+    el.querySelector('.jg-undo-t').textContent = 'Logged set ' + (Number(i) + 1) + ' · ' + (kg !== '' ? f(Number(kg)) + ' × ' : '') + reps;
+    el.hidden = false;
+    if (undoTimer) { clearTimeout(undoTimer); }
+    undoTimer = setTimeout(hideUndo, 6000);
+  }
+  function undoLast() {
+    var el = document.getElementById('jg-undo');
+    if (!el) { return; }
+    var card = app.querySelector('.card.slot[data-slot="' + el.dataset.slot + '"]');
+    var i = el.dataset.i;
+    hideUndo();
+    if (!card) { return; }
+    var cell = card.querySelector('.setcell[data-i="' + i + '"]');
+    var ed = card.querySelector('.editor[data-i="' + i + '"]');
+    if (!cell || !ed || ed.dataset.logged !== '1') { return; }
+    if (ed.hidden) { cell.click(); }
+    var clr = ed.querySelector('[data-action="clear-set"]');
+    if (clr) { clr.click(); }
+    closeSheet();
+    // The rest that set started is not needed any more.
+    var rest = document.getElementById('rest-bar');
+    var label = rest && !rest.hidden ? rest.querySelector('.rest-label') : null;
+    if (label && label.textContent.indexOf(el.dataset.movement) !== -1) {
+      var skip = rest.querySelector('[data-rest="skip"]');
+      if (skip) { skip.click(); }
+    }
+    enhance();
   }
 
   document.addEventListener('click', function (e) {
     var t = e.target;
     var card = t.closest && t.closest('#app .card.slot');
 
+    if (t.closest('.jg-undo-b')) { undoLast(); return; }
     if (t.closest('.jg-done')) {
+      hideUndo();
       quickLog(card, t.closest('.jg-next').dataset.i);
       return;
     }
+    var rep = t.closest('.jg-rep');
+    if (rep) {
+      hideUndo();
+      var ri = t.closest('.jg-next').dataset.i;
+      if (rep.classList.contains('jg-more')) {
+        // More than the range: open the set with that number typed in, to step up from.
+        var mcell = card.querySelector('.setcell[data-i="' + ri + '"]');
+        var med = card.querySelector('.editor[data-i="' + ri + '"]');
+        if (mcell && med) { if (med.hidden) { mcell.click(); } setReps(med, rep.dataset.r); }
+        later();
+        return;
+      }
+      quickLog(card, ri, Number(rep.dataset.r));
+      return;
+    }
+    if (t.closest('.jg-close')) { closeSheet(); later(); return; }
     if (t.closest('.jg-adjust')) {
+      hideUndo();
       var cell = card.querySelector('.setcell[data-i="' + t.closest('.jg-next').dataset.i + '"]');
       if (cell) { cell.click(); }
       later();
@@ -5673,6 +5827,34 @@ body.jg-sheet{overflow:hidden}
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && document.body.classList.contains('jg-sheet')) { closeSheet(); later(); }
   });
+
+  // Typing in the sheet updates its log button and Clear straight away.
+  document.addEventListener('input', function (e) {
+    var ed = e.target.closest && e.target.closest('#app .editor');
+    if (ed) { syncEditor(ed); }
+  });
+
+  // Swipe the sheet down to close it, from anywhere but its boxes and buttons.
+  var drag = null;
+  function endDrag() {
+    if (!drag) { return; }
+    var d = drag; drag = null;
+    d.ed.style.transform = ''; d.ed.style.animation = '';
+    if (d.dy > 80) { closeSheet(); later(); }
+  }
+  document.addEventListener('touchstart', function (e) {
+    var ed = e.target.closest && e.target.closest('#app .editor:not([hidden])');
+    if (!ed || e.touches.length !== 1 || e.target.closest('input, button')) { return; }
+    drag = { ed: ed, y: e.touches[0].clientY, dy: 0 };
+  }, { passive: true });
+  document.addEventListener('touchmove', function (e) {
+    if (!drag) { return; }
+    drag.dy = Math.max(0, e.touches[0].clientY - drag.y);
+    drag.ed.style.animation = 'none';
+    drag.ed.style.transform = 'translateY(' + drag.dy + 'px)';
+  }, { passive: true });
+  document.addEventListener('touchend', endDrag);
+  document.addEventListener('touchcancel', function () { if (drag) { drag.dy = 0; } endDrag(); });
 
   // Re-apply after every full render of the app.
   new MutationObserver(later).observe(app, { childList: true });

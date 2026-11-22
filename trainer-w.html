@@ -2126,6 +2126,14 @@ details.info .row{margin-top:10px}
         '<button type="button" data-action="step" data-d="-' + step + '" aria-label="Less ' + label + '">−</button>' + input +
         '<button type="button" data-action="step" data-d="' + step + '" aria-label="More ' + label + '">+</button></div></div>';
     }
+    // Bigger weight jumps than the stepper, one tap each (Strong's keypad has these). They sit
+    // inside the weight box's own column: spread under both boxes, they read as changing the reps.
+    function kgFieldHtml(html) {
+      if (!EXTRAS) { return html; }
+      return html.slice(0, -'</div>'.length) + '<div class="kg-chips">' + [-10, -5, 5, 10].map(function (d) {
+        return '<button type="button" class="small" data-action="kg-add" data-d="' + d + '" aria-label="' + (d > 0 ? 'Add ' : 'Take off ') + Math.abs(d) + ' ' + U() + '">' + (d > 0 ? '+' : '−') + Math.abs(d) + '</button>';
+      }).join('') + '</div></div>';
+    }
 
     // RIR is asked for only where something uses it: a fixed-rep slot, which
     // progresses on a beaten RIR. A rep range progresses on reps alone and the
@@ -2168,12 +2176,8 @@ details.info .row{margin-top:10px}
         (askRir
           ? field('RIR', '<input type="number" inputmode="numeric" step="1" min="0" class="in-rir" data-i="' + i + '" value="' + rirVal + '" placeholder="' + tRir + '">', 1)
           : '<input type="hidden" class="in-rir" data-i="' + i + '" value="' + rirVal + '">') +
-        field(U(), '<input type="number" inputmode="decimal" step="0.5" min="0" class="in-kg" data-i="' + i + '" value="' + kgVal + '">', kgStep, askRir) +
+        kgFieldHtml(field(U(), '<input type="number" inputmode="decimal" step="0.5" min="0" class="in-kg" data-i="' + i + '" value="' + kgVal + '">', kgStep, askRir)) +
         '</div>' +
-        // Bigger jumps than the stepper, one tap each (Strong's keypad has these).
-        (EXTRAS ? '<div class="kg-chips">' + [-10, -5, 5, 10].map(function (d) {
-          return '<button type="button" class="small" data-action="kg-add" data-d="' + d + '" aria-label="' + (d > 0 ? 'Add ' : 'Take off ') + Math.abs(d) + ' ' + U() + '">' + (d > 0 ? '+' : '−') + Math.abs(d) + '</button>';
-        }).join('') + '</div>' : '') +
         '<div class="ed-hint"></div>' + (plateKind(p.movement, p.slot.load.kind) ? '<div class="ed-plates hint sm"></div>' : '') +
         '<div class="ed-actions"><button type="button" data-action="clear-set">Clear</button><button type="button" class="primary" data-action="log-set">Log set</button></div>' +
         '</div>';
