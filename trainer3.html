@@ -4054,7 +4054,7 @@ details.info .row{margin-top:10px}
     }).join('');
     var anyUsable = E.progressingLifts(nextProgramme()).some(function (n) { var e = lastMaxEffort(n).effort; return e && !e.inStart; });
     return '<section class="card rm-card"><h2>1RM calculator</h2>' +
-      '<p class="hint">Your training max is 90% of a recent 1RM, the book\'s rule. This reads your last test set or AMRAP, whichever came last, so there is nothing to type. ' +
+      '<p class="hint">Your training max is 90% of a recent 1RM, the method\'s rule. This reads your last test set or AMRAP, whichever came last, so there is nothing to type. ' +
       (start ? 'Use it and it goes into the start card as that lift\'s result.'
         : 'Your block is running, so using one changes that lift\'s training max now: the waves and the supports follow it from the next session.') + '</p>' +
       '<div class="scroll"><table class="table nc-table"><thead><tr><th>Lift</th><th>Last test or AMRAP</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
@@ -4396,7 +4396,7 @@ details.info .row{margin-top:10px}
     function list(tag, items) { return '<' + tag + '>' + items.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</' + tag + '>'; }
     var u = U(), big = u === 'lb' ? '5 lb' : '2.5 kg', small = u === 'lb' ? '2.5 lb' : '1.25 kg';
     return card('How this app works',
-        '<p>It runs a 16-week strength block on the Juggernaut Method (Chad Wesley Smith, <i>The Juggernaut Method 2.0</i>), three days a week.</p>' +
+        '<p>It runs a 16-week strength block on the <b>Juggernaut Method</b>, three days a week. The method moves your main lifts through waves of rising weight and falling reps, and uses one all-out set at the end of each wave to set your next training max.</p>' +
         list('ul', [
           '<b>Day 1</b> is squat and overhead press, <b>Day 2</b> bench, <b>Day 3</b> deadlift. These are the main lifts. Each day then has a few accessory exercises.',
           'The block is <b>four waves of four weeks: 10s, 8s, 5s and 3s</b>. The number is the rep target on the main lifts, so the weight goes up and the reps come down as the block goes on.',
@@ -4473,7 +4473,7 @@ details.info .row{margin-top:10px}
       'Supports are fixed weights that go up when every set reaches the top of its range.' +
       (fresh ? '' : ' Weights carry over from what you are lifting now, and so do exercises you swapped in "from now on".') + '</p>' +
       from +
-      '<p class="hint">Starting training max is 90% of a recent 1RM — the book\'s rule. Give each lift a result: run the <b>test week</b>, <b>upload</b> an exported log, type a heavy set you did recently (10 reps or fewer), or give a 1RM in the <b>1RM calculator</b> in Setup. ' +
+      '<p class="hint">Starting training max is 90% of a recent 1RM — the method\'s rule. Give each lift a result: run the <b>test week</b>, <b>upload</b> an exported log, type a heavy set you did recently (10 reps or fewer), or give a 1RM in the <b>1RM calculator</b> in Setup. ' +
       (fresh ? 'Without one it starts from the maxes shown.' : 'Without one, it suggests the lower of your current TM and 90% of your best set from the last six logged weeks.') +
       ' You can still change any number before you start.</p>' +
       (tw ? '<p class="hint"><b>Test week in progress</b> — day ' + (Math.min(tw.day || 0, testDays().length - 1) + 1) + ' of ' + testDays().length + '.</p>' : '') +
