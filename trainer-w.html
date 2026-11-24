@@ -159,6 +159,9 @@ details.info div{margin-top:4px}
 .seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);border:1px solid var(--line)}
 .seg button{border:0;border-left:1px solid var(--line);min-height:44px;font-size:13px;padding:4px}
 .seg button:first-child{border-left:0}
+.guide p{line-height:1.5;margin:8px 0}
+.guide ul,.guide ol{margin:8px 0;padding-left:22px}
+.guide li{line-height:1.5;margin:8px 0}
 .seg button.on{background:var(--accent);color:var(--on-accent);font-weight:600}
 .preview-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px}
 .preview-row .stepper{width:170px}
@@ -3135,6 +3138,17 @@ details.info .row{margin-top:10px}
 
   function viewSetup() {
     if (PLAIN) { return viewSetupPlain(); }
+    if (!ONBOARDING) { return viewSetupSettings(); }
+    // v3: Setup has two views, the settings and a guide for a first-time user.
+    var sv = state.ui.setupView === 'guide' ? 'guide' : 'settings';
+    var sw = '<div class="seg" role="tablist" aria-label="Setup view" style="grid-template-columns:repeat(2,minmax(0,1fr));margin-bottom:22px">' +
+      [['settings', 'Settings'], ['guide', 'Guide']].map(function (o) {
+        return '<button type="button" role="tab" aria-selected="' + (sv === o[0]) + '" class="' + (sv === o[0] ? 'on' : '') + '" data-action="setup-view" data-view="' + o[0] + '">' + o[1] + '</button>';
+      }).join('') + '</div>';
+    return sw + (sv === 'guide' ? guideHtml() : viewSetupSettings());
+  }
+
+  function viewSetupSettings() {
     var s = state.settings;
     // Protein is prescribed per kg of bodyweight; convert when the app is in lb
     // or the maths silently doubles the target.
@@ -4517,7 +4531,69 @@ details.info .row{margin-top:10px}
     return '<div class="card sess"><div class="sess-kicker">Welcome</div>' +
       '<div class="sess-title">Set up your block</div>' +
       '<p class="phase-note">A 16-week block: squat and overhead press on Day 1, bench on Day 2, deadlift on Day 3. ' +
-      'Set your training maxes first — the wave tables and every support weight follow from them.</p></div>' + newCycleCard();
+      'Set your training maxes first — the wave tables and every support weight follow from them.</p>' +
+      '<div class="row"><button type="button" class="small" data-action="open-guide">New here? Read the guide</button></div></div>' + newCycleCard();
+  }
+
+  // Setup's Guide: what the app is and how to set it up, for someone opening it for the first time.
+  // Plain text about how the app behaves; keep it in step when a behaviour it describes changes.
+  function guideHtml() {
+    function card(title, body) { return '<section class="card guide"><h2>' + title + '</h2>' + body + '</section>'; }
+    function list(tag, items) { return '<' + tag + '>' + items.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</' + tag + '>'; }
+    var u = U(), big = u === 'lb' ? '5 lb' : '2.5 kg', small = u === 'lb' ? '2.5 lb' : '1.25 kg';
+    return card('How this app works',
+        '<p>It runs a 16-week strength block on the Juggernaut Method (Chad Wesley Smith, <i>The Juggernaut Method 2.0</i>), three days a week.</p>' +
+        list('ul', [
+          '<b>Day 1</b> is squat and overhead press, <b>Day 2</b> bench, <b>Day 3</b> deadlift. These are the main lifts. Each day then has a few accessory exercises.',
+          'The block is <b>four waves of four weeks: 10s, 8s, 5s and 3s</b>. The number is the rep target on the main lifts, so the weight goes up and the reps come down as the block goes on.',
+          'Every wave has the same four weeks: <b>Accumulation</b> (more sets, stop 2–3 reps short), <b>Intensification</b> (heavier, stop 1–2 short), <b>Realization</b> (one all-out set that sets your next training max) and <b>Deload</b> (light, to recover).',
+          'Main-lift weights come from your <b>training max (TM)</b>, which is 90% of your one-rep max. Get the TM right and every main-lift weight in the block follows from it.'
+        ])) +
+      card('Setting up for the first time',
+        list('ol', [
+          '<b>Add it to your home screen.</b> In Safari tap Share, then Add to Home Screen, and open it from there. Your data is kept on this phone only, and Safari can clear a website\'s data after 7 days without a visit; a home-screen app is kept.',
+          '<b>Check units, bar and plates</b> (Settings: Block, Bar and plates): kg or lb, your bar, and the plates your gym has, so the plate line under each set is right.',
+          '<b>Set the weight jumps</b> (Settings: Weight jumps): how much a weight goes up for each kind of kit. Look at your gym\'s dumbbells and pin stacks. One exercise can have its own jump in Library.',
+          '<b>Give each main lift a starting max</b> on the start card, in one of three ways: run the <b>test week</b> (a heavy triple on each lift), use the <b>1RM calculator</b> in Settings if you have logged sets, or <b>type a heavy set</b> you did recently, of 10 reps or fewer. The app takes 90% of the estimated 1RM as the training max.',
+          '<b>Coming from the v2 app?</b> Choose your v2 backup (JSON) on the start card. Your maxes, weights, swaps and history come across.',
+          'Press <b>Start block</b>. Week 1, Day 1 opens on Today.'
+        ]) +
+        '<p class="hint">Accessory weights start blank. In your first session, enter the weight you use; the app writes it into the weeks ahead.</p>') +
+      card('Logging a session (Today)',
+        list('ul', [
+          'Work down the page. The open card shows <b>Next</b>: the set to do, its weight and the plates on each side.',
+          '<b>Main lift:</b> tap <b>Done</b> to log the set as written. The last set is the <b>AMRAP</b>: tap <b>Enter reps</b> and type what you got. How hard to push depends on the week: 2–3 reps short in Accumulation, 1–2 short in Intensification, all out in Realization.',
+          '<b>Accessories:</b> tap the number of <b>reps you did</b>. The last button (the top of the range plus one) opens the set to type more.',
+          '<b>Edit set</b> opens the set to change its weight or reps first. Change the weight on one set and the sets after it follow.',
+          'Nothing is logged until you tap a reps button, <b>Done</b> or <b>Log</b>. A set you have typed but not logged shows dashed. <b>Undo</b> appears for a few seconds after a one-tap log.',
+          'The <b>rest timer</b> starts after each set: ' + Math.round(restMain() / 60 * 10) / 10 + ' minutes after a main lift, ' + restAcc() + ' seconds after anything else (change them in Settings).',
+          'Tap a set\'s square to fix it later. <b>Finish</b> shows a summary of the session and moves on to the next day.'
+        ])) +
+      card('How you progress',
+        list('ul', [
+          '<b>Main lifts:</b> after each Realization week, open Progress, <b>AMRAP &amp; ledger</b>, and tap <b>Apply</b>. New TM = old TM + (AMRAP reps − the standard) × the increment. The standard is the wave\'s number (10, 8, 5 or 3); the increment per rep is in Settings (' + big + ' for squat and deadlift, ' + small + ' for bench and press by default), and only 10 reps over the standard count. Fewer reps than the standard lowers the TM: that is the method correcting itself.',
+          '<b>Accessories:</b> once every set reaches the <b>top of its rep range</b>, the weight goes up one jump next time and the reps start again at the bottom. The card tells you when you have earned it.',
+          '<b>Deload weeks</b> never move anything.',
+          '<b>Progress</b> also charts every exercise, your estimated 1RM (from the final set of each main-lift session) and your personal bests.'
+        ])) +
+      card('The tabs',
+        list('ul', [
+          '<b>Today</b>: the session to do now.',
+          '<b>Block</b>: all 16 weeks. Change an exercise, its sets, reps or weight for every week at once, and use ▲▼ to change the order (main lifts stay first).',
+          '<b>Progress</b>: training maxes, charts, personal bests, and the AMRAP ledger where you apply a new TM.',
+          '<b>Library</b>: every exercise, with its kit, weight jump and rep range. A change here follows the exercise wherever it is in the plan.',
+          '<b>Setup</b>: training maxes, units, plates, rest timer, theme, and your data. This guide is here too.',
+          'On a card in Today, <b>More</b> has <b>Swap</b> (for this session or from now on), <b>Skip</b> with a reason, and the order buttons. Main lifts cannot be swapped or skipped, because their AMRAP sets your max.'
+        ])) +
+      card('Keeping your data safe',
+        list('ul', [
+          'Everything is stored on this phone, in this app. Your training data is never sent anywhere.',
+          'Each week Setup reminds you to <b>back up</b>. Tap <b>Export</b>, then Save to Files or iCloud Drive.',
+          'On a new phone, <b>Import</b> that file in Settings: Data.',
+          '<b>Reset</b> asks first, saves a backup, and can be undone until the app is closed.'
+        ])) +
+      card('At the end of the block',
+        '<p>In week 16 a <b>Start cycle 2</b> card appears on Today and in Setup. Run a test week or use the 1RM calculator for new maxes, then start. The finished block is kept in your history, and accessory weights and swaps carry over.</p>');
   }
 
   function newCycleCard() {
@@ -4993,6 +5069,12 @@ details.info .row{margin-top:10px}
     var a = btn.dataset.action;
     if (a === 'cell' || a === 'step' || a === 'kg-add' || a === 'log-set' || a === 'clear-set') { setAction(btn, a); return; }
     if (a === 'prog-view') { state.ui.progView = btn.dataset.view; save(); render(); return; }
+    if (a === 'setup-view') { state.ui.setupView = btn.dataset.view; save(); render(); window.scrollTo(0, 0); return; }
+    if (a === 'open-guide') {
+      if (state.ui.tab === 'today') { readSession(); }
+      swapOpen = null; skipOpen = null; moveOpen = null;
+      state.ui.tab = 'setup'; state.ui.setupView = 'guide'; save(); render(); window.scrollTo(0, 0); return;
+    }
     if (a === 'chart-metric') { state.ui.chartMetric = btn.dataset.metric; save(); render(); return; }
     if (a === 'prog-lift') { state.ui.progLift = btn.dataset.lift; state.ui.progReps = null; save(); render(); return; }
     if (a === 'prog-step') {
