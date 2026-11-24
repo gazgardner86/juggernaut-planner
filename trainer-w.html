@@ -23,7 +23,9 @@
   --mark:color-mix(in srgb,#ececee 50%,transparent);
 }}
 *{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
+html{-webkit-text-size-adjust:100%;overscroll-behavior-y:none}
+/* iOS Safari can leave a fixed bar part-way up the screen while the page bounces or after the
+   keyboard closes; its own compositing layer keeps it pinned to the bottom. */
 body{margin:0;font-family:var(--font-b);font-size:15px;background:var(--bg);color:var(--text);line-height:1.45}
 ::selection{background:var(--accent-tint-2)}
 a{color:var(--accent-strong)}a:hover{color:var(--accent-deep)}
@@ -84,7 +86,7 @@ tr.amap td{background:var(--accent-tint)}
 .toast{position:fixed;bottom:calc(var(--nav-h) + 96px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%) translateY(20px);background:var(--accent-deep);color:var(--bg);padding:10px 18px;font-size:14px;opacity:0;transition:all .25s ease;z-index:10;max-width:90vw}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 /* bottom nav */
-.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(5,1fr);background:var(--bg);border-top:1px solid var(--line);padding:4px max(8px,env(safe-area-inset-left)) calc(4px + env(safe-area-inset-bottom))}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;-webkit-transform:translateZ(0);transform:translateZ(0);display:grid;grid-template-columns:repeat(5,1fr);background:var(--bg);border-top:1px solid var(--line);padding:4px max(8px,env(safe-area-inset-left)) calc(4px + env(safe-area-inset-bottom))}
 .tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:56px;padding:4px;border:0;background:transparent;color:var(--muted);font-size:11px;letter-spacing:.04em}
 .tab:hover{background:transparent;color:var(--text)}
 .tab.active{color:var(--accent-strong);font-weight:600}
@@ -5403,6 +5405,27 @@ details.info .row{margin-top:10px}
     row.querySelector('.apply-cell').innerHTML = nt === null ? ''
       : (state.trackerBase[k] !== undefined && lift.tm === nt ? '<span class="hint">applied ✓</span>'
         : '<button type="button" class="small" data-action="apply-tm" data-lift="' + esc(name) + '" data-tm="' + nt + '" data-k="' + esc(k) + '" data-base="' + base + '" data-reps="' + v + '">Apply</button>');
+  }
+
+  // iOS Safari: when the keyboard closes, the page can be left offset, so the fixed tab bar sits
+  // part-way up the screen until the next scroll settles it. Once the visible area grows back
+  // (the keyboard gone) and no box has the focus, a one-pixel nudge and back makes Safari lay the
+  // fixed bars out again. It waits half a second so it does not cut short the smooth scroll to the
+  // next exercise, and returns to the same spot, so nothing moves you can see.
+  function settleViewport() {
+    var a = document.activeElement;
+    if (a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) { return; }
+    var y = window.scrollY;
+    window.scrollTo(window.scrollX, y + 1);
+    window.scrollTo(window.scrollX, y);
+  }
+  if (window.visualViewport) {
+    var vvHeight = window.visualViewport.height;
+    window.visualViewport.addEventListener('resize', function () {
+      var h = window.visualViewport.height;
+      if (h > vvHeight + 100) { setTimeout(settleViewport, 500); }
+      vvHeight = h;
+    });
   }
 
   document.addEventListener('input', function (e) {
